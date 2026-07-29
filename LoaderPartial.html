@@ -1,0 +1,275 @@
+<!-- ════════════════════════════════════════════════════════════════════
+     LOADER DE MARCA · isotipo Liverpool que se forma con 8 puntos fluidos
+     Reutilizable en Index y Promociones vía <?!= include('LoaderPartial') ?>.
+     Colores naranja + morado, sin texto. API global: window.VentelLoader.
+
+     FIX DE COLOR (vs. versión previa):
+       · Colores ajustados al hex EXACTO de la imagen oficial:
+            NARANJA #EE7D00   ·   MORADO #AC4581
+       · El isotipo NO alterna par/impar. Es:
+            islas 0-3 (verticales izq. + base)  → MORADO
+            islas 4-7 (superior + verticales der.) → NARANJA
+         Antes se coloreaba con i%2, lo que pintaba medio logo invertido.
+       · Los 8 puntos del anillo siguen alternando (se ve balanceado al
+         girar) y el fill se anima al color correcto durante el morph.
+     ════════════════════════════════════════════════════════════════════ -->
+<style>
+  .vl-overlay{position:fixed;inset:0;z-index:4000;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1.6rem;
+    background:radial-gradient(120% 90% at 50% 38%, var(--surface,#fff) 0%, var(--surface-2,#f7eef5) 70%, var(--surface,#fff) 100%);
+    opacity:1;transition:opacity .35s ease}
+  .vl-overlay.show{display:flex}
+  .vl-overlay.vl-hiding{opacity:0}
+
+  /* ── Panel de mensaje bajo el isotipo (título + espera + dato curioso) ── */
+  .vl-msg{display:none;flex-direction:column;align-items:center;text-align:center;gap:.55rem;
+    max-width:min(86vw,34rem);padding:0 1.2rem}
+  .vl-overlay.vl-has-msg .vl-msg{display:flex}
+  .vl-title{font-family:var(--f-display,'Archivo',system-ui,sans-serif);font-weight:800;letter-spacing:-.01em;
+    font-size:1.18rem;color:var(--ink,#3d2f38);margin:0}
+  .vl-sub{font-family:var(--f-body,'Instrument Sans',system-ui,sans-serif);font-size:.9rem;line-height:1.5;
+    color:var(--ink-soft,#7d6c76);margin:0}
+  .vl-fact{margin-top:.5rem;padding:.85rem 1.1rem;border-radius:14px;
+    background:rgba(255,255,255,.72);
+    background:color-mix(in srgb, var(--surface,#fff) 72%, transparent);
+    border:1px solid var(--line,#eadfe6);box-shadow:0 10px 30px -18px rgba(61,47,56,.35);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    font-family:var(--f-body,'Instrument Sans',system-ui,sans-serif);font-size:.85rem;line-height:1.55;
+    color:var(--ink,#3d2f38);opacity:1;transition:opacity .45s ease}
+  .vl-fact.vl-fact-swap{opacity:0}
+  .vl-fact b{color:var(--brand,#E10098)}
+  .vl-fact .vl-fact-tag{display:block;font-size:.66rem;font-weight:800;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--brand,#E10098);margin-bottom:.25rem}
+  .vl-stage{position:relative;width:min(52vw,200px);aspect-ratio:1/1;display:flex;align-items:center;justify-content:center}
+  .vl-glow{position:absolute;inset:-12%;border-radius:50%;pointer-events:none;filter:blur(6px);opacity:0;
+    background:radial-gradient(circle at 50% 50%,
+      rgba(172,69,129,.22) 0%, rgba(238,125,0,.14) 32%, rgba(172,69,129,.05) 50%, transparent 66%)}
+  .vl-svg{width:100%;height:100%;overflow:visible;position:relative;z-index:2}
+  @keyframes vl-fallspin{to{transform:rotate(360deg)}}
+  .vl-overlay.vl-fallback .vl-svg{transform-origin:50% 50%;animation:vl-fallspin 1.5s linear infinite}
+  @media (prefers-reduced-motion:reduce){.vl-overlay.vl-fallback .vl-svg{animation:none}}
+
+  /* Mini-spinner de marca (8 puntos naranja/morado) para esperas embebidas */
+  .vl-spin{display:inline-block;position:relative;width:var(--vl-sz,46px);height:var(--vl-sz,46px)}
+  .vl-spin i{position:absolute;top:0;left:50%;width:calc(var(--vl-sz,46px)*.17);height:calc(var(--vl-sz,46px)*.17);
+    margin-left:calc(var(--vl-sz,46px)*-.085);border-radius:50%;opacity:.18;
+    transform-origin:50% calc(var(--vl-sz,46px)*.5);animation:vl-trail 1s linear infinite}
+  .vl-spin i:nth-child(odd){background:#EE7D00}
+  .vl-spin i:nth-child(even){background:#AC4581}
+  @keyframes vl-trail{0%,100%{opacity:.18}40%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){.vl-spin i{animation-duration:0s}}
+</style>
+
+<div class="vl-overlay show" id="ventelLoader" role="status" aria-live="polite" aria-label="Cargando">
+  <div class="vl-stage">
+    <div class="vl-glow" id="vlGlow"></div>
+    <svg class="vl-svg" id="vlSvg" viewBox="142.3 69.75 290 290" aria-hidden="true">
+      <defs>
+        <filter id="vlGoo" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+          <feColorMatrix in="blur" mode="matrix"
+            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -8" result="goo"/>
+          <feBlend in="SourceGraphic" in2="goo"/>
+        </filter>
+      </defs>
+      <g id="vlDots" filter="url(#vlGoo)"></g>
+    </svg>
+  </div>
+  <div class="vl-msg" id="vlMsg">
+    <h2 class="vl-title" id="vlTitle"></h2>
+    <p class="vl-sub" id="vlSub"></p>
+    <div class="vl-fact" id="vlFact" hidden></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  if (window.VentelLoader) return;
+
+  var CX = 287.3, CY = 214.75, R = 116, DOT = 11;
+  // Colores de marca = hex EXACTO de la imagen oficial (interior de trazo, sin antialiasing)
+  var ORANGE = "#EE7D00", PURPLE = "#AC4581";
+
+  var FULL_D = "M173.37 116.8c-0.6 0.7 -0.33 178.17 0.27 180.2c0.23 0.83 1.13 2.9 1.93 4.57c1.27 2.63 1.9 3.47 4.23 5.67c3.57 3.37 7.13 5.17 11.37 5.8c1.13 0.17 25.4 0.27 55.83 0.23l53.83 -0.1l0 -8.67l0 -8.67l-50.17 -0.17c-51.83 -0.17 -50.7 -0.13 -53.5 -1.47c-1.07 -0.53 -3.7 -3.2 -4.43 -4.5c-1.43 -2.5 -1.4 -0.03 -1.4 -88.23c0 -55.37 -0.13 -84.1 -0.37 -84.5c-0.3 -0.6 -0.87 -0.63 -8.77 -0.63c-6.73 0 -8.53 0.1 -8.83 0.47Z M198.53 116.87c-0.47 0.47 -0.53 8.3 -0.53 81.27c0 86.6 -0.07 82.3 1.57 85.37c0.73 1.37 2.4 3.1 3.6 3.77c2.87 1.57 1.47 1.53 50.47 1.63c30.2 0.03 46.33 -0.03 46.73 -0.27c0.6 -0.3 0.63 -0.87 0.63 -8.97l0 -8.63l-38.23 -0.13c-35.17 -0.07 -38.4 -0.13 -39.9 -0.67c-2.1 -0.73 -3.67 -1.93 -4.73 -3.63c-1.9 -3 -1.8 1.13 -1.8 -76.97c0 -49 -0.1 -72.2 -0.33 -72.67c-0.33 -0.6 -0.8 -0.63 -8.67 -0.63c-7.1 0 -8.37 0.07 -8.8 0.53Z M223.67 116.67c-0.43 0.27 -0.5 8.33 -0.6 68.73c-0.1 62.73 -0.03 68.63 0.47 70.77c0.83 3.53 2.73 5.87 5.97 7.27c1.23 0.53 3.73 0.57 36.33 0.5l35 -0.1l0 -8.83l0 -8.83l-27.33 -0.17c-30.47 -0.2 -28.37 0 -30.43 -2.5c-0.77 -0.97 -1.03 -1.73 -1.37 -3.93c-0.27 -1.97 -0.37 -19.43 -0.37 -62.6c0 -46.1 -0.1 -59.93 -0.4 -60.23c-0.5 -0.5 -16.5 -0.57 -17.27 -0.07Z M248.73 116.73c-0.57 0.57 -0.57 114.4 0 116.4c0.7 2.43 1.93 3.9 4.37 5.2c1.23 0.63 1.87 0.67 24.17 0.67c12.6 0.03 23.1 0.03 23.33 0c0.33 0 0.4 -1.87 0.33 -8.77l-0.1 -8.73l-15 -0.17c-14.87 -0.17 -15 -0.17 -16.2 -0.93c-1.37 -0.83 -2.23 -1.97 -2.67 -3.53c-0.17 -0.6 -0.3 -22.03 -0.3 -50.07c0 -43.47 -0.07 -49.1 -0.53 -49.73c-0.5 -0.73 -0.63 -0.73 -8.77 -0.73c-5.97 0 -8.33 0.1 -8.63 0.4Z M273.87 117.1c-0.73 1.1 -0.7 16 0.03 16.73c0.43 0.43 6.67 0.5 49.7 0.5c51.83 0 50.37 -0.03 53.73 1.43c3.13 1.37 5.3 5.07 5.7 9.73c0.17 1.63 0.27 39.97 0.27 85.13c0 45.17 0.13 82.27 0.3 82.43c0.13 0.13 4.17 0.23 8.93 0.2l8.63 -0.1l0.2 -3.5c0.4 -6.23 0.33 -169.13 -0.07 -172.8c-0.67 -6.37 -2.13 -9.63 -6.3 -13.83c-3.9 -3.93 -7.47 -5.67 -13 -6.37c-1.83 -0.2 -21 -0.33 -55.23 -0.33l-52.43 0l-0.47 0.77Z M274 141.33c-0.43 0.27 -0.5 1.6 -0.53 8.4c-0.03 4.47 0.07 8.37 0.23 8.67c0.3 0.53 2.73 0.6 38.57 0.7c33.2 0.07 38.4 0.17 39.4 0.6c3.37 1.43 4.43 2.5 5.63 5.57l0.7 1.77l0 72.63c0 39.93 0.1 72.83 0.2 73.13c0.17 0.47 1.3 0.53 9 0.53l8.77 0l0.2 -1.1c0.1 -0.57 0.17 -37.6 0.1 -82.23l-0.1 -81.17l-1.13 -2.1c-1.23 -2.27 -3.13 -3.9 -5.7 -4.97c-1.4 -0.57 -4.13 -0.6 -48.17 -0.67c-29.33 -0.07 -46.87 0.03 -47.17 0.23Z M273.73 166.43c-0.23 0.27 -0.33 3.2 -0.3 8.67c0.07 6.9 0.17 8.3 0.57 8.57c0.3 0.2 11.13 0.33 27.27 0.33c24 0 26.87 0.07 27.83 0.53c1.5 0.77 2.53 1.77 3.17 3.13c0.53 1.07 0.57 6.27 0.73 63.33l0.17 62.17l8.9 0.1l8.93 0.07l0.17 -0.73c0.1 -0.43 0.13 -32.03 0.1 -70.27l-0.1 -69.5l-0.77 -1.33c-1.07 -1.9 -3.37 -4.1 -5.03 -4.87c-1.4 -0.6 -2.5 -0.63 -36.37 -0.63c-28.1 0 -35 0.1 -35.27 0.43Z M274.1 190.87c-0.63 0.27 -0.63 16.9 0 17.4c0.3 0.23 5.3 0.4 15.13 0.47l14.7 0.1l1.3 1.03c0.7 0.57 1.57 1.53 1.93 2.17c0.67 1.1 0.67 1.9 0.83 51.13l0.17 50l8.83 0l8.83 0l0.1 -58.27c0.07 -56.7 0.07 -58.3 -0.57 -59.5c-0.8 -1.6 -2.17 -2.93 -3.87 -3.87c-1.33 -0.7 -1.5 -0.7 -24.17 -0.77c-12.57 -0.03 -23.03 0 -23.23 0.1Z";
+  var ISLANDS = FULL_D.split(/(?=M)/).map(function(s){return s.trim();}).filter(Boolean);
+
+  function circlePath(cx, cy, r){
+    var k = 0.5522847498 * r;
+    return "M"+cx+" "+(cy-r)
+      +"C"+(cx+k)+" "+(cy-r)+" "+(cx+r)+" "+(cy-k)+" "+(cx+r)+" "+cy
+      +"C"+(cx+r)+" "+(cy+k)+" "+(cx+k)+" "+(cy+r)+" "+cx+" "+(cy+r)
+      +"C"+(cx-k)+" "+(cy+r)+" "+(cx-r)+" "+(cy+k)+" "+(cx-r)+" "+cy
+      +"C"+(cx-r)+" "+(cy-k)+" "+(cx-k)+" "+(cy-r)+" "+cx+" "+(cy-r)+"Z";
+  }
+
+  // Color del PUNTO en el anillo (alternado → giro balanceado).
+  function dotColor(i){ return (i % 2 === 0) ? ORANGE : PURPLE; }
+  // Color de la ISLA del isotipo formado (mapeo REAL del logo Liverpool):
+  //   islas 0-3 = lado izquierdo + base  → MORADO
+  //   islas 4-7 = superior + lado derecho → NARANJA
+  function islandColor(i){ return (i < 4) ? PURPLE : ORANGE; }
+
+  var SVGNS = "http://www.w3.org/2000/svg";
+  var overlay = document.getElementById("ventelLoader");
+  var group   = document.getElementById("vlDots");
+  var glow    = document.getElementById("vlGlow");
+  var blur    = document.querySelector("#vlGoo feGaussianBlur");
+  if (!overlay || !group){ window.VentelLoader = { show:function(){}, hide:function(){} }; return; }
+
+  var dots = [], seeds = [];
+  for (var i = 0; i < 8; i++){
+    var ang = (-90 + i * 45) * Math.PI / 180;
+    var cx = CX + R * Math.cos(ang), cy = CY + R * Math.sin(ang);
+    var d  = circlePath(cx, cy, DOT);
+    seeds.push(d);
+    var p = document.createElementNS(SVGNS, "path");
+    p.setAttribute("d", d);
+    p.setAttribute("fill", dotColor(i));   // arranca con el color de punto (anillo)
+    group.appendChild(p);
+    dots.push(p);
+  }
+
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var hasGsap = (typeof gsap !== "undefined");
+  var hasMorph = (typeof MorphSVGPlugin !== "undefined");
+  var tl = null, hideTimer = null;
+
+  // Fallback estático (sin plugin / reduce motion): isotipo formado con su color REAL + giro CSS suave.
+  function buildFallback(){
+    dots.forEach(function(p, i){ p.setAttribute("d", ISLANDS[i]); p.setAttribute("fill", islandColor(i)); });
+    blur.setAttribute("stdDeviation", "0");
+    glow.style.opacity = ".6";
+    overlay.classList.add("vl-fallback");
+  }
+
+  function buildTimeline(){
+    gsap.registerPlugin(MorphSVGPlugin);
+    var SPIN = 1.6, PAUSE = 0.28, COLLAPSE = 1.0, HOLD = 0.9, OUT = 0.85, GAP = 0.25;
+    var t = gsap.timeline({ repeat: -1, paused: true });
+
+    t.fromTo("#vlDots", { rotation: 0 },
+      { rotation: 720, svgOrigin: CX + " " + CY, duration: SPIN, ease: "power2.out" }, 0);
+    t.fromTo(blur, { attr:{ stdDeviation: 6 } },
+      { attr:{ stdDeviation: 9 }, duration: SPIN/2, yoyo: true, repeat: 1, ease: "sine.inOut" }, 0);
+
+    // COLAPSO: cada punto se transforma en su isla Y vira a su color REAL del logo.
+    var cStart = SPIN + PAUSE;
+    dots.forEach(function(p, i){
+      t.to(p, { morphSVG: ISLANDS[i], duration: COLLAPSE, ease: "power3.inOut" }, cStart + i * 0.025);
+      t.to(p, { fill: islandColor(i), duration: COLLAPSE * 0.6, ease: "power2.inOut" }, cStart + i * 0.025);
+    });
+    t.to(blur, { attr:{ stdDeviation: 0.35 }, duration: COLLAPSE * 0.7, ease: "power2.in" }, cStart + 0.12);
+    t.to(glow, { opacity: 1, duration: 0.6, ease: "power2.out" }, cStart + 0.25);
+
+    var hStart = cStart + COLLAPSE + 0.04;
+    t.to(glow, { opacity: 0.5, duration: HOLD/2, yoyo: true, repeat: 1, ease: "sine.inOut" }, hStart);
+
+    // SALIDA: vuelve a punto y recupera el color de anillo (para que el próximo giro quede balanceado).
+    var oStart = hStart + HOLD;
+    t.to(blur, { attr:{ stdDeviation: 7 }, duration: OUT, ease: "power2.out" }, oStart);
+    dots.forEach(function(p, i){
+      t.to(p, { morphSVG: seeds[i], duration: OUT, ease: "power3.inOut" }, oStart + i * 0.02);
+      t.to(p, { fill: dotColor(i), duration: OUT * 0.6, ease: "power2.inOut" }, oStart + i * 0.02);
+    });
+    t.to(glow, { opacity: 0, duration: OUT * 0.7, ease: "power2.in" }, oStart);
+    t.to({}, { duration: GAP });
+    return t;
+  }
+
+  var useMorph = hasGsap && hasMorph && !reduce;
+  if (!useMorph) buildFallback();
+
+  /* ── Mensajes y datos curiosos (esperas largas: envío de correo, PDF, etc.) ──
+     Datos sobre El Puerto de Liverpool para acompañar la espera con la marca. */
+  var FACTS = [
+    "Liverpool nació en <b>1847</b>, cuando el francés Jean-Baptiste Ebrard comenzó vendiendo telas en un cajón del centro de la Ciudad de México.",
+    "El nombre viene del <b>puerto inglés de Liverpool</b>, de donde zarpaba buena parte de la mercancía importada que llegaba a México en el siglo XIX.",
+    "En <b>1965</b> la compañía adoptó oficialmente la razón social <b>El Puerto de Liverpool</b>, que conserva hasta hoy.",
+    "El Puerto de Liverpool cotiza en la <b>Bolsa Mexicana de Valores</b> y es uno de los grupos comerciales más grandes del país.",
+    "Además de las tiendas departamentales, el grupo opera <b>Suburbia</b> y los centros comerciales <b>Galerías</b>.",
+    "La icónica <b>caja rosa</b> de Liverpool es uno de los empaques más reconocibles del comercio mexicano.",
+    "Liverpool fue pionera de la <b>venta por catálogo</b> en México; hoy su tienda en línea y VENTEL llevan esa tradición a todo el país.",
+    "El emblemático almacén del <b>Centro Histórico</b> de la CDMX abrió en 1936 y sigue recibiendo clientes todos los días."
+  ];
+  var msgBox = document.getElementById("vlMsg");
+  var titleEl = document.getElementById("vlTitle");
+  var subEl = document.getElementById("vlSub");
+  var factEl = document.getElementById("vlFact");
+  var factTimer = null, factIdx = -1;
+
+  function renderFact(){
+    if (!factEl) return;
+    factIdx = (factIdx + 1) % FACTS.length;
+    factEl.innerHTML = '<span class="vl-fact-tag">¿Sabías que…?</span>' + FACTS[factIdx];
+  }
+  function startFacts(){
+    stopFacts();
+    factIdx = Math.floor(Math.random() * FACTS.length) - 1; // arranque aleatorio
+    renderFact();
+    factEl.hidden = false;
+    factTimer = setInterval(function(){
+      factEl.classList.add("vl-fact-swap");
+      setTimeout(function(){ renderFact(); factEl.classList.remove("vl-fact-swap"); }, 450);
+    }, 5000);
+  }
+  function stopFacts(){
+    if (factTimer){ clearInterval(factTimer); factTimer = null; }
+    if (factEl){ factEl.hidden = true; factEl.classList.remove("vl-fact-swap"); }
+  }
+  function setMessage(opts){
+    if (!msgBox) return;
+    var hasMsg = opts && (opts.title || opts.sub || opts.facts);
+    overlay.classList.toggle("vl-has-msg", !!hasMsg);
+    if (titleEl) titleEl.textContent = (opts && opts.title) || "";
+    if (subEl) subEl.textContent = (opts && opts.sub) || "";
+    if (opts && opts.facts) startFacts(); else stopFacts();
+  }
+
+  /**
+   * show()                → overlay clásico (solo isotipo), se auto-oculta a los 12 s.
+   * show({ title, sub, facts, maxMs }) → overlay con mensaje de espera y, si
+   *   facts:true, datos curiosos de Liverpool rotando cada 5 s. maxMs extiende
+   *   el tope de seguridad (p. ej. 90000 para envío de correo).
+   */
+  var fadeTimer = null;
+  function show(opts){
+    if (hideTimer){ clearTimeout(hideTimer); hideTimer = null; }
+    if (fadeTimer){ clearTimeout(fadeTimer); fadeTimer = null; } // cancela un ocultado en curso
+    setMessage(opts);
+    overlay.classList.remove("vl-hiding");
+    overlay.classList.add("show");
+    if (useMorph){ if (!tl) tl = buildTimeline(); tl.play(0); }
+    // Seguridad: nunca dejar la pantalla tapada indefinidamente.
+    hideTimer = setTimeout(hide, (opts && opts.maxMs) || 12000);
+  }
+  function hide(){
+    if (hideTimer){ clearTimeout(hideTimer); hideTimer = null; }
+    stopFacts();
+    if (!overlay.classList.contains("show")) return;
+    overlay.classList.add("vl-hiding");
+    fadeTimer = setTimeout(function(){
+      fadeTimer = null;
+      overlay.classList.remove("show","vl-hiding","vl-has-msg");
+      if (titleEl) titleEl.textContent = "";
+      if (subEl) subEl.textContent = "";
+      if (tl) tl.pause();
+    }, 360);
+  }
+
+  // Arranca visible (boot): la página llama hide() al primer render.
+  if (useMorph){ tl = buildTimeline(); tl.play(0); }
+  if (hideTimer) clearTimeout(hideTimer);
+  hideTimer = setTimeout(hide, 12000);
+
+  // Markup del mini-spinner de marca (para esperas embebidas, p. ej. imágenes).
+  function spinner(cls){
+    var s = "";
+    for (var i = 0; i < 8; i++){
+      s += '<i style="transform:rotate(' + (i * 45) + 'deg);animation-delay:' + (-(8 - i) * 0.125).toFixed(3) + 's"></i>';
+    }
+    return '<span class="vl-spin' + (cls ? " " + cls : "") + '" aria-hidden="true">' + s + '</span>';
+  }
+
+  window.VentelLoader = { show: show, hide: hide, spinner: spinner };
+})();
+</script>
