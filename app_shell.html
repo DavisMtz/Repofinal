@@ -1,0 +1,354 @@
+<style>
+/**
+ * =====================================================================================
+ * SHELL DE APLICACIÓN | Sistema de cotizaciones Ventel  ·  marco lateral del Portal Ventel
+ * =====================================================================================
+ * Da a las pantallas de app (dashboard, supervisión, correo) el MISMO marco que el Portal:
+ * barra lateral rosa + topbar con control de sesión, tema y ajustes de vista. Es un include
+ * autocontenido; su CSS usa los tokens de app_theme (--brand, --surface, --side-*, etc.).
+ *
+ * USO en cada pantalla:  <?!= include('app_shell'); ?>  (después de app_core) y luego,
+ * dentro de su DOMContentLoaded:  AppShell.mount({ active:'dashboard', title:'Panel' });
+ * mount() envuelve el <main id="main-content"> existente dentro de .app > .app-main.
+ *
+ * Tema y ajustes de vista se guardan en las MISMAS claves que el Portal (ventel-theme /
+ * ventel-density / ventel-textscale / ventel-contrast), así que ambos comparten preferencias.
+ */
+
+/* Iconos de trazo dentro del shell */
+.app .ic, .topbar .ic { width: 1.15em; height: 1.15em; flex-shrink: 0; display: inline-block; vertical-align: middle; }
+
+/* ── Layout raíz ── */
+.app { display: flex; min-height: 100vh; align-items: flex-start; }
+.app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* ── Barra lateral ── */
+.sidebar {
+  width: 252px; flex-shrink: 0; align-self: stretch;
+  position: sticky; top: 0; height: 100vh;
+  background: var(--side-bg); color: var(--side-ink);
+  display: flex; flex-direction: column;
+  padding: 1.15rem 1rem 1rem; gap: .3rem; z-index: 50;
+  box-shadow: 14px 0 40px -24px rgba(36,28,34,.5);
+  overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+}
+.sidebar::-webkit-scrollbar { width: 8px; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.28); border-radius: 99px; }
+.sidebar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.42); }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.3) transparent; }
+
+.side-brand { display: flex; align-items: center; gap: .7rem; padding: .4rem .55rem 1.05rem; border-bottom: 1px solid var(--side-line); margin-bottom: .75rem; }
+.side-brand img { height: 24px; width: auto; filter: var(--side-logo-filter); }
+.side-brand .sb-divider { width: 1px; height: 22px; background: var(--side-line); }
+.side-brand .sb-sub { font-family: var(--f-display); font-weight: 800; font-stretch: 112%; font-size: .66rem; letter-spacing: .2em; text-transform: uppercase; color: var(--side-ink); line-height: 1.25; }
+.side-brand .sb-sub small { display: block; font-size: .58rem; letter-spacing: .16em; color: var(--side-faint); font-weight: 700; }
+
+.side-label { font-size: .6rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--side-faint); padding: .7rem .65rem .35rem; }
+
+/* ── Conmutador de área (IDÉNTICO en Portal, Cotizaciones y Correos) ──
+   Permite saltar entre los tres mundos de la app desde cualquier pantalla. */
+.app-switch { display: flex; flex-direction: column; gap: .2rem; padding: .4rem; margin-bottom: .55rem; background: rgba(0,0,0,.18); border: 1px solid var(--side-line); border-radius: 14px; }
+.app-switch-lbl { font-size: .56rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--side-faint); padding: .3rem .5rem .2rem; }
+.app-switch-item { display: flex; align-items: center; gap: .55rem; padding: .48rem .55rem; border-radius: 10px; text-decoration: none; color: var(--side-ink-soft); transition: background .18s, color .18s; }
+.app-switch-item .asw-ic { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.09); color: var(--side-faint); flex: none; transition: background .18s, color .18s; }
+.app-switch-item .asw-ic .ic { width: 17px; height: 17px; }
+.app-switch-item .asw-tx { display: flex; flex-direction: column; line-height: 1.18; min-width: 0; }
+.app-switch-item .asw-tx b { font-size: .85rem; font-weight: 700; }
+.app-switch-item .asw-tx small { font-size: .65rem; color: var(--side-faint); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-switch-item:hover { background: rgba(255,255,255,.08); color: var(--side-ink); }
+.app-switch-item:hover .asw-ic { color: var(--side-ink); }
+.app-switch-item.active { background: var(--side-active-bg); color: var(--side-active-ink); }
+.app-switch-item.active .asw-ic { background: #fff; color: var(--brand); }
+.app-switch-item.active .asw-tx b { font-weight: 800; }
+.app-switch-item.active .asw-tx small { color: var(--side-active-ink); opacity: .72; }
+
+.side-link {
+  display: flex; align-items: center; gap: .7rem; width: 100%;
+  padding: .66rem .7rem; border: none; background: transparent; cursor: pointer; border-radius: 12px;
+  font-family: var(--f-body); font-size: .9rem; font-weight: 600; color: var(--side-ink-soft);
+  text-align: left; transition: background .2s, color .2s; position: relative;
+}
+.side-link .ic { width: 19px; height: 19px; color: var(--side-faint); transition: color .2s, transform .2s; }
+.side-link:hover { background: rgba(255,255,255,.08); color: var(--side-ink); }
+.side-link:hover .ic { color: var(--side-ink); }
+.side-link.active { background: var(--side-active-bg); color: var(--side-active-ink); font-weight: 700; }
+.side-link.active .ic { color: var(--side-active-ink); }
+.side-link.active::before { content: ''; position: absolute; left: -1rem; top: 50%; transform: translateY(-50%); width: 4px; height: 21px; border-radius: 0 4px 4px 0; background: #fff; }
+
+/* ── Pie de barra: tema + ajustes de vista ── */
+.side-foot { margin-top: auto; padding-top: .8rem; border-top: 1px solid var(--side-line); display: flex; flex-direction: column; gap: .6rem; }
+.theme-switch { display: flex; gap: .3rem; background: rgba(0,0,0,.18); border-radius: 12px; padding: .28rem; }
+.theme-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: .25rem;
+  border: none; background: transparent; cursor: pointer; border-radius: 9px; padding: .42rem .2rem;
+  color: var(--side-faint); font-size: .58rem; font-weight: 700; letter-spacing: .04em; transition: var(--tr);
+}
+.theme-btn .sw { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.45); }
+.theme-btn .sw.aurora { background: #E10098; }
+.theme-btn .sw.slate { background: linear-gradient(135deg,#3A4658,#1A2330); }
+.theme-btn .sw.carbon { background: linear-gradient(135deg,#2A2030,#0C080A); }
+.theme-btn:hover { color: var(--side-ink); background: rgba(255,255,255,.07); }
+.theme-btn.active { background: rgba(255,255,255,.16); color: #fff; }
+.theme-btn.active .sw { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.25); }
+
+.view-prefs-toggle { width: 100%; margin-top: .1rem; display: flex; align-items: center; gap: .5rem; padding: .55rem .7rem; border-radius: var(--rad-sm); cursor: pointer; background: rgba(255,255,255,.12); border: 1px solid var(--side-line); color: var(--side-ink); font-size: .82rem; font-weight: 600; }
+.view-prefs-toggle:hover { background: rgba(255,255,255,.2); }
+.view-prefs-toggle .vp-chev { margin-left: auto; transition: transform .25s ease; }
+.view-prefs-toggle[aria-expanded="true"] .vp-chev { transform: rotate(180deg); }
+.view-prefs { margin-top: .55rem; display: flex; flex-direction: column; gap: .6rem; }
+.view-prefs[hidden] { display: none; }
+.vp-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.vp-lbl { font-size: .78rem; color: var(--side-ink-soft); font-weight: 600; }
+.vp-seg { display: inline-flex; background: rgba(255,255,255,.12); border-radius: 999px; padding: 2px; gap: 2px; }
+.vp-btn { border: 0; cursor: pointer; background: transparent; color: var(--side-ink-soft); padding: .3rem .6rem; border-radius: 999px; font-weight: 700; line-height: 1; display: inline-flex; align-items: center; justify-content: center; min-width: 1.9rem; }
+.vp-btn.active { background: #fff; color: var(--brand-deep); }
+.vp-switch { width: 42px; height: 24px; border-radius: 999px; border: 0; cursor: pointer; position: relative; background: rgba(255,255,255,.28); transition: background .2s ease; flex-shrink: 0; }
+.vp-switch[aria-checked="true"] { background: #fff; }
+.vp-knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .2s ease; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.vp-switch[aria-checked="true"] .vp-knob { transform: translateX(18px); background: var(--brand); }
+
+/* ── Topbar ── */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: 1rem;
+  padding: .85rem 1.6rem;
+  background: var(--top-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--top-border);
+}
+.menu-btn { display: none; width: 42px; height: 42px; border-radius: 11px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; align-items: center; justify-content: center; color: var(--ink); flex-shrink: 0; }
+.menu-btn .ic { width: 20px; height: 20px; }
+.shell-title { font-family: var(--f-display); font-size: 1.05rem; font-weight: 800; letter-spacing: -.01em; color: var(--ink); margin: 0; }
+.shell-session { margin-left: auto; display: flex; align-items: center; gap: .9rem; }
+.shell-user { font-size: .86rem; color: var(--ink-soft); }
+.shell-user strong { color: var(--ink); font-weight: 700; }
+
+/* ── Cajón móvil ── */
+.scrim { display: none; }
+@media (max-width: 1024px) {
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0; width: 270px; height: 100vh;
+    padding: 1.15rem 1rem 1rem; z-index: 120;
+    transform: translateX(-100%); transition: transform .3s ease; overflow-y: auto;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .menu-btn { display: flex; }
+  .scrim { display: block; position: fixed; inset: 0; background: rgba(36,28,34,.5); backdrop-filter: blur(2px); z-index: 110; opacity: 0; pointer-events: none; transition: opacity .3s; }
+  .scrim.show { opacity: 1; pointer-events: auto; }
+}
+@media (max-width: 720px) {
+  .topbar { padding: .7rem 1rem; gap: .7rem; }
+  .shell-user { display: none; }
+}
+
+/* ── Compatibilidad de tema oscuro (carbon) con los grises fijos de Tailwind ──
+   Las pantallas usan utilidades como text-slate-600 / bg-white que no responden a
+   los tokens. En tema oscuro se remapean para que el texto y las superficies sigan
+   siendo legibles. En aurora/slate (claros) no se toca nada. */
+[data-theme="carbon"] .text-slate-900,
+[data-theme="carbon"] .text-slate-800,
+[data-theme="carbon"] .text-gray-900,
+[data-theme="carbon"] .text-gray-800 { color: var(--ink) !important; }
+[data-theme="carbon"] .text-slate-600,
+[data-theme="carbon"] .text-slate-500,
+[data-theme="carbon"] .text-slate-400,
+[data-theme="carbon"] .text-gray-600,
+[data-theme="carbon"] .text-gray-500 { color: var(--ink-soft) !important; }
+[data-theme="carbon"] .bg-white { background-color: var(--surface) !important; }
+[data-theme="carbon"] .border-slate-100,
+[data-theme="carbon"] .border-slate-200,
+[data-theme="carbon"] .border-gray-200 { border-color: var(--line) !important; }
+[data-theme="carbon"] .divide-slate-200 > * + *,
+[data-theme="carbon"] .divide-gray-200 > * + * { border-color: var(--line) !important; }
+</style>
+
+<script>
+/**
+ * AppShell — construye y controla el marco lateral compartido.
+ */
+(function () {
+  var PREF = { theme: 'ventel-theme', density: 'ventel-density', textscale: 'ventel-textscale', contrast: 'ventel-contrast' };
+  var LOGO = 'https://gcp-na-images.contentstack.com/v3/assets/blt339516d00dd80f86/blt8225505fe88f431b/673c926b0345b062aa3856c4/liverpool-logo-header.svg?branch=pro&format=avif&quality=80';
+
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  function applyPrefs() {
+    var de = document.documentElement;
+    de.setAttribute('data-theme', lsGet(PREF.theme) || 'aurora');
+    de.setAttribute('data-density', lsGet(PREF.density) || 'cozy');
+    de.setAttribute('data-textscale', lsGet(PREF.textscale) || 'md');
+    if (lsGet(PREF.contrast) === '1') de.setAttribute('data-contrast', 'high');
+    else de.removeAttribute('data-contrast');
+  }
+  /* Aplica cuanto antes para minimizar el parpadeo de tema. */
+  applyPrefs();
+
+  /* ── Iconos (SVG de trazo, mismo lenguaje que el Portal) ── */
+  var IC_HOME  = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.4V21h5v-6h4v6h5V9.4"/></svg>';
+  var IC_DOC   = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/><path d="M12 12v6M9 15h6"/></svg>';
+  var IC_MAIL  = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/></svg>';
+  var IC_MAILP = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.5V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8.5"/><path d="m3.5 7 8.5 6 8.5-6"/><path d="M18.5 15.5v5M16 18h5"/></svg>';
+  var IC_CHART = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>';
+  var IC_SLID  = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h7M15 18h5"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></svg>';
+  var IC_CHEV  = '<svg class="ic vp-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+  var IC_MENU  = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
+  var IC_OUT   = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12H4M11 8l-4 4 4 4"/><path d="M9 4h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-8"/></svg>';
+  var IC_GLOBE = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14.5 14.5 0 0 1 0 18 14.5 14.5 0 0 1 0-18Z"/></svg>';
+  var IC_STAR  = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.3 6.2L21 11l-6 2 6 2-6.7 1.8L12 21l-2.3-4.2L3 15l6-2-6-2 6.7-1.8Z"/></svg>';
+  var IC_MEGA  = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l9 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M15 8a4 4 0 0 1 0 8"/><path d="M7 14v5"/></svg>';
+
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  // Conmutador de área compartido: mismo bloque, mismas etiquetas y mismo orden
+  // que el del Portal y Promociones, para que se sienta una sola app.
+  function appSwitchHTML(active) {
+    var area = (active === 'correo_cliente') ? 'correos'
+             : (active === 'portal' || active === 'promociones') ? 'portal'
+             : 'cotizaciones';
+    function it(a, page, icon, name, sub) {
+      var cls = 'app-switch-item' + (area === a ? ' active' : '');
+      return '<a class="' + cls + '" href="#" onclick="AppShell.nav(\'' + page + '\');return false;">' +
+        '<span class="asw-ic">' + icon + '</span>' +
+        '<span class="asw-tx"><b>' + name + '</b><small>' + sub + '</small></span></a>';
+    }
+    return '<nav class="app-switch" aria-label="Funciones">' +
+      '<span class="app-switch-lbl">Funciones</span>' +
+      it('portal', 'portal', IC_GLOBE, 'Portal', 'Información y procesos') +
+      it('cotizaciones', 'dashboard', IC_DOC, 'Cotizaciones', 'Crear, consultar y enviar') +
+      it('correos', 'correo_cliente', IC_MAILP, 'Enviar un Correo', 'Plantillas y envíos') +
+      '</nav>';
+  }
+
+  function sidebarHTML(active, isAdv) {
+    function link(page, label, icon) {
+      var cls = 'side-link' + (active === page ? ' active' : '');
+      return '<button class="' + cls + '" onclick="AppShell.nav(\'' + page + '\')">' + icon + ' ' + label + '</button>';
+    }
+    return '' +
+      '<div class="side-brand">' +
+        '<img src="' + LOGO + '" alt="Liverpool" onerror="this.onerror=null;this.outerHTML=\'<span style=&quot;color:#fff;font-weight:900;font-size:16px&quot;>Liverpool</span>\'">' +
+        '<span class="sb-divider"></span>' +
+        '<span class="sb-sub">Cotiza<small>VENTEL</small></span>' +
+      '</div>' +
+      appSwitchHTML(active) +
+      '<span class="side-label">Panel</span>' +
+      link('dashboard', 'Inicio', IC_HOME) +
+      '<span class="side-label">Cotizaciones</span>' +
+      link('cotizacion', 'Nueva cotización', IC_DOC) +
+      link('correoventel', 'Enviar cotización', IC_MAIL) +
+      link('correo_cliente', 'Enviar correo a clientes', IC_MAILP) +
+      (isAdv ? ('<span class="side-label">Supervisión</span>' + link('inicio_avanzado', 'Panel avanzado', IC_CHART) + link('anuncios', 'Anuncios del Portal', IC_MEGA)) : '') +
+      '<span class="side-label">Portal Ventel</span>' +
+      link('promociones', 'Monitor Promos', IC_STAR) +
+      sideFootHTML();
+  }
+
+  function sideFootHTML() {
+    return '' +
+      '<div class="side-foot">' +
+        '<div class="theme-switch" role="tablist" aria-label="Tema visual">' +
+          '<button class="theme-btn" data-theme-btn="aurora" onclick="AppShell.setTheme(\'aurora\')"><span class="sw aurora"></span>Aurora</button>' +
+          '<button class="theme-btn" data-theme-btn="slate" onclick="AppShell.setTheme(\'slate\')"><span class="sw slate"></span>Slate</button>' +
+          '<button class="theme-btn" data-theme-btn="carbon" onclick="AppShell.setTheme(\'carbon\')"><span class="sw carbon"></span>Carbón</button>' +
+        '</div>' +
+        '<button class="view-prefs-toggle" id="viewPrefsToggle" onclick="AppShell.toggleViewPrefs()" aria-expanded="false">' + IC_SLID + '<span>Ajustes de vista</span>' + IC_CHEV + '</button>' +
+        '<div class="view-prefs" id="viewPrefs" hidden>' +
+          '<div class="vp-row"><span class="vp-lbl">Densidad</span><div class="vp-seg">' +
+            '<button class="vp-btn" data-density-btn="cozy" onclick="AppShell.setDensity(\'cozy\')">Cómodo</button>' +
+            '<button class="vp-btn" data-density-btn="compact" onclick="AppShell.setDensity(\'compact\')">Compacto</button>' +
+          '</div></div>' +
+          '<div class="vp-row"><span class="vp-lbl">Texto</span><div class="vp-seg">' +
+            '<button class="vp-btn" data-text-btn="sm" onclick="AppShell.setTextScale(\'sm\')" style="font-size:.78rem">A</button>' +
+            '<button class="vp-btn" data-text-btn="md" onclick="AppShell.setTextScale(\'md\')">A</button>' +
+            '<button class="vp-btn" data-text-btn="lg" onclick="AppShell.setTextScale(\'lg\')" style="font-size:1.02rem">A</button>' +
+            '<button class="vp-btn" data-text-btn="xl" onclick="AppShell.setTextScale(\'xl\')" style="font-size:1.16rem">A</button>' +
+          '</div></div>' +
+          '<div class="vp-row"><span class="vp-lbl">Alto contraste</span>' +
+            '<button class="vp-switch" id="contrastSwitch" role="switch" aria-checked="false" onclick="AppShell.toggleContrast()"><span class="vp-knob"></span></button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function topbarHTML(title) {
+    return '' +
+      '<button class="menu-btn" aria-label="Menú" onclick="AppShell.toggleDrawer()">' + IC_MENU + '</button>' +
+      '<h1 class="shell-title">' + esc(title) + '</h1>' +
+      '<div class="shell-session">' +
+        '<span class="shell-user">Hola, <strong id="user-name">Usuario</strong></span>' +
+        '<button id="logoutButton" class="v-btn v-btn-ghost v-btn-sm" onclick="AppShell.logout()">' + IC_OUT + '<span class="hidden sm:inline">Salir</span></button>' +
+      '</div>';
+  }
+
+  function openDrawer() { var s = document.getElementById('appSidebar'), c = document.getElementById('appScrim'); if (s) s.classList.add('open'); if (c) c.classList.add('show'); }
+  function closeDrawer() { var s = document.getElementById('appSidebar'), c = document.getElementById('appScrim'); if (s) s.classList.remove('open'); if (c) c.classList.remove('show'); }
+
+  function syncPrefUI() {
+    var de = document.documentElement;
+    var th = de.getAttribute('data-theme') || 'aurora';
+    var den = de.getAttribute('data-density') || 'cozy';
+    var txt = de.getAttribute('data-textscale') || 'md';
+    var con = de.getAttribute('data-contrast') === 'high';
+    document.querySelectorAll('[data-theme-btn]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-theme-btn') === th); });
+    document.querySelectorAll('[data-density-btn]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-density-btn') === den); });
+    document.querySelectorAll('[data-text-btn]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-text-btn') === txt); });
+    var sw = document.getElementById('contrastSwitch');
+    if (sw) sw.setAttribute('aria-checked', con ? 'true' : 'false');
+  }
+
+  var mounted = false;
+
+  var AppShell = {
+    mount: function (opts) {
+      if (mounted) return;
+      opts = opts || {};
+      var main = document.getElementById('main-content');
+      if (!main) { console.warn('AppShell: no se encontró #main-content'); return; }
+      mounted = true;
+
+      var isAdv = !!(window.AppSession && AppSession.isAdvanced);
+
+      var root = document.createElement('div'); root.className = 'app';
+      var aside = document.createElement('aside'); aside.className = 'sidebar'; aside.id = 'appSidebar';
+      aside.innerHTML = sidebarHTML(opts.active || '', isAdv);
+      var scrim = document.createElement('div'); scrim.className = 'scrim'; scrim.id = 'appScrim';
+      scrim.addEventListener('click', closeDrawer);
+      var col = document.createElement('div'); col.className = 'app-main';
+      var top = document.createElement('header'); top.className = 'topbar'; top.innerHTML = topbarHTML(opts.title || '');
+
+      main.parentNode.insertBefore(root, main);
+      root.appendChild(aside);
+      root.appendChild(scrim);
+      root.appendChild(col);
+      col.appendChild(top);
+      col.appendChild(main); /* mueve el main existente dentro de la columna */
+
+      var un = document.getElementById('user-name');
+      if (un && window.AppSession) un.textContent = AppSession.firstName;
+      syncPrefUI();
+    },
+
+    nav: function (page) { closeDrawer(); if (window.AppUrl) AppUrl.go(page); },
+    logout: function () { if (window.AppSession) AppSession.clear(); if (window.AppUrl) AppUrl.go('login'); },
+    toggleDrawer: function () { var s = document.getElementById('appSidebar'); if (s && s.classList.contains('open')) closeDrawer(); else openDrawer(); },
+
+    setTheme: function (name) { lsSet(PREF.theme, name); applyPrefs(); syncPrefUI(); },
+    setDensity: function (mode) { lsSet(PREF.density, mode); applyPrefs(); syncPrefUI(); },
+    setTextScale: function (scale) { lsSet(PREF.textscale, scale); applyPrefs(); syncPrefUI(); },
+    toggleContrast: function () {
+      var on = document.documentElement.getAttribute('data-contrast') === 'high';
+      lsSet(PREF.contrast, on ? '0' : '1'); applyPrefs(); syncPrefUI();
+    },
+    toggleViewPrefs: function () {
+      var box = document.getElementById('viewPrefs'), tog = document.getElementById('viewPrefsToggle');
+      if (!box || !tog) return;
+      var show = box.hasAttribute('hidden');
+      if (show) box.removeAttribute('hidden'); else box.setAttribute('hidden', '');
+      tog.setAttribute('aria-expanded', show ? 'true' : 'false');
+    }
+  };
+
+  window.AppShell = AppShell;
+})();
+</script>
