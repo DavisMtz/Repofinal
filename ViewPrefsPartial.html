@@ -1,0 +1,61 @@
+<!--
+  ViewPrefsPartial.html · Preferencias de vista compartidas (tema · densidad · texto · contraste)
+
+  Fuente ÚNICA de lectura/escritura de las preferencias de vista del portal.
+  Cualquier página puede leerlas y aplicarlas incluyéndolo lo antes posible dentro del <head>:
+
+        <?!= include('ViewPrefsPartial') ?>
+
+  Persisten en localStorage bajo estas claves (compartidas por todas las páginas del mismo origen):
+        ventel-theme · ventel-density · ventel-textscale · ventel-contrast
+
+  Expone window.VentelPrefs para leer/escribir de forma consistente:
+        VentelPrefs.get('theme')            -> 'aurora' | 'slate' | 'carbon' | ...
+        VentelPrefs.get('density')          -> 'cozy' | 'compact'
+        VentelPrefs.get('textscale')        -> 'sm' | 'md' | 'lg' | 'xl'
+        VentelPrefs.get('contrast')         -> '0' | '1'
+        VentelPrefs.set('density','compact')-> guarda + aplica + emite evento 'ventel-prefs-change'
+        VentelPrefs.apply()                 -> re-aplica los data-* sobre <html>
+-->
+<script>
+(function(){
+  var KEYS = { theme:'ventel-theme', density:'ventel-density', textscale:'ventel-textscale', contrast:'ventel-contrast' };
+  var DEF  = { theme:'aurora', density:'cozy', textscale:'md', contrast:'0' };
+
+  function read(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+  function write(k,v){ try { localStorage.setItem(k, v); } catch(e){} }
+
+  function apply(){
+    var de = document.documentElement;
+    de.setAttribute('data-theme',     read(KEYS.theme)     || DEF.theme);
+    de.setAttribute('data-density',   read(KEYS.density)   || DEF.density);
+    de.setAttribute('data-textscale', read(KEYS.textscale) || DEF.textscale);
+    if (read(KEYS.contrast) === '1') de.setAttribute('data-contrast', 'high');
+    else de.removeAttribute('data-contrast');
+  }
+
+  /* Aplica de inmediato, antes de pintar, para evitar el parpadeo de tema/tamaño. */
+  apply();
+
+  var VP = {
+    keys:  KEYS,
+    apply: apply,
+    get: function(name){ return read(KEYS[name]) || DEF[name]; },
+    set: function(name, val){
+      if (!KEYS[name]) return;
+      write(KEYS[name], val);
+      apply();
+      try { window.dispatchEvent(new CustomEvent('ventel-prefs-change', { detail:{ key:name, value:val } })); } catch(e){}
+    }
+  };
+
+  /* Si otra pestaña/HTML del portal cambia una preferencia, la reflejamos aquí en vivo. */
+  try {
+    window.addEventListener('storage', function(e){
+      if (e && e.key && (e.key===KEYS.theme || e.key===KEYS.density || e.key===KEYS.textscale || e.key===KEYS.contrast)) apply();
+    });
+  } catch(e){}
+
+  window.VentelPrefs = VP;
+})();
+</script>
