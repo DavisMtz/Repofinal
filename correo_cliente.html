@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Correos a Clientes - Sistema Ventel</title>
+    <?!= include('app_theme'); ?>
+    <style>
+        .step-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.75rem;
+            height: 1.75rem;
+            border-radius: 999px;
+            background: var(--brand);
+            color: #fff;
+            font-weight: 700;
+            font-size: .85rem;
+            flex: none;
+        }
+
+        /* ── Tarjetas de plantilla ── */
+        .tpl-card {
+            border: 1.5px solid var(--line, #e6e8ee);
+            border-radius: 12px;
+            padding: 12px 14px;
+            cursor: pointer;
+            background: var(--card, #fff);
+            text-align: left;
+            transition: .18s;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .tpl-card:hover { border-color: #f3a8d7; transform: translateY(-1px); }
+        .tpl-card.sel {
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px rgba(225, 0, 152, .14);
+        }
+        .tpl-card .t-emoji { font-size: 20px; }
+        .tpl-card .t-name { font-weight: 700; font-size: .85rem; }
+        .tpl-card .t-desc { font-size: .72rem; opacity: .7; line-height: 1.35; }
+
+        /* ── Validación visual de campos ── */
+        .field-invalid input, .field-invalid textarea {
+            border-color: #EF4444 !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, .12) !important;
+        }
+
+        /* ── Adjuntos ── */
+        .att-drop {
+            border: 1.5px dashed var(--line, #cfd4de);
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+            font-size: .8rem;
+            cursor: pointer;
+            transition: .15s;
+            opacity: .85;
+        }
+        .att-drop:hover { border-color: var(--brand); color: var(--brand); opacity: 1; }
+        .att-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--line, #e6e8ee);
+            border-radius: 9px;
+            padding: 7px 10px;
+            font-size: .8rem;
+        }
+        .att-item .a-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .att-item .a-size { opacity: .65; flex: none; }
+        .att-item button {
+            margin-left: auto; border: none; background: none; color: #EF4444; cursor: pointer;
+            font-size: 15px; line-height: 1; padding: 2px 6px; border-radius: 6px; flex: none;
+        }
+        .att-item button:hover { background: rgba(239, 68, 68, .12); }
+
+        /* ── Vista previa ── */
+        /* El correo está diseñado a 640px de ancho. Se renderiza a su ancho real
+           dentro del iframe y se escala para caber en la columna sin que el texto
+           se amontone: se ve como un correo de verdad, no aplastado. */
+        #previewViewport {
+            overflow: hidden;
+            border-radius: 14px;
+            background: #F4F6F9;
+            border: 1px solid var(--line, #e6e8ee);
+            min-height: 300px;
+            transition: height .18s ease;
+        }
+        #previewFrame {
+            width: 640px;
+            border: none;
+            display: block;
+            background: #F4F6F9;
+            transform-origin: top left;
+        }
+        .preview-col { position: sticky; top: 1.5rem; }
+        @media (max-width: 1023px) { .preview-col { position: static; } }
+
+        /* ── Modal de verificación ── */
+        .cc-overlay {
+            position: fixed; inset: 0; background: rgba(18, 12, 24, .55); backdrop-filter: blur(3px);
+            display: none; align-items: center; justify-content: center; z-index: 100; padding: 18px;
+        }
+        .cc-overlay.show { display: flex; }
+        .cc-modal {
+            background: var(--card, #fff); border-radius: 18px; max-width: 560px; width: 100%;
+            max-height: 92vh; overflow: auto; box-shadow: 0 24px 70px rgba(0, 0, 0, .3);
+            animation: cc-pop .22s ease;
+        }
+        @keyframes cc-pop { from { transform: translateY(14px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+        .chk-row { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--line, #e6e8ee); font-size: .85rem; }
+        .chk-row:last-child { border-bottom: none; }
+        .chk-row .k { flex: none; width: 92px; font-weight: 700; font-size: .75rem; padding-top: 1px; }
+        .chk-row .v { word-break: break-word; }
+        .chk-row .v small { opacity: .65; }
+        .m-warn {
+            background: #FFF7ED; border: 1px solid #FDBA74; color: #9A3412; border-radius: 10px;
+            padding: 10px 14px; font-size: .78rem; margin-top: 12px; line-height: 1.45;
+        }
+        .cc-spinner {
+            width: 44px; height: 44px; border-radius: 50%; border: 4px solid rgba(225, 0, 152, .15);
+            border-top-color: var(--brand); animation: cc-spin .8s linear infinite;
+        }
+        @keyframes cc-spin { to { transform: rotate(360deg); } }
+        .r-icon {
+            width: 58px; height: 58px; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-size: 28px;
+        }
+
+        /* ── Toast ── */
+        .cc-toast {
+            position: fixed; bottom: -90px; left: 50%; transform: translateX(-50%); background: #111827;
+            color: #fff; padding: 12px 22px; border-radius: 99px; font-size: .85rem; font-weight: 600;
+            z-index: 200; transition: bottom .35s cubic-bezier(.68, -.55, .265, 1.55);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .25); max-width: min(92vw, 480px); text-align: center;
+        }
+        .cc-toast.show { bottom: 26px; }
+    </style>
+<!-- Utilidades Tailwind compiladas: va al final del head, igual que la hoja que el CDN inyectaba. -->
+<?!= include('app_tailwind'); ?>
+</head>
+<body class="h-full text-slate-800">
+    <div class="app-aurora"></div>
+
+    <main id="main-content" class="max-w-[1480px] mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="mb-5" data-animate>
+            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Correos a Clientes</h1>
+            <p class="text-slate-600 mt-1">Elige una plantilla, llena los datos, verifica y envía. El correo sale del mismo remitente institucional que las cotizaciones.</p>
+        </header>
+
+        <!-- Aviso: esta pantalla solo ENVÍA; los correos de entrada se leen en el grupo -->
+        <div class="v-card p-4 mb-8 flex items-start gap-3" data-animate style="border-left:4px solid var(--brand);">
+            <span class="text-xl leading-none flex-none mt-0.5">📥</span>
+            <p class="text-sm text-slate-600 leading-relaxed">
+                <b class="text-slate-800">¿Buscas los correos de entrada?</b>
+                Esta pantalla solo <b>envía</b> correos. Para <b>leer</b> los que llegan de los clientes, consulta el grupo
+                <b>«Cotizaciones CCL Ventel»</b>.
+                <a href="https://groups.google.com/a/liverpool.com.mx/g/cotizacion" target="_blank" rel="noopener"
+                   class="text-brand-pink font-semibold hover:underline whitespace-nowrap">Abrir el grupo&nbsp;→</a>
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,500px)_minmax(0,1fr)] gap-6 items-start">
+
+            <!-- ══ COLUMNA IZQUIERDA: pasos ══ -->
+            <div class="space-y-6 min-w-0">
+
+                <!-- Paso 1: plantilla -->
+                <section class="p-6 v-card" data-animate>
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><span class="step-chip">1</span> Elige la plantilla</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="tplGrid"></div>
+                </section>
+
+                <!-- Paso 2: datos -->
+                <section class="p-6 v-card" data-animate>
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <span class="step-chip">2</span> Llena los datos
+                        <span class="text-xs font-semibold text-slate-500 ml-auto" id="tplNameTag"></span>
+                    </h2>
+                    <div id="fieldsBody">
+                        <p class="text-sm text-slate-500 text-center py-4">Selecciona una plantilla para ver sus campos.</p>
+                    </div>
+                </section>
+
+                <!-- Paso 3: destinatarios y asunto -->
+                <section class="p-6 v-card" data-animate>
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><span class="step-chip">3</span> Destinatarios y asunto</h2>
+                    <div class="space-y-4">
+                        <div id="f-to">
+                            <label for="inpTo" class="v-label">Correo del cliente (Para) <span class="text-brand-pink">*</span></label>
+                            <input type="email" id="inpTo" class="v-input" placeholder="cliente@correo.com" autocomplete="off">
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div id="f-cc">
+                                <label for="inpCc" class="v-label">Con copia (CC) <span class="text-xs text-slate-400 font-medium">— opcional</span></label>
+                                <input type="text" id="inpCc" class="v-input" placeholder="uno@…, dos@…" autocomplete="off">
+                            </div>
+                            <div id="f-cco">
+                                <label for="inpCco" class="v-label">Copia oculta (CCO) <span class="text-xs text-slate-400 font-medium">— opcional</span></label>
+                                <input type="text" id="inpCco" class="v-input" placeholder="uno@…, dos@…" autocomplete="off">
+                            </div>
+                        </div>
+                        <div id="f-subject">
+                            <label for="inpSubject" class="v-label">Asunto <span class="text-brand-pink">*</span> <span class="text-xs text-slate-400 font-medium">— se genera solo, puedes editarlo</span></label>
+                            <input type="text" id="inpSubject" class="v-input" maxlength="250" autocomplete="off">
+                        </div>
+                        <div>
+                            <label class="v-label">Adjuntos <span class="text-xs text-slate-400 font-medium">— opcional · máx. 20 MB en total</span></label>
+                            <div class="att-drop" onclick="document.getElementById('inpFiles').click()">
+                                📎 Haz clic para agregar archivos (PDF, imágenes…)
+                            </div>
+                            <input type="file" id="inpFiles" multiple hidden>
+                            <div class="mt-2 space-y-1.5" id="attList"></div>
+                        </div>
+                    </div>
+                    <div class="mt-6 pt-5 border-t border-slate-200 flex items-center justify-between gap-3 flex-wrap">
+                        <p class="text-xs text-slate-500 flex items-center gap-2 min-w-0">
+                            <span class="w-4 h-4 block flex-none" data-icon="mail"></span>
+                            <span id="senderInfoText">Verificando remitente…</span>
+                        </p>
+                        <button type="button" id="btnReview" onclick="revisarEnvio()" class="v-btn v-btn-primary px-6 py-3 ml-auto">
+                            <span class="w-5 h-5 block" data-icon="send"></span>
+                            <span>Revisar y enviar</span>
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ══ COLUMNA DERECHA: vista previa ══ -->
+            <div class="preview-col min-w-0">
+                <section class="p-4 v-card" data-animate>
+                    <div class="flex items-center gap-2 mb-3 px-2">
+                        <span class="w-5 h-5 block text-slate-500" data-icon="eye"></span>
+                        <h2 class="text-lg font-bold text-slate-800">Vista previa</h2>
+                        <span class="ml-auto text-[11px] font-bold text-brand-pink bg-pink-50 rounded-full px-3 py-1">Así lo verá el cliente</span>
+                    </div>
+                    <div id="previewViewport">
+                        <iframe id="previewFrame" title="Vista previa del correo" scrolling="no"></iframe>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- ══ MODAL DE VERIFICACIÓN ══ -->
+    <div class="cc-overlay" id="overlay">
+        <div class="cc-modal">
+            <div id="mCheck">
+                <div class="px-6 pt-6">
+                    <div class="w-12 h-12 rounded-full bg-pink-50 text-brand-pink flex items-center justify-center text-2xl mb-3">🔍</div>
+                    <h3 class="text-lg font-bold text-slate-900">Verifica los datos antes de enviar</h3>
+                    <p class="text-sm text-slate-500 mt-1">Revisa que todo sea correcto. El correo se enviará al confirmar y no podrá deshacerse.</p>
+                </div>
+                <div class="px-6 py-4" id="checkBody"></div>
+                <div class="px-6 pb-6 flex gap-3 justify-end flex-wrap">
+                    <button type="button" class="v-btn v-btn-ghost" onclick="cerrarModal()">Volver a revisar</button>
+                    <button type="button" class="v-btn v-btn-primary" id="btnConfirm" onclick="confirmarEnvio()">
+                        <span class="w-5 h-5 block" data-icon="send"></span>
+                        <span>Confirmar y enviar</span>
+                    </button>
+                </div>
+            </div>
+            <div id="mSending" style="display:none" class="flex-col items-center gap-4 px-6 py-12">
+                <div class="cc-spinner"></div>
+                <p class="font-semibold">Enviando el correo…</p>
+                <p class="text-xs text-slate-500">No cierres esta ventana.</p>
+            </div>
+            <div id="mOk" style="display:none" class="flex-col items-center gap-3 px-6 py-10 text-center">
+                <div class="r-icon bg-emerald-50 text-emerald-500">✓</div>
+                <h3 class="text-lg font-bold text-slate-900">¡Correo enviado!</h3>
+                <p class="text-sm text-slate-500" id="okDetail"></p>
+                <div class="flex gap-3 mt-2 flex-wrap justify-center">
+                    <button type="button" class="v-btn v-btn-ghost" onclick="cerrarModal()">Seguir editando</button>
+                    <button type="button" class="v-btn v-btn-primary" onclick="nuevoCorreo()">Nuevo correo</button>
+                </div>
+            </div>
+            <div id="mErr" style="display:none" class="flex-col items-center gap-3 px-6 py-10 text-center">
+                <div class="r-icon bg-red-50 text-red-500">✕</div>
+                <h3 class="text-lg font-bold text-slate-900">No se pudo enviar</h3>
+                <p class="text-sm text-slate-500" id="errDetail"></p>
+                <button type="button" class="v-btn v-btn-ghost mt-2" onclick="volverAVerificar()">Volver a intentar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="cc-toast" id="toast"></div>
+
+    <script>
+        window.__APP__ = { baseUrl: <?!= JSON.stringify(baseUrl) ?>, tpl: <?!= JSON.stringify(tpl) ?> };
+    </script>
+    <?!= include('app_core'); ?>
+    <?!= include('app_icons'); ?>
+    <?!= include('app_motion'); ?>
+    <?!= include('app_shell'); ?>
+    <?!= include('LoaderPartial'); ?>
+    <script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONSTRUCCIÓN DEL CORREO (estilos en línea, fiel a las plantillas oficiales)
+   La MISMA función arma la vista previa y el HTML que se envía: lo que se ve
+   es exactamente lo que recibe el cliente.
+   La plantilla de cotización NO está aquí: se envía con su PDF desde la
+   pantalla "Enviar correo" (correoventel).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const LOGO  = 'https://assetspwa.liverpool.com.mx/assets/digital/mailings/img/liv_w.png';
+const FIRMA = 'https://assetspwa.liverpool.com.mx/assets/digital/firmas/liv_firma_digital2022.gif';
+
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function escBr(s){ return esc(s).replace(/\r?\n/g,'<br>'); }
+// Valor de campo para el correo: si está vacío se muestra el placeholder en rosa (solo preview).
+function val(f, campo){ const v = (f[campo.id]||'').trim(); return v ? esc(v) : '<span style="color:#E10098;">['+esc(campo.label)+']</span>'; }
+function valBr(f, campo){ const v = (f[campo.id]||'').trim(); return v ? escBr(v) : '<span style="color:#E10098;">['+esc(campo.label)+']</span>'; }
+
+const P      = h => '<p style="margin:0 0 18px 0;">'+h+'</p>';
+const B      = t => '<strong style="font-weight:600;color:#1A1A1A;">'+t+'</strong>';
+const H2S    = t => '<h2 style="font-size:20px;color:#E10098;margin:30px 0 20px 0;font-weight:600;border-bottom:2px solid #EEEEEE;padding-bottom:10px;">'+t+'</h2>';
+const BOXPINK= h => '<div style="background-color:#FFFFFF;border:1px solid #EAEAEA;border-left:5px solid #E10098;padding:20px 25px;border-radius:8px;margin-bottom:25px;font-size:15px;">'+h+'</div>';
+const NOTICE = h => '<div style="background-color:#FEF2F2;border-left:5px solid #EF4444;color:#7F1D1D;padding:20px 25px;border-radius:8px;font-size:15px;margin:25px 0 30px 0;line-height:1.6;">'+h+'</div>';
+
+function firma(nombre, direccion, tel){
+  return '<div style="font-family:\'Segoe UI\',\'Helvetica Neue\',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;color:#666666;">'
+    + '<p style="margin:0 0 10px 0;font-weight:700;color:#1A1A1A;font-size:16px;">'+nombre+'</p>'
+    + (direccion ? '<p style="margin:0 0 10px 0;">'+direccion+'</p>' : '')
+    + '<p style="margin:0 0 5px 0;">W. <a href="https://www.liverpool.com.mx" target="_blank" style="color:#E10098;text-decoration:none;font-weight:600;">liverpool.com.mx</a><br>'
+    + 'Tel: '+B(tel)+'</p>'
+    + '<div style="margin-top:20px;"><img src="'+FIRMA+'" alt="Firma Digital Liverpool" style="max-width:140px;height:auto;border:0;display:block;"></div>'
+    + '</div>';
+}
+const FIRMA_CCL = () => firma('Centro de Contacto Liverpool (CCL) | Ventel', 'D. Blvd. Alfredo Zalce, Morelia, Mich.', '(55) 5262 9999');
+const FIRMA_CC  = () => firma('Centro de Contacto Liverpool', '', '55 5262 9999');
+
+// Envoltura completa del correo (fondo gris + tarjeta blanca + encabezado rosa + firma).
+function wrapEmail(contentHtml, firmaHtml){
+  return '<div style="background-color:#F4F6F9;padding:40px 20px;">'
+    + '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;"><tr><td align="center" valign="top">'
+    + '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" style="border-collapse:collapse;max-width:600px;width:100%;background-color:#FFFFFF;border-radius:12px;overflow:hidden;border:1px solid #EAEAEA;">'
+    + '<tr><td style="background-color:#E10098;padding:30px;text-align:center;"><img src="'+LOGO+'" alt="Liverpool" width="160" style="max-width:160px;height:auto;border:0;display:block;margin:0 auto;"></td></tr>'
+    + '<tr><td style="padding:40px 35px 30px 35px;color:#444444;font-size:16px;line-height:1.6;font-family:\'Segoe UI\',\'Helvetica Neue\',Helvetica,Arial,sans-serif;">'+contentHtml+'</td></tr>'
+    + '<tr><td style="background-color:#FFFFFF;border-top:1px solid #EEEEEE;padding:30px 35px;">'+firmaHtml+'</td></tr>'
+    + '</table></td></tr></table></div>';
+}
+
+/* ── Catálogo de plantillas ────────────────────────────────────────────────── */
+const TEMPLATES = {
+
+  ticket: {
+    nombre: 'Ticket de compra', emoji: '🧾',
+    desc: 'Reenvío del ticket de una transacción realizada.',
+    adjuntoEsperado: true,
+    campos: [
+      { id:'cliente', label:'Nombre del cliente', req:true,  ph:'Ej. María López Hernández' },
+      { id:'pedido',  label:'Número de pedido',   req:true,  ph:'Ej. 1234567890' },
+      { id:'fecha',   label:'Fecha del pedido',   req:true,  ph:'Ej. 23-01-2026' }
+    ],
+    asunto: f => 'Ticket de su compra · Pedido ' + ((f.pedido||'').trim() || '_____') + ' | Liverpool',
+    body(f){
+      const c = this.campos;
+      return P('Estimado(a) '+B(val(f,c[0]))+',')
+        + P('Esperamos que este correo te encuentre bien. Atendiendo a su solicitud vía telefónica, hemos regenerado el ticket de su compra.')
+        + BOXPINK(B('Ticket Adjunto:')+' Hemos adjuntado el comprobante de su compra con el No. de Pedido '+B(val(f,c[1]))+' en formato PDF.')
+        + P('A continuación, encontrarás un resumen de tu pedido para su fácil referencia:')
+        + '<div style="background-color:#FAFAFA;border:2px dashed #CCCCCC;border-radius:8px;padding:25px;margin-bottom:25px;text-align:center;">'
+        +   '<p style="font-size:20px;font-weight:700;color:#1A1A1A;margin:0 0 5px 0;">Pedido: '+val(f,c[1])+'</p>'
+        +   '<p style="font-size:14px;color:#666666;margin:0;">Realizado el '+val(f,c[2])+'</p>'
+        + '</div>'
+        + P('Quedamos a tu completa disposición para cualquier otra consulta.');
+    },
+    firma: FIRMA_CCL
+  },
+
+  edodecuenta: {
+    nombre: 'Edo. de cuenta PF', emoji: '💳',
+    desc: 'Solicitud de estado de cuenta para validar la venta.',
+    campos: [
+      { id:'cliente', label:'Nombre del cliente',    req:true, ph:'Ej. María López Hernández' },
+      { id:'pedido',  label:'Número de pedido',      req:true, ph:'Ej. 1234567890' },
+      { id:'digitos', label:'Últimos 4 dígitos',     req:true, ph:'Ej. 4821', max:4 }
+    ],
+    asunto: f => 'Validación de su pedido ' + ((f.pedido||'').trim() || '_____') + ' · Estado de cuenta | Liverpool',
+    body(f){
+      const c = this.campos;
+      return P('Estimado/a '+B(val(f,c[0]))+',')
+        + P('Espero que este correo le encuentre bien.')
+        + P('Le escribimos de parte de Liverpool en relación a su pedido número '+B(val(f,c[1]))+'. Con el fin de proceder con la entrega de su compra, necesitamos validar la información de su tarjeta de crédito terminada en '+B(val(f,c[2]))+'.')
+        + H2S('Documentación Requerida')
+        + P('Le solicitamos amablemente que nos proporcione un estado de cuenta reciente de dicha tarjeta, donde se muestre claramente la siguiente información:')
+        + BOXPINK('<ul style="margin:0;padding-left:20px;color:#444444;">'
+            + '<li style="margin-bottom:12px;">El '+B('nombre completo')+' del titular de la tarjeta.</li>'
+            + '<li style="margin-bottom:12px;">La '+B('dirección de facturación')+' asociada a la tarjeta.</li>'
+            + '<li style="margin-bottom:0;">Los '+B('últimos cuatro dígitos')+' de la tarjeta ('+B(val(f,c[2]))+').</li>'
+          + '</ul>')
+        + '<p style="font-size:14px;color:#6B7280;font-style:italic;margin:0 0 25px 0;">* Puede omitir, tachar o censurar cualquier otra información sensible o de saldos que aparezca en el estado de cuenta.</p>'
+        + NOTICE('<strong style="color:#991B1B;">Aviso Importante:</strong> Le recordamos que esta validación es un paso necesario para garantizar la seguridad de su compra y poder completar el proceso de entrega. En caso de no recibir la documentación solicitada, nos veremos en la necesidad de <strong style="color:#991B1B;">cancelar el pedido</strong> y proceder con el reembolso total a su tarjeta.')
+        + P('Agradecemos su pronta atención a esta solicitud y su colaboración para agilizar la entrega de su compra.')
+        + P('Si tiene alguna pregunta o necesita asistencia adicional con este proceso, no dude en contactarnos.');
+    },
+    firma: FIRMA_CC
+  },
+
+  edodecuentaextranjera: {
+    nombre: 'Edo. cuenta extranjera', emoji: '🌎',
+    desc: 'Solicitud para ventas con tarjeta emitida en el extranjero.',
+    campos: [
+      { id:'cliente', label:'Nombre del cliente', req:true, ph:'Ej. John Smith' }
+    ],
+    asunto: () => 'Validación de compra con tarjeta extranjera · Estado de cuenta | Liverpool',
+    body(f){
+      const c = this.campos;
+      return P('Estimado(a) '+B(val(f,c[0]))+',')
+        + P('Esperamos que este correo le encuentre bien.')
+        + P('Le escribimos en relación al proceso de validación de su compra con tarjeta extranjera.')
+        + P('Para poder completar su validación con éxito, le solicitamos amablemente que nos comparta el '+B('Estado de Cuenta')+' de la tarjeta. Es indispensable que sea un '+B('PDF generado directamente del sistema bancario o emisor')+'.')
+        + H2S('Requisitos del Documento')
+        + BOXPINK('<p style="margin:0 0 12px 0;">Es importante que el documento sea el archivo PDF original descargado. Solo necesitamos que sean claramente visibles los siguientes datos:</p>'
+          + '<ul style="margin:0;padding-left:20px;color:#444444;">'
+            + '<li style="margin-bottom:12px;">'+B('Nombre del Titular')+' de la cuenta.</li>'
+            + '<li style="margin-bottom:0;">'+B('Dirección Fiscal')+' (o domicilio) asociada a la tarjeta/servicio.</li>'
+          + '</ul>')
+        + P('Le agradecemos de antemano su pronta colaboración para proporcionarnos el documento solicitado. Una vez que lo recibamos y sea validado, podremos continuar con el proceso de su compra.')
+        + P('Si tiene alguna duda o necesita asistencia, no dude en contactarnos.');
+    },
+    firma: FIRMA_CCL
+  },
+
+  validacionexitosa: {
+    nombre: 'Validación exitosa', emoji: '✅',
+    desc: 'Notifica al cliente que su validación fue correcta.',
+    campos: [
+      { id:'cliente', label:'Nombre del cliente', req:true, ph:'Ej. María López Hernández' },
+      { id:'pedido',  label:'Número de pedido',   req:true, ph:'Ej. 1234567890' }
+    ],
+    asunto: f => 'Validación exitosa · Pedido ' + ((f.pedido||'').trim() || '_____') + ' | Liverpool',
+    body(f){
+      const c = this.campos;
+      return P('Estimado/a '+B(val(f,c[0]))+',')
+        + P('Nos complace ponernos en contacto con usted para compartirle excelentes noticias.')
+        + P('Hemos recibido la documentación correspondiente a su pedido número '+B(val(f,c[1]))+' y queremos confirmarle que la información ha sido revisada y validada correctamente.')
+        + '<div style="background-color:#F0FAF5;border:1px solid #D1E8D9;border-left:5px solid #10B981;border-radius:8px;padding:20px 25px;margin:30px 0;color:#065F46;font-size:15px;line-height:1.6;">'
+        +   '<strong style="color:#047857;font-size:18px;display:block;margin-bottom:8px;"><span style="font-size:20px;margin-right:8px;color:#10B981;">✓</span>Validación Exitosa</strong>'
+        +   'Su información cumple con todos nuestros estándares de seguridad. Su pedido ha retomado su proceso normal y continuará con la ruta de entrega programada.'
+        + '</div>'
+        + P('Agradecemos profundamente su paciencia, colaboración y comprensión durante este proceso. Estas medidas nos ayudan a garantizar que cada una de sus compras sea completamente segura.')
+        + P('Si tiene alguna duda adicional o requiere asistencia, seguimos a su entera disposición.');
+    },
+    firma: FIRMA_CC
+  },
+
+  formato: {
+    nombre: 'Formato personalizable', emoji: '📝',
+    desc: 'Plantilla libre para adaptar el mensaje a la medida.',
+    campos: [
+      { id:'cliente',    label:'Nombre del cliente o destinatario', req:true,  ph:'Ej. María López Hernández' },
+      { id:'intro',      label:'Párrafo introductorio',             req:true,  ph:'Saluda, agradece o introduce el tema principal…', area:true },
+      { id:'titulo',     label:'Título de sección',                 req:false, ph:'Ej. Detalles de su solicitud' },
+      { id:'desarrollo', label:'Desarrollo del mensaje',            req:true,  ph:'Detalles de la información o aviso que deseas comunicar…', area:true },
+      { id:'dato1',      label:'Dato destacado 1',                  req:false, ph:'Ej. Folio: 123456', half:true },
+      { id:'dato2',      label:'Dato destacado 2',                  req:false, ph:'Ej. SKU: 987654', half:true },
+      { id:'nota',       label:'Nota importante',                   req:false, ph:'Advertencias, vigencias o recordatorios (opcional)…', area:true },
+      { id:'despedida',  label:'Despedida / cierre',                req:true,  ph:'Siguientes pasos o quedar a disposición…', area:true },
+      { id:'area',       label:'Firma (tu área / departamento)',    req:true,  ph:'Centro de Contacto Liverpool (CCL) | Ventel', def:'Centro de Contacto Liverpool (CCL) | Ventel' }
+    ],
+    asunto: f => {
+      const t = (f.titulo||'').trim();
+      return (t ? t : 'Información sobre su solicitud') + ' | Liverpool';
+    },
+    body(f){
+      const c = this.campos.reduce((m,x)=>{ m[x.id]=x; return m; }, {});
+      let html = P('Estimado(a) '+B(val(f,c.cliente))+',') + P(valBr(f,c.intro));
+      if ((f.titulo||'').trim()) html += H2S(esc(f.titulo.trim()));
+      html += P(valBr(f,c.desarrollo));
+      const d1 = (f.dato1||'').trim(), d2 = (f.dato2||'').trim();
+      if (d1 || d2) {
+        html += BOXPINK(
+          (d1 ? '<p style="margin:0 0 8px 0;font-size:15px;">'+B(escBr(d1))+'</p>' : '')
+          + (d2 ? '<p style="margin:0;font-size:15px;">'+B(escBr(d2))+'</p>' : '')
+        );
+      }
+      if ((f.nota||'').trim()) html += NOTICE('<strong style="color:#991B1B;">Nota importante:</strong> '+escBr(f.nota.trim()));
+      html += P(valBr(f,c.despedida));
+      return html;
+    },
+    firma(f){ return firma(esc((f.area||'').trim() || 'Centro de Contacto Liverpool (CCL) | Ventel'), '', '55 5262 9999'); }
+  },
+
+  textoplano: {
+    nombre: 'Texto plano', emoji: '✍️',
+    desc: 'Escribe un correo desde cero, sin plantilla ni diseño.',
+    raw: true, // no lleva la envoltura de marca (logo + firma): sale tal cual se escribe.
+    campos: [
+      { id:'mensaje', label:'Mensaje del correo', req:true, area:true, big:true,
+        ph:'Escribe aquí tu correo tal como quieres que lo lea el cliente…\n\nPuedes usar varios párrafos y saltos de línea.' }
+    ],
+    asunto: () => '', // el asunto lo escribe el asesor a mano
+    body(f){
+      const c = this.campos.reduce((m,x)=>{ m[x.id]=x; return m; }, {});
+      return '<div style="max-width:640px;margin:0 auto;padding:28px 24px;'
+        + 'font-family:\'Segoe UI\',\'Helvetica Neue\',Helvetica,Arial,sans-serif;'
+        + 'font-size:15px;line-height:1.7;color:#1A1A1A;">'
+        + valBr(f, c.mensaje)
+        + '</div>';
+    }
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESTADO Y UI
+   ═══════════════════════════════════════════════════════════════════════════ */
+let tplId = null;          // plantilla seleccionada
+let fields = {};           // valores de los campos
+let subjectDirty = false;  // el asesor editó el asunto a mano
+let adjuntos = [];         // [{ nombre, mime, size, base64 }]
+let senderInfo = null;
+let enviando = false;
+
+const $id = id => document.getElementById(id);
+
+/* ── Selector de plantillas ── */
+function renderTplGrid(){
+  const grid = $id('tplGrid');
+  Object.keys(TEMPLATES).forEach(id => {
+    const t = TEMPLATES[id];
+    const b = document.createElement('button');
+    b.className = 'tpl-card'; b.type = 'button'; b.dataset.tpl = id;
+    b.innerHTML = '<span class="t-emoji">'+t.emoji+'</span><span class="t-name">'+t.nombre+'</span><span class="t-desc">'+t.desc+'</span>';
+    b.onclick = () => seleccionarPlantilla(id);
+    grid.appendChild(b);
+  });
+}
+
+function seleccionarPlantilla(id){
+  tplId = id;
+  fields = {};
+  subjectDirty = false;
+  document.querySelectorAll('.tpl-card').forEach(c => c.classList.toggle('sel', c.dataset.tpl === id));
+  const t = TEMPLATES[id];
+  $id('tplNameTag').textContent = t.emoji + ' ' + t.nombre;
+
+  // Construye el formulario de campos
+  const body = $id('fieldsBody');
+  body.innerHTML = '';
+  let halfBuffer = null;
+  t.campos.forEach(campo => {
+    if (campo.def && fields[campo.id] === undefined) fields[campo.id] = campo.def;
+    const div = document.createElement('div');
+    div.id = 'fw-' + campo.id;
+    const reqTag = campo.req ? ' <span class="text-brand-pink">*</span>' : ' <span class="text-xs text-slate-400 font-medium">— opcional</span>';
+    const ctrl = campo.area
+      ? '<textarea id="fi-'+campo.id+'" rows="'+(campo.big?12:3)+'" class="v-textarea" placeholder="'+esc(campo.ph||'')+'"></textarea>'
+      : '<input type="text" id="fi-'+campo.id+'" class="v-input" placeholder="'+esc(campo.ph||'')+'"'+(campo.max?' maxlength="'+campo.max+'"':'')+'>';
+    div.innerHTML = '<label for="fi-'+campo.id+'" class="v-label">'+esc(campo.label)+reqTag+'</label>' + ctrl;
+
+    if (campo.half) {
+      if (!halfBuffer) { halfBuffer = document.createElement('div'); halfBuffer.className = 'grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4'; body.appendChild(halfBuffer); }
+      div.classList.remove('mb-4');
+      halfBuffer.appendChild(div);
+      if (halfBuffer.children.length === 2) halfBuffer = null;
+    } else {
+      halfBuffer = null;
+      div.className = 'mb-4';
+      div.id = 'fw-' + campo.id;
+      body.appendChild(div);
+    }
+
+    const inp = div.querySelector('input,textarea');
+    if (campo.def) inp.value = campo.def;
+    inp.addEventListener('input', () => {
+      fields[campo.id] = inp.value;
+      div.classList.remove('field-invalid');
+      if (!subjectDirty) $id('inpSubject').value = t.asunto(fields);
+      renderPreview();
+    });
+  });
+
+  $id('inpSubject').value = t.asunto(fields);
+  renderPreview();
+}
+
+/* ── Vista previa en vivo ── */
+function buildEmailHtml(){
+  const t = TEMPLATES[tplId];
+  if (t.raw) return t.body(fields); // texto plano: sin logo ni firma institucional
+  const firmaHtml = typeof t.firma === 'function' && t.firma.length ? t.firma(fields) : t.firma();
+  return wrapEmail(t.body(fields), firmaHtml);
+}
+function renderPreview(){
+  const frame = $id('previewFrame');
+  const doc = frame.contentDocument || frame.contentWindow.document;
+  const inner = tplId
+    ? buildEmailHtml()
+    : '<div style="min-height:520px;display:flex;align-items:center;justify-content:center;color:#9aa1af;font-family:sans-serif;font-size:16px;text-align:center;padding:40px 24px;line-height:1.6;">Elige una plantilla para ver aquí el correo<br>tal como lo recibirá el cliente.</div>';
+  doc.open();
+  doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;background:#F4F6F9;">'+inner+'</body></html>');
+  doc.close();
+  // Escala el correo (640px) para que quepa en la columna sin amontonarse.
+  // Se recalcula tras el layout y de nuevo cuando el logo/firma terminan de cargar.
+  requestAnimationFrame(fitPreview);
+  setTimeout(fitPreview, 300);
+}
+
+/* El correo se dibuja a su ancho real (640px) y se escala con transform para
+   caber en la columna; la altura del contenedor sigue a la del contenido. */
+const PREVIEW_W = 640;
+function fitPreview(){
+  const vp = $id('previewViewport');
+  const frame = $id('previewFrame');
+  if (!vp || !frame) return;
+  const avail = vp.clientWidth || PREVIEW_W;
+  const scale = Math.min(1, avail / PREVIEW_W);
+  let h = 520;
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    if (doc && doc.body) h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight, 300);
+  } catch (e) {}
+  frame.style.transform = 'scale(' + scale + ')';
+  frame.style.height = h + 'px';
+  vp.style.height = Math.round(h * scale) + 'px';
+}
+
+/* ── Adjuntos ── */
+function initAdjuntos(){
+  $id('inpFiles').addEventListener('change', async e => {
+    for (const file of Array.from(e.target.files)) {
+      const total = adjuntos.reduce((s,a)=>s+a.size,0) + file.size;
+      if (total > 20*1024*1024) { toast('⚠️ Se superan los 20 MB de adjuntos; "'+file.name+'" no se agregó.'); continue; }
+      const base64 = await new Promise((res,rej)=>{
+        const r = new FileReader();
+        r.onload = () => res(String(r.result).split(',')[1] || '');
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      adjuntos.push({ nombre:file.name, mime:file.type||'application/octet-stream', size:file.size, base64 });
+    }
+    e.target.value = '';
+    renderAdjuntos();
+  });
+}
+function renderAdjuntos(){
+  const list = $id('attList');
+  list.innerHTML = '';
+  adjuntos.forEach((a,i)=>{
+    const div = document.createElement('div');
+    div.className = 'att-item';
+    div.innerHTML = '<span>📄</span><span class="a-name">'+esc(a.nombre)+'</span><span class="a-size">'+fmtSize(a.size)+'</span>'
+      + '<button type="button" title="Quitar" onclick="quitarAdjunto('+i+')">✕</button>';
+    list.appendChild(div);
+  });
+}
+function quitarAdjunto(i){ adjuntos.splice(i,1); renderAdjuntos(); }
+function fmtSize(b){ return b < 1024*1024 ? Math.max(1,Math.round(b/1024))+' KB' : (b/1024/1024).toFixed(1)+' MB'; }
+
+/* ── Remitente (mismo criterio que la pantalla de cotizaciones) ──
+   El alias institucional casi nunca cambia y la consulta cuesta una llamada a
+   Gmail: se pinta al instante desde la caché local (30 min) y se revalida detrás.
+   AppRun deduplica por si la pantalla la pide dos veces al arrancar. */
+function loadSender(){
+  if (typeof google === 'undefined' || !google.script) {
+    $id('senderInfoText').textContent = 'Modo local: el envío solo funciona dentro de Apps Script.';
+    return;
+  }
+  const pintar = (info) => {
+    senderInfo = info;
+    if (info && info.success) {
+      $id('senderInfoText').innerHTML = 'Se enviará desde <b>'+esc(info.effectiveSender || info.alias)+'</b>'
+        + (info.aliasAvailable ? '' : ' (alias institucional no disponible)')
+        + '. Las respuestas llegarán a tu correo.';
+    } else {
+      $id('senderInfoText').textContent = 'No se pudo verificar el remitente.';
+    }
+  };
+
+  if (!window.AppRun) {   // despliegue parcial: sin caché, pero funciona igual
+    google.script.run
+      .withSuccessHandler(pintar)
+      .withFailureHandler(() => { $id('senderInfoText').textContent = 'No se pudo verificar el remitente.'; })
+      .getMailSenderInfo();
+    return;
+  }
+
+  AppRun.swr('sender-info', 'getMailSenderInfo', [], {
+    ttl: 30 * 60 * 1000,
+    // Nunca se cachea un fallo, ni el estado "el alias todavía no existe".
+    accept: (info) => !!(info && info.success && info.aliasAvailable),
+    onData: pintar,
+    onError: (e, cached) => { if (!cached) $id('senderInfoText').textContent = 'No se pudo verificar el remitente.'; }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VALIDACIÓN, VERIFICACIÓN Y ENVÍO
+   ═══════════════════════════════════════════════════════════════════════════ */
+const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+function parseEmails(str){
+  return String(str||'').split(/[,;\s]+/).map(s=>s.trim()).filter(Boolean);
+}
+
+function revisarEnvio(){
+  if (!tplId) { toast('Primero elige una plantilla.'); return; }
+  const t = TEMPLATES[tplId];
+  let ok = true, firstBad = null;
+
+  // Campos obligatorios de la plantilla
+  t.campos.forEach(c => {
+    const wrap = $id('fw-'+c.id);
+    if (c.req && !(fields[c.id]||'').trim()) { wrap.classList.add('field-invalid'); ok = false; firstBad = firstBad || wrap; }
+  });
+
+  // Para
+  const to = parseEmails($id('inpTo').value);
+  if (!to.length || to.some(e=>!EMAIL_RX.test(e))) { $id('f-to').classList.add('field-invalid'); ok = false; firstBad = firstBad || $id('f-to'); }
+  // CC / CCO
+  const cc = parseEmails($id('inpCc').value);
+  if (cc.some(e=>!EMAIL_RX.test(e))) { $id('f-cc').classList.add('field-invalid'); ok = false; firstBad = firstBad || $id('f-cc'); }
+  const cco = parseEmails($id('inpCco').value);
+  if (cco.some(e=>!EMAIL_RX.test(e))) { $id('f-cco').classList.add('field-invalid'); ok = false; firstBad = firstBad || $id('f-cco'); }
+  // Asunto
+  if (!$id('inpSubject').value.trim()) { $id('f-subject').classList.add('field-invalid'); ok = false; firstBad = firstBad || $id('f-subject'); }
+
+  if (!ok) {
+    toast('Faltan datos o hay correos no válidos. Revisa los campos marcados.');
+    if (firstBad) firstBad.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+
+  // Resumen de verificación
+  const rows = [
+    ['Plantilla', TEMPLATES[tplId].emoji+' '+TEMPLATES[tplId].nombre],
+    ['De', esc(senderInfo && senderInfo.effectiveSender ? senderInfo.effectiveSender : 'cotizacion@liverpool.com.mx')],
+    ['Para', esc(to.join(', '))],
+    ['CC', cc.length ? esc(cc.join(', ')) : '<small>— sin copia —</small>'],
+    ['CCO', cco.length ? esc(cco.join(', ')) : '<small>— sin copia oculta —</small>'],
+    ['Asunto', esc($id('inpSubject').value.trim())],
+    ['Adjuntos', adjuntos.length ? adjuntos.map(a=>esc(a.nombre)).join('<br>') : '<small>— sin adjuntos —</small>']
+  ];
+  $id('checkBody').innerHTML = rows.map(r =>
+    '<div class="chk-row"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>'
+  ).join('')
+  + (TEMPLATES[tplId].adjuntoEsperado && !adjuntos.length
+      ? '<div class="m-warn">⚠️ Esta plantilla le dice al cliente que su ticket va <b>adjunto</b>, pero no agregaste ningún archivo.</div>'
+      : '');
+
+  mostrarPaso('mCheck');
+  $id('overlay').classList.add('show');
+}
+
+function confirmarEnvio(){
+  if (enviando) return;
+  if (typeof google === 'undefined' || !google.script) { toast('El envío solo funciona dentro de Apps Script.'); return; }
+  enviando = true;
+  mostrarPaso('mSending');
+
+  const payload = {
+    plantilla: tplId,
+    to:  parseEmails($id('inpTo').value),
+    cc:  parseEmails($id('inpCc').value),
+    cco: parseEmails($id('inpCco').value),
+    asunto: $id('inpSubject').value.trim(),
+    htmlBody: buildEmailHtml(),
+    adjuntos: adjuntos.map(a => ({ nombre:a.nombre, mime:a.mime, base64:a.base64 })),
+    asesor: (window.AppSession && AppSession.userEmail) || ''
+  };
+
+  google.script.run
+    .withSuccessHandler(res => {
+      enviando = false;
+      if (res && res.status === 'ok') {
+        $id('okDetail').innerHTML = 'Enviado a <b>'+esc(payload.to.join(', '))+'</b><br>desde '+esc(res.sentFrom||'')+'.';
+        mostrarPaso('mOk');
+      } else {
+        $id('errDetail').textContent = (res && res.error) ? res.error : 'Error desconocido.';
+        mostrarPaso('mErr');
+      }
+    })
+    .withFailureHandler(err => {
+      enviando = false;
+      $id('errDetail').textContent = err && err.message ? err.message : String(err);
+      mostrarPaso('mErr');
+    })
+    .enviarCorreoPlantilla(payload);
+}
+
+function mostrarPaso(id){
+  ['mCheck','mSending','mOk','mErr'].forEach(x => {
+    const el = $id(x);
+    el.style.display = (x === id) ? (x === 'mCheck' ? 'block' : 'flex') : 'none';
+  });
+}
+function cerrarModal(){ if (!enviando) $id('overlay').classList.remove('show'); }
+function volverAVerificar(){ mostrarPaso('mCheck'); }
+function nuevoCorreo(){
+  $id('overlay').classList.remove('show');
+  fields = {}; adjuntos = []; subjectDirty = false;
+  ['inpTo','inpCc','inpCco'].forEach(id => $id(id).value = '');
+  renderAdjuntos();
+  if (tplId) seleccionarPlantilla(tplId);
+  window.scrollTo({top:0, behavior:'smooth'});
+  toast('Listo para un nuevo correo ✉️');
+}
+
+/* ── Toast ── */
+let toastTimer = null;
+function toast(msg){
+  const el = $id('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 3500);
+}
+
+/* ── Arranque ── */
+document.addEventListener('DOMContentLoaded', () => {
+    if (!requireSession()) return;
+
+    // Marco lateral compartido con el Portal (envuelve el <main> y aporta sesión/tema).
+    AppShell.mount({ active: 'correo_cliente', title: 'Correos a clientes' });
+
+    // El loader de marca cubre el arranque; se retira en cuanto la pantalla está lista.
+    if (window.VentelLoader) VentelLoader.hide();
+
+    renderTplGrid();
+    renderPreview();
+    initAdjuntos();
+    loadSender();
+
+    // Deep-link desde el buscador del Portal: ?tpl=<id> abre esa plantilla lista.
+    const tplParam = (window.AppUrl && AppUrl.param('tpl')) || (window.__APP__ && window.__APP__.tpl) || '';
+    if (tplParam && TEMPLATES[tplParam]) {
+      seleccionarPlantilla(tplParam);
+      const card = document.querySelector('.tpl-card[data-tpl="' + tplParam + '"]');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    $id('inpSubject').addEventListener('input', () => { subjectDirty = true; $id('f-subject').classList.remove('field-invalid'); });
+    ['f-to','f-cc','f-cco'].forEach(wid => {
+        const wrap = $id(wid);
+        wrap.querySelector('input').addEventListener('input', () => wrap.classList.remove('field-invalid'));
+    });
+    $id('overlay').addEventListener('click', e => { if (e.target === $id('overlay')) cerrarModal(); });
+
+    // Reescala la vista previa al cambiar el tamaño de la ventana o de la columna.
+    window.addEventListener('resize', fitPreview);
+    if (window.ResizeObserver) { try { new ResizeObserver(fitPreview).observe($id('previewViewport')); } catch (e) {} }
+    setTimeout(fitPreview, 400);
+
+    if (window.Icons) Icons.render();
+});
+    </script>
+</body>
+</html>
