@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Sistema de Cotizaciones Ventel</title>
+    <!-- Preferencias de vista ANTES de pintar: esta pantalla ya respeta el tema,
+         la escala de texto y el alto contraste elegidos en el resto de la app. -->
+    <?!= include('ViewPrefsPartial'); ?>
+    <?!= include('app_theme'); ?>
+    <?!= include('app_auth'); ?>
+</head>
+<body>
+    <div class="auth">
+        <!-- Filigrana: el isotipo de Liverpool a gran escala, trazado con DrawSVG.
+             El contenedor posiciona y atenúa; el hijo es lo único que anima GSAP. -->
+        <div class="auth-watermark" aria-hidden="true">
+            <div class="auth-watermark-inner" data-liv="stroke" data-liv-width="0.8"></div>
+        </div>
+
+        <main class="auth-stage">
+            <div class="auth-card">
+                <svg class="auth-edge" viewBox="0 0 400 3" preserveAspectRatio="none" aria-hidden="true">
+                    <path id="authEdge" d="M0 1.5 H400" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+
+                <div class="auth-lockup">
+                    <span class="auth-mark" data-liv="fill" aria-hidden="true"></span>
+                    <span class="auth-wordmark">Ventel<small>Sistema de cotizaciones</small></span>
+                </div>
+
+                <h1 class="auth-title" data-split>Iniciar sesión</h1>
+                <p class="auth-sub" data-reveal>
+                    ¿No tienes cuenta?
+                    <button type="button" class="auth-link" id="createAccountLink">Créala aquí</button>
+                </p>
+
+                <div id="formContainer">
+                    <div id="message-container" role="status" aria-live="polite"></div>
+
+                    <!-- Sin novalidate: la validación nativa de required/type=email se
+                         conserva, y encima corre la comprobación propia de la contraseña. -->
+                    <form id="loginForm" class="auth-form">
+                        <div class="auth-row" data-reveal>
+                            <label for="email" class="v-label">Correo electrónico</label>
+                            <div class="field">
+                                <span class="field-ic" data-icon="mail" aria-hidden="true"></span>
+                                <input id="email" name="email" type="email" autocomplete="email" required
+                                       placeholder="tu.usuario@liverpool.com.mx" class="v-input">
+                            </div>
+                        </div>
+
+                        <div class="auth-row" data-reveal>
+                            <label for="password" class="v-label">Contraseña</label>
+                            <div class="field">
+                                <span class="field-ic" data-icon="lock" aria-hidden="true"></span>
+                                <input id="password" name="password" type="password" required minlength="6"
+                                       placeholder="Mínimo 6 caracteres" class="v-input" data-has-toggle
+                                       aria-describedby="passwordError">
+                                <button type="button" id="togglePassword" class="field-toggle"
+                                        aria-label="Mostrar contraseña" aria-pressed="false">
+                                    <span id="toggleIcon" data-icon="eye"></span>
+                                </button>
+                            </div>
+                            <p id="passwordError" class="auth-error">La contraseña debe tener al menos 6 caracteres.</p>
+                        </div>
+
+                        <div data-reveal>
+                            <button type="submit" id="loginButton" class="v-btn v-btn-primary auth-submit">
+                                Entrar
+                                <svg class="auth-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M4 12h15M13 6l6 6-6 6"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="loadingContainer" class="auth-loading hidden">
+                    <div class="auth-loader" id="loadingIcon" data-liv="stroke" data-liv-width="5" aria-hidden="true"></div>
+                    <h2 id="loadingText">Verificando credenciales…</h2>
+                    <p>Un momento, por favor.</p>
+                </div>
+            </div>
+
+            <!-- Áreas públicas: no requieren sesión, así que se ofrecen antes de pedirla. -->
+            <nav class="auth-jump" aria-label="Ir a otras áreas de Ventel">
+                <span class="auth-jump-lbl">¿Solo vienes a consultar?</span>
+                <a class="auth-jump-item" data-jump="portal" target="_top">
+                    <span class="auth-jump-ic"><span data-icon="globe" aria-hidden="true"></span></span>
+                    <span class="auth-jump-tx"><b>Portal Ventel</b><small>Información y procesos</small></span>
+                </a>
+                <a class="auth-jump-item" data-jump="promociones" target="_top">
+                    <span class="auth-jump-ic"><span data-icon="star" aria-hidden="true"></span></span>
+                    <span class="auth-jump-tx"><b>Monitor Promos</b><small>Vigencias y precios</small></span>
+                </a>
+            </nav>
+
+            <ul class="auth-notes">
+                <li><span data-icon="bolt" aria-hidden="true"></span> Cotiza en segundos</li>
+                <li><span data-icon="shield" aria-hidden="true"></span> Folios protegidos</li>
+                <li><span data-icon="sparkle" aria-hidden="true"></span> Formatos oficiales</li>
+            </ul>
+        </main>
+
+        <p class="auth-foot">Sistema de cotizaciones Ventel · Liverpool</p>
+    </div>
+
+    <script>
+        window.__APP__ = { baseUrl: <?!= JSON.stringify(baseUrl) ?> };
+    </script>
+    <?!= include('app_core'); ?>
+    <?!= include('app_icons'); ?>
+    <?!= include('app_motion'); ?>
+    <!-- Plugins GSAP (gratuitos desde 3.13). Si el CDN falla, AuthStage no oculta nada. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/SplitText.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/DrawSVGPlugin.min.js"></script>
+    <script>
+        const formContainer = document.getElementById('formContainer');
+        const loadingContainer = document.getElementById('loadingContainer');
+        const loadingIcon = document.getElementById('loadingIcon');
+        const loadingText = document.getElementById('loadingText');
+        const loginForm = document.getElementById('loginForm');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const passwordError = document.getElementById('passwordError');
+        const createAccountLink = document.getElementById('createAccountLink');
+        const messageContainer = document.getElementById('message-container');
+        const togglePassword = document.getElementById('togglePassword');
+        const toggleIcon = document.getElementById('toggleIcon');
+        let loaderTween = null;
+
+        const showMessage = (text, isError = true) => {
+            messageContainer.textContent = text;
+            messageContainer.classList.toggle('ok', !isError);
+            if (text && isError) AppMotion.shake(messageContainer);
+        };
+
+        const showLoadingState = () => AppMotion.swap(formContainer, loadingContainer, () => {
+            loaderTween = AuthStage.startLoader(loadingIcon);
+        });
+
+        const hideLoadingState = () => {
+            AuthStage.stopLoader(loaderTween, loadingIcon);
+            loaderTween = null;
+            // El estado de éxito reemplaza el SVG del cargador: hay que devolver el isotipo.
+            loadingIcon.__livDone = false;
+            loadingIcon.style.color = '';
+            loadingText.textContent = 'Verificando credenciales…';
+            AuthStage.paint();
+            AppMotion.swap(loadingContainer, formContainer);
+        };
+
+        const showSuccessStateAndRedirect = () => {
+            AuthStage.stopLoader(loaderTween, loadingIcon);
+            loaderTween = null;
+            AuthStage.success(loadingIcon, '¡Listo! Redirigiendo…', loadingText);
+            setTimeout(() => {
+                if (!AppUrl.goHome()) {
+                    hideLoadingState();
+                    showMessage('No se pudo determinar la URL de la aplicación. Recarga e intenta de nuevo.');
+                }
+            }, 900);
+        };
+
+        togglePassword.addEventListener('click', () => {
+            const willShow = passwordInput.type === 'password';
+            passwordInput.type = willShow ? 'text' : 'password';
+            toggleIcon.innerHTML = Icons.svg(willShow ? 'eye-off' : 'eye');
+            togglePassword.setAttribute('aria-pressed', String(willShow));
+            togglePassword.setAttribute('aria-label', willShow ? 'Ocultar contraseña' : 'Mostrar contraseña');
+            AppMotion.pop(togglePassword);
+        });
+
+        loginForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            showMessage('');
+            passwordError.classList.remove('show');
+            passwordInput.removeAttribute('aria-invalid');
+
+            if (passwordInput.value.length < 6) {
+                passwordError.classList.add('show');
+                passwordInput.setAttribute('aria-invalid', 'true');
+                AppMotion.shake(passwordInput.parentElement);
+                passwordInput.focus();
+                return;
+            }
+
+            showLoadingState();
+
+            google.script.run
+                .withSuccessHandler(response => {
+                    if (response.success) {
+                        AppSession.save(response);
+                        showSuccessStateAndRedirect();
+                    } else {
+                        hideLoadingState();
+                        showMessage(response.message || 'Correo o contraseña incorrectos.');
+                    }
+                })
+                .withFailureHandler(error => {
+                    hideLoadingState();
+                    showMessage('Error de comunicación: ' + error.message);
+                })
+                .loginUser(emailInput.value, passwordInput.value);
+        });
+
+        passwordInput.addEventListener('input', () => {
+            if (passwordInput.value.length >= 6) {
+                passwordError.classList.remove('show');
+                passwordInput.removeAttribute('aria-invalid');
+            }
+        });
+
+        createAccountLink.addEventListener('click', () => AppUrl.go('registro'));
+
+        // Este script va al final del <body>: el DOM ya está completo, así que se
+        // arranca de inmediato en lugar de esperar a DOMContentLoaded. Un frame menos
+        // de contenido sin coreografiar.
+        (function () {
+            Icons.render();
+            AuthStage.paint();
+            AuthStage.wireJumps();
+
+            // Sesión persistente: si ya hay sesión guardada no se vuelve a pedir el
+            // login — directo al panel del rol. (Salir desde el shell limpia la
+            // identidad y este atajo deja de aplicar.)
+            if (AppSession.isLoggedIn()) { AppUrl.goHome(); return; }
+
+            // Precarga el último correo usado (persiste aunque se cierre sesión).
+            if (AppSession.lastEmail && !emailInput.value) {
+                emailInput.value = AppSession.lastEmail;
+                passwordInput.focus();
+            }
+
+            AuthStage.play({ title: '[data-split]' });
+        })();
+    </script>
+</body>
+</html>
