@@ -1,0 +1,635 @@
+<style>
+/**
+ * =====================================================================================
+ * ESCENARIO DE ACCESO | Sistema de cotizaciones Ventel
+ * =====================================================================================
+ * Marco visual y coreografía compartidos por inicioDeSesion y registro.
+ *
+ * Cambio de dirección respecto al diseño anterior (panel rosa a media pantalla):
+ *   · El rosa deja de ser el fondo y vuelve a ser ACENTO (regla 60/30/10). El lienzo
+ *     usa los tokens del tema, así que estas pantallas por fin respetan aurora /
+ *     slate / carbón como el resto de la app.
+ *   · La marca se cuenta con el isotipo de Liverpool DIBUJADO a trazo (DrawSVG), no
+ *     con degradados y orbes genéricos. El mismo isotipo sirve de filigrana de fondo,
+ *     de sello en la tarjeta y de indicador de carga: un solo motivo, tres usos.
+ *   · Tarjeta única centrada-desplazada en lugar de pantalla partida: menos superficie
+ *     saturada, foco en el formulario, y se comporta igual de 375px a 1440px.
+ *
+ * USO en la pantalla:
+ *   <head> ... <?!= include('ViewPrefsPartial'); ?> <?!= include('app_theme'); ?>
+ *              <?!= include('app_auth'); ?>
+ *   final del <body>, tras app_core / app_icons / app_motion:
+ *              AuthStage.play({ title: '[data-split]' });
+ *
+ * Estas pantallas NO cargan Tailwind: todo lo que necesitan está aquí y en app_theme.
+ */
+
+/* ── Reset mínimo ──
+   Estas pantallas ya no cargan Tailwind, así que su "preflight" (margen 0 del body,
+   border-box) tiene que declararse aquí. Es deliberadamente corto: solo lo que se
+   pierde al quitar el CDN. */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; }
+img { max-width: 100%; display: block; }
+button { font-family: inherit; }
+
+/* ── Escala local (tipografía y espaciado). Candidata a subir a app_theme. ── */
+.auth {
+  --fs-xs: .75rem; --fs-sm: .8125rem; --fs-md: .875rem; --fs-base: 1rem;
+  --fs-lg: 1.125rem; --fs-xl: 1.5rem; --fs-2xl: 2rem;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+}
+
+/* ── Lienzo ── */
+.auth {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  overflow-x: hidden;
+  background:
+    radial-gradient(52rem 32rem at 88% -8%, var(--brand-tint), transparent 62%),
+    var(--app-bg);
+}
+[data-theme="carbon"] .auth {
+  background:
+    radial-gradient(52rem 32rem at 88% -8%, rgba(225, 0, 152, .13), transparent 62%),
+    radial-gradient(40rem 28rem at 4% 96%, rgba(109, 40, 217, .10), transparent 58%),
+    var(--app-bg);
+}
+
+/* Filigrana: el isotipo a gran escala, sangrando por el borde derecho.
+ *
+ * DOS elementos a propósito: el contenedor POSICIONA (y recorta el sangrado) y el
+ * hijo es el único que se anima. Centrar el contenedor con transform y además
+ * animarlo con GSAP no funciona: GSAP reescribe la propiedad `transform` entera y
+ * el centrado se pierde en cuanto arranca la deriva o el paralaje. Aquí el
+ * contenedor centra con grid — sin transform — y GSAP tiene el transform del hijo
+ * para él solo. */
+.auth-watermark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-items: center;
+  justify-items: end;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  /* La atenuación vive AQUÍ, no en el hijo: así GSAP puede animar la opacidad del
+     hijo de 0 a 1 sin borrar el tono de filigrana. La opacidad final es el
+     producto de ambas (.06 × 1). */
+  opacity: .06;
+}
+[data-theme="carbon"] .auth-watermark { opacity: .11; }
+.auth-watermark-inner {
+  width: min(52vw, 40rem);
+  margin-right: -12vw;
+  color: var(--brand);
+}
+.auth-watermark-inner svg { width: 100%; height: auto; display: block; }
+
+/* ── Escenario ── */
+.auth-stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: var(--s5);
+  width: min(100%, 76rem);
+  margin-inline: auto;
+  padding: var(--s7) var(--s5);
+}
+
+/* ── Tarjeta ── */
+.auth-card {
+  width: min(100%, 27rem);
+  background: var(--surface);
+  border-radius: 20px;
+  padding: var(--s6);
+  box-shadow: var(--sh-lg);
+}
+/* En oscuro la sombra no separa: ahí sí hace falta el borde. */
+[data-theme="carbon"] .auth-card { border: 1px solid var(--line); }
+html[data-contrast="high"] .auth-card { border: 2px solid var(--line); }
+
+/* Filo de marca que se dibuja sobre la tarjeta.
+   El trazo usa currentColor: var() dentro de un atributo de presentación SVG no es
+   fiable entre navegadores, así que el color se inyecta por CSS. */
+.auth-edge { display: block; width: 100%; height: 3px; margin-bottom: var(--s5); overflow: visible; color: var(--brand); }
+
+/* ── Sello + palabra de marca ── */
+.auth-lockup { display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s5); }
+.auth-mark { width: 34px; height: 34px; color: var(--brand); flex: none; }
+.auth-mark svg { width: 100%; height: 100%; display: block; }
+.auth-wordmark {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: var(--fs-sm);
+  letter-spacing: .19em;
+  text-transform: uppercase;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.auth-wordmark small {
+  display: block;
+  font-size: .62rem;
+  letter-spacing: .13em;
+  color: var(--ink-faint);
+  font-weight: 700;
+}
+
+/* ── Encabezado ── */
+.auth-title {
+  font-family: var(--f-display);
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  letter-spacing: -.022em;
+  line-height: 1.1;
+  color: var(--ink);
+  margin: 0;
+}
+.auth-sub {
+  margin: var(--s2) 0 0;
+  font-size: var(--fs-md);
+  color: var(--ink-soft);
+}
+.auth-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--brand);
+  cursor: pointer;
+  border-radius: 4px;
+}
+.auth-link:hover { color: var(--brand-deep); text-decoration: underline; }
+
+/* ── Formulario ── */
+.auth-form { display: flex; flex-direction: column; gap: var(--s4); margin-top: var(--s6); }
+.auth-row { display: flex; flex-direction: column; gap: var(--s1); }
+
+.field { position: relative; display: flex; align-items: center; }
+/* Acento lateral que crece al enfocar. Solo transform: no provoca layout. */
+.field::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 8px; bottom: 8px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--brand);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform .22s cubic-bezier(.2, .8, .2, 1);
+}
+.field:focus-within::before { transform: scaleY(1); }
+
+.field-ic {
+  position: absolute;
+  left: .8rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--ink-faint);
+  pointer-events: none;
+  transition: color .22s ease;
+}
+.field:focus-within .field-ic { color: var(--brand); }
+.field .v-input { padding-left: 2.6rem; }
+.field .v-input[data-has-toggle] { padding-right: 2.9rem; }
+
+.field-toggle {
+  position: absolute;
+  right: .45rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: var(--rad-sm);
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+.field-toggle:hover { color: var(--ink); background: var(--surface-2); }
+.field-toggle span { width: 1.15rem; height: 1.15rem; display: block; }
+
+/* ── Errores y avisos ── */
+.auth-error {
+  display: none;
+  align-items: center;
+  gap: var(--s1);
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--alert);
+}
+.auth-error.show { display: flex; }
+.auth-error::before {
+  content: '!';
+  flex: none;
+  width: 1rem; height: 1rem;
+  border-radius: 50%;
+  background: var(--alert);
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+#message-container:empty { display: none; }
+#message-container {
+  margin-bottom: var(--s4);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--rad-sm);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  background: var(--alert-bg);
+  color: var(--alert);
+}
+#message-container.ok { background: var(--ok-bg); color: var(--ok); }
+
+/* ── Medidor de contraseña ── */
+.auth-meter { display: flex; gap: 5px; margin-top: var(--s2); }
+.auth-meter i {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+/* El relleno se anima con scaleX (compositable), nunca con width. */
+.auth-meter i > b {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ink-faint);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+.auth-meter-label {
+  margin: var(--s1) 0 0;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-faint);
+  min-height: 1.05em;
+}
+
+/* ── Botón de envío ── */
+.auth-submit { width: 100%; justify-content: center; margin-top: var(--s2); padding-block: .78rem; }
+.auth-submit .auth-arrow { transition: transform .22s cubic-bezier(.2, .8, .2, 1); }
+.auth-submit:hover:not(:disabled) .auth-arrow { transform: translateX(4px); }
+
+/* ── Estado de carga ── */
+.auth-loading { text-align: center; padding: var(--s5) 0; }
+.auth-loader { width: 62px; height: 62px; margin: 0 auto var(--s4); color: var(--brand); }
+.auth-loader svg { width: 100%; height: 100%; display: block; }
+.auth-loading h2 { font-family: var(--f-display); font-size: var(--fs-lg); font-weight: 700; color: var(--ink); margin: 0; }
+.auth-loading p { margin: var(--s1) 0 0; font-size: var(--fs-md); color: var(--ink-soft); }
+
+/* ── Salto a las áreas públicas del Portal ──
+ * Portal y Monitor de Promociones no piden sesión (PORTAL_PAGES en Code.gs), así que
+ * quien solo viene a consultar no tiene por qué iniciar sesión. Se reutiliza la
+ * gramática del conmutador de área de la barra lateral —chip de icono + título +
+ * subtítulo— para que sea el MISMO componente, adaptado a superficie clara. */
+.auth-jump {
+  width: min(100%, 27rem);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
+  gap: var(--s2);
+}
+.auth-jump-lbl {
+  grid-column: 1 / -1;
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.auth-jump-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: .7rem .8rem;
+  border-radius: var(--rad);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .2s cubic-bezier(.2, .8, .2, 1), border-color .2s ease, box-shadow .2s ease;
+}
+.auth-jump-item:hover { transform: translateY(-2px); border-color: var(--brand-soft); box-shadow: var(--sh-sm); }
+.auth-jump-ic {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: var(--brand-tint);
+  color: var(--brand);
+  transition: background-color .2s ease;
+}
+/* El [data-icon] va anidado dentro del chip: así la regla general de iconos
+   (.auth [data-icon] > svg { width:100% }) dimensiona el SVG respecto a este
+   span de 1.05rem, y no respecto al chip de 2rem. Sin pelea de especificidad. */
+.auth-jump-ic > [data-icon] { display: block; width: 1.05rem; height: 1.05rem; }
+.auth-jump-item:hover .auth-jump-ic { background: var(--brand); color: #fff; }
+.auth-jump-tx { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.auth-jump-tx b { font-size: var(--fs-sm); font-weight: 700; color: var(--ink); }
+.auth-jump-tx small {
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Notas al pie de la tarjeta ── */
+.auth-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  width: min(100%, 27rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.auth-notes li {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.auth-notes span[data-icon] { width: 1rem; height: 1rem; color: var(--brand); flex: none; }
+
+.auth-foot {
+  position: relative;
+  z-index: 1;
+  padding: var(--s5);
+  font-size: var(--fs-xs);
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+/* ── Iconos inyectados por Icons.render() (sin Tailwind aquí) ── */
+.auth [data-icon] > svg { width: 100%; height: 100%; display: block; }
+.auth .hidden, .hidden { display: none !important; }
+
+/* ── Foco visible: falta en app_theme, aquí es innegociable ── */
+.auth :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+.auth .v-input:focus-visible { outline: none; }
+
+/* ── Adaptación ── */
+@media (min-width: 64rem) {
+  .auth-stage { padding-inline: var(--s8); }
+  .auth-card { padding: var(--s7) var(--s6); }
+}
+@media (max-width: 40rem) {
+  .auth-watermark { opacity: .045; }
+  .auth-watermark-inner { width: 80vw; margin-right: -30vw; }
+  .auth-stage { padding: var(--s6) var(--s4); align-items: stretch; }
+  .auth-card { padding: var(--s5) var(--s4); border-radius: 16px; }
+  .auth-title { font-size: 1.65rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field::before, .auth-submit .auth-arrow { transition: none; }
+}
+</style>
+
+<script>
+/**
+ * AuthStage — inyecta el isotipo y dirige la coreografía de entrada.
+ *
+ * Principio de robustez: el contenido NUNCA se oculta desde CSS. Los estados
+ * iniciales se fijan con gsap.set() dentro de la rama animada, así que si el CDN
+ * de GSAP falla o el usuario pide menos movimiento, la pantalla se ve completa
+ * sin depender de que ningún script termine bien.
+ */
+(function () {
+  /* Isotipo Liverpool: 8 subtrazos, ideal para trazarlos en cascada con DrawSVG. */
+  var LIV_VIEWBOX = '172.8 116.2 229 197.1';
+  var LIV_PATH = 'M173.37 116.8c-0.6 0.7 -0.33 178.17 0.27 180.2c0.23 0.83 1.13 2.9 1.93 4.57c1.27 2.63 1.9 3.47 4.23 5.67c3.57 3.37 7.13 5.17 11.37 5.8c1.13 0.17 25.4 0.27 55.83 0.23l53.83 -0.1l0 -8.67l0 -8.67l-50.17 -0.17c-51.83 -0.17 -50.7 -0.13 -53.5 -1.47c-1.07 -0.53 -3.7 -3.2 -4.43 -4.5c-1.43 -2.5 -1.4 -0.03 -1.4 -88.23c0 -55.37 -0.13 -84.1 -0.37 -84.5c-0.3 -0.6 -0.87 -0.63 -8.77 -0.63c-6.73 0 -8.53 0.1 -8.83 0.47Z M198.53 116.87c-0.47 0.47 -0.53 8.3 -0.53 81.27c0 86.6 -0.07 82.3 1.57 85.37c0.73 1.37 2.4 3.1 3.6 3.77c2.87 1.57 1.47 1.53 50.47 1.63c30.2 0.03 46.33 -0.03 46.73 -0.27c0.6 -0.3 0.63 -0.87 0.63 -8.97l0 -8.63l-38.23 -0.13c-35.17 -0.07 -38.4 -0.13 -39.9 -0.67c-2.1 -0.73 -3.67 -1.93 -4.73 -3.63c-1.9 -3 -1.8 1.13 -1.8 -76.97c0 -49 -0.1 -72.2 -0.33 -72.67c-0.33 -0.6 -0.8 -0.63 -8.67 -0.63c-7.1 0 -8.37 0.07 -8.8 0.53Z M223.67 116.67c-0.43 0.27 -0.5 8.33 -0.6 68.73c-0.1 62.73 -0.03 68.63 0.47 70.77c0.83 3.53 2.73 5.87 5.97 7.27c1.23 0.53 3.73 0.57 36.33 0.5l35 -0.1l0 -8.83l0 -8.83l-27.33 -0.17c-30.47 -0.2 -28.37 0 -30.43 -2.5c-0.77 -0.97 -1.03 -1.73 -1.37 -3.93c-0.27 -1.97 -0.37 -19.43 -0.37 -62.6c0 -46.1 -0.1 -59.93 -0.4 -60.23c-0.5 -0.5 -16.5 -0.57 -17.27 -0.07Z M248.73 116.73c-0.57 0.57 -0.57 114.4 0 116.4c0.7 2.43 1.93 3.9 4.37 5.2c1.23 0.63 1.87 0.67 24.17 0.67c12.6 0.03 23.1 0.03 23.33 0c0.33 0 0.4 -1.87 0.33 -8.77l-0.1 -8.73l-15 -0.17c-14.87 -0.17 -15 -0.17 -16.2 -0.93c-1.37 -0.83 -2.23 -1.97 -2.67 -3.53c-0.17 -0.6 -0.3 -22.03 -0.3 -50.07c0 -43.47 -0.07 -49.1 -0.53 -49.73c-0.5 -0.73 -0.63 -0.73 -8.77 -0.73c-5.97 0 -8.33 0.1 -8.63 0.4Z M273.87 117.1c-0.73 1.1 -0.7 16 0.03 16.73c0.43 0.43 6.67 0.5 49.7 0.5c51.83 0 50.37 -0.03 53.73 1.43c3.13 1.37 5.3 5.07 5.7 9.73c0.17 1.63 0.27 39.97 0.27 85.13c0 45.17 0.13 82.27 0.3 82.43c0.13 0.13 4.17 0.23 8.93 0.2l8.63 -0.1l0.2 -3.5c0.4 -6.23 0.33 -169.13 -0.07 -172.8c-0.67 -6.37 -2.13 -9.63 -6.3 -13.83c-3.9 -3.93 -7.47 -5.67 -13 -6.37c-1.83 -0.2 -21 -0.33 -55.23 -0.33l-52.43 0l-0.47 0.77Z M274 141.33c-0.43 0.27 -0.5 1.6 -0.53 8.4c-0.03 4.47 0.07 8.37 0.23 8.67c0.3 0.53 2.73 0.6 38.57 0.7c33.2 0.07 38.4 0.17 39.4 0.6c3.37 1.43 4.43 2.5 5.63 5.57l0.7 1.77l0 72.63c0 39.93 0.1 72.83 0.2 73.13c0.17 0.47 1.3 0.53 9 0.53l8.77 0l0.2 -1.1c0.1 -0.57 0.17 -37.6 0.1 -82.23l-0.1 -81.17l-1.13 -2.1c-1.23 -2.27 -3.13 -3.9 -5.7 -4.97c-1.4 -0.57 -4.13 -0.6 -48.17 -0.67c-29.33 -0.07 -46.87 0.03 -47.17 0.23Z M273.73 166.43c-0.23 0.27 -0.33 3.2 -0.3 8.67c0.07 6.9 0.17 8.3 0.57 8.57c0.3 0.2 11.13 0.33 27.27 0.33c24 0 26.87 0.07 27.83 0.53c1.5 0.77 2.53 1.77 3.17 3.13c0.53 1.07 0.57 6.27 0.73 63.33l0.17 62.17l8.9 0.1l8.93 0.07l0.17 -0.73c0.1 -0.43 0.13 -32.03 0.1 -70.27l-0.1 -69.5l-0.77 -1.33c-1.07 -1.9 -3.37 -4.1 -5.03 -4.87c-1.4 -0.6 -2.5 -0.63 -36.37 -0.63c-28.1 0 -35 0.1 -35.27 0.43Z M274.1 190.87c-0.63 0.27 -0.63 16.9 0 17.4c0.3 0.23 5.3 0.4 15.13 0.47l14.7 0.1l1.3 1.03c0.7 0.57 1.57 1.53 1.93 2.17c0.67 1.1 0.67 1.9 0.83 51.13l0.17 50l8.83 0l8.83 0l0.1 -58.27c0.07 -56.7 0.07 -58.3 -0.57 -59.5c-0.8 -1.6 -2.17 -2.93 -3.87 -3.87c-1.33 -0.7 -1.5 -0.7 -24.17 -0.77c-12.57 -0.03 -23.03 0 -23.23 0.1Z';
+
+  /* Un <path> por subtrazo: DrawSVG puede escalonarlos y así el isotipo "se escribe". */
+  var SUBPATHS = LIV_PATH.split(/(?=M)/).map(function (d) { return d.trim(); }).filter(Boolean);
+
+  function livSVG(mode, strokeWidth) {
+    var isStroke = mode === 'stroke';
+    var body = SUBPATHS.map(function (d) {
+      return '<path d="' + d + '"' +
+        (isStroke
+          ? ' fill="none" stroke="currentColor" stroke-width="' + (strokeWidth || 2.4) + '" stroke-linejoin="round"'
+          : ' fill="currentColor"') + '/>';
+    }).join('');
+    return '<svg viewBox="' + LIV_VIEWBOX + '" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">' + body + '</svg>';
+  }
+
+  var REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function has(name) { return typeof window[name] !== 'undefined'; }
+
+  var AuthStage = {
+    /** Rellena los contenedores [data-liv] con el isotipo en el modo pedido. */
+    paint: function () {
+      document.querySelectorAll('[data-liv]').forEach(function (el) {
+        if (el.__livDone) return;
+        var mode = el.getAttribute('data-liv');
+        el.innerHTML = livSVG(mode === 'fill' ? 'fill' : 'stroke', el.getAttribute('data-liv-width'));
+        el.__livDone = true;
+      });
+    },
+
+    /**
+     * Convierte los [data-jump] en enlaces reales hacia las áreas públicas del
+     * Portal. Se les pone href de verdad (no solo onclick) para que funcionen el
+     * clic central, "abrir en pestaña nueva" y el estado de visitado; target="_top"
+     * es obligatorio porque Apps Script sirve la app dentro de un iframe.
+     * Si por lo que sea no hay URL base, se cae a AppUrl.go().
+     */
+    wireJumps: function () {
+      document.querySelectorAll('[data-jump]').forEach(function (el) {
+        var page = el.getAttribute('data-jump');
+        var url = (window.AppUrl && AppUrl.build) ? AppUrl.build(page) : null;
+        if (url) el.setAttribute('href', url);
+        el.addEventListener('click', function (e) {
+          if (el.getAttribute('href')) return;   // navegación nativa
+          e.preventDefault();
+          if (window.AppUrl) AppUrl.go(page);
+        });
+      });
+    },
+
+    /**
+     * Coreografía de entrada. Todo lo que oculta algo vive aquí dentro, de modo
+     * que sin GSAP la pantalla simplemente aparece completa.
+     */
+    play: function (opts) {
+      opts = opts || {};
+      var HAS_GSAP = has('gsap');
+      if (!HAS_GSAP || REDUCED) return;
+
+      var HAS_SPLIT = has('SplitText');
+      var HAS_DRAW = has('DrawSVGPlugin');
+      var plugins = [];
+      if (HAS_SPLIT) plugins.push(SplitText);
+      if (HAS_DRAW) plugins.push(DrawSVGPlugin);
+      if (plugins.length) gsap.registerPlugin.apply(gsap, plugins);
+
+      try {
+        var card = document.querySelector('.auth-card');
+        var reveals = gsap.utils.toArray('[data-reveal]');
+        /* El hijo, nunca el contenedor: su transform es exclusivo de GSAP. */
+        var watermark = document.querySelector('.auth-watermark-inner');
+        var markPaths = document.querySelectorAll('.auth-mark path');
+        var edge = document.querySelector('#authEdge');
+
+        /* Estados iniciales — solo ahora que sabemos que GSAP responde. */
+        gsap.set(card, { opacity: 0, y: 26, scale: .985 });
+        gsap.set(reveals, { opacity: 0, y: 18 });
+        gsap.set('.auth-jump > *', { opacity: 0, y: 12 });
+        gsap.set('.auth-notes li', { opacity: 0, y: 10 });
+        if (watermark) gsap.set(watermark, { opacity: 0 });
+
+        var tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+        /* 1 · La filigrana entra primero: escenario antes que contenido. */
+        if (watermark) {
+          var wmPaths = watermark.querySelectorAll('path');
+          if (HAS_DRAW) {
+            gsap.set(wmPaths, { drawSVG: '0%' });
+            tl.to(watermark, { opacity: 1, duration: .4 }, 0)
+              .to(wmPaths, { drawSVG: '100%', duration: 1.9, stagger: .07, ease: 'power2.inOut' }, 0);
+          } else {
+            tl.fromTo(watermark, { opacity: 0, scale: 1.04 }, { opacity: 1, scale: 1, duration: 1.1 }, 0);
+          }
+        }
+
+        /* 2 · La tarjeta aterriza. */
+        tl.to(card, { opacity: 1, y: 0, scale: 1, duration: .8, ease: 'power3.out' }, .25);
+
+        /* 3 · El filo de marca se traza de lado a lado. */
+        if (edge && HAS_DRAW) {
+          tl.from(edge, { drawSVG: '0%', duration: .7, ease: 'power2.inOut' }, .5);
+        }
+
+        /* 4 · El sello se escribe trazo a trazo y luego se rellena.
+              Se anima fillOpacity (no `fill`): GSAP no interpola la palabra clave
+              currentColor, y así el relleno hereda el color del tema. */
+        if (markPaths.length && HAS_DRAW) {
+          gsap.set(markPaths, { fillOpacity: 0, stroke: 'currentColor', strokeWidth: 9, drawSVG: '0%' });
+          tl.to(markPaths, { drawSVG: '100%', duration: .8, stagger: .045, ease: 'power2.inOut' }, .45)
+            .to(markPaths, { fillOpacity: 1, strokeWidth: 0, duration: .45, ease: 'power1.out' }, '-=.15');
+        }
+
+        /* 5 · Titular carácter a carácter, con máscara. */
+        var titleEl = document.querySelector(opts.title || '[data-split]');
+        if (titleEl && HAS_SPLIT) {
+          var split = SplitText.create(titleEl, { type: 'chars,words', mask: 'chars' });
+          tl.from(split.chars, { yPercent: 115, opacity: 0, duration: .75, stagger: .022, ease: 'power4.out' }, .72);
+        } else if (titleEl) {
+          tl.from(titleEl, { opacity: 0, y: 20, duration: .65 }, .72);
+        }
+
+        /* 6 · Bloques del formulario en cascada. */
+        tl.to(reveals, { opacity: 1, y: 0, duration: .6, stagger: .07 }, .82);
+
+        /* 7 · Los iconos de campo se dibujan al entrar. */
+        if (HAS_DRAW) {
+          tl.from('.field-ic svg path', { drawSVG: '0%', duration: .5, stagger: .07, ease: 'power2.out' }, 1.05);
+        }
+
+        /* 8 · Accesos al Portal y notas al pie, ya en segundo plano. */
+        tl.to('.auth-jump > *', { opacity: 1, y: 0, duration: .5, stagger: .07 }, 1.15);
+        tl.to('.auth-notes li', { opacity: 1, y: 0, duration: .45, stagger: .07 }, 1.32);
+
+        /* Deriva lenta de la filigrana: da vida sin pedir atención. */
+        if (watermark) {
+          gsap.to(watermark, { yPercent: -4, duration: 9, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+        }
+
+        /* Paralaje sutil con el puntero (solo ratón, nunca táctil). */
+        if (watermark && window.matchMedia('(pointer: fine)').matches) {
+          var px = gsap.quickTo(watermark, 'x', { duration: .9, ease: 'power3.out' });
+          window.addEventListener('pointermove', function (e) {
+            px((e.clientX / window.innerWidth - .5) * -26);
+          }, { passive: true });
+        }
+      } catch (err) {
+        /* Si algo se rompe a mitad, se limpian los estilos en línea que hubiera
+           dejado GSAP y todo vuelve a su estado CSS, es decir, visible.
+           clearProps por sí solo basta: fijar opacity aquí sería contradictorio. */
+        gsap.set('.auth-card, [data-reveal], .auth-jump > *, .auth-notes li, .auth-watermark-inner, .auth-mark path, #authEdge',
+                 { clearProps: 'all' });
+        console.error('Coreografía de acceso degradada:', err);
+      }
+    },
+
+    /** Indicador de carga: el isotipo se dibuja y se borra en bucle. */
+    startLoader: function (el) {
+      if (!el || !has('gsap') || REDUCED) return null;
+      var paths = el.querySelectorAll('path');
+      if (!paths.length) return null;
+      if (!has('DrawSVGPlugin')) {
+        return gsap.to(el, { opacity: .5, duration: .8, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+      }
+      var tl = gsap.timeline({ repeat: -1 });
+      tl.fromTo(paths, { drawSVG: '0% 0%' }, { drawSVG: '0% 100%', duration: .9, stagger: .04, ease: 'power1.inOut' })
+        .to(paths, { drawSVG: '100% 100%', duration: .9, stagger: .04, ease: 'power1.inOut' }, '+=.2');
+      return tl;
+    },
+
+    stopLoader: function (tween, el) {
+      if (tween) tween.kill();
+      if (el && has('gsap')) gsap.set(el.querySelectorAll('path'), { clearProps: 'all' });
+    },
+
+    /**
+     * Medidor de contraseña: 4 segmentos que se llenan con transform (no width),
+     * para que la animación no dispare layout.
+     */
+    meter: function (fillEls, labelEl, score, text, color) {
+      fillEls.forEach(function (fill, i) {
+        var on = i < score;
+        fill.style.backgroundColor = color;
+        if (has('gsap') && !REDUCED) {
+          gsap.to(fill, { scaleX: on ? 1 : 0, duration: .32, ease: 'power2.out', delay: on ? i * .04 : 0 });
+        } else {
+          fill.style.transform = on ? 'scaleX(1)' : 'scaleX(0)';
+        }
+      });
+      if (labelEl) {
+        labelEl.textContent = text;
+        labelEl.style.color = score ? color : 'var(--ink-faint)';
+      }
+    },
+
+    /** Éxito: el sello del cargador se convierte en una marca de verificación. */
+    success: function (el, text, labelEl) {
+      if (labelEl) labelEl.textContent = text;
+      if (!el) return;
+      el.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path id="authOk" d="M4.5 12.5l5 5 9.5-10"/></svg>';
+      el.style.color = 'var(--ok)';
+      if (!has('gsap') || REDUCED) return;
+      if (has('DrawSVGPlugin')) {
+        gsap.from('#authOk', { drawSVG: '0%', duration: .5, ease: 'power2.out' });
+      }
+      gsap.fromTo(el, { scale: .7 }, { scale: 1, duration: .5, ease: 'back.out(2.2)' });
+    }
+  };
+
+  window.AuthStage = AuthStage;
+
+  /* El isotipo se pinta cuanto antes para que el trazado empiece con la escena. */
+  document.addEventListener('DOMContentLoaded', function () { AuthStage.paint(); });
+})();
+</script>
