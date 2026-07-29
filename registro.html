@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Cuenta - Sistema de Cotizaciones Ventel</title>
+    <!-- Mismo escenario y mismas preferencias de vista que el login: la transición
+         entre ambas pantallas no rompe la continuidad visual. -->
+    <?!= include('ViewPrefsPartial'); ?>
+    <?!= include('app_theme'); ?>
+    <?!= include('app_auth'); ?>
+</head>
+<body>
+    <div class="auth">
+        <div class="auth-watermark" aria-hidden="true">
+            <div class="auth-watermark-inner" data-liv="stroke" data-liv-width="0.8"></div>
+        </div>
+
+        <main class="auth-stage">
+            <div class="auth-card">
+                <svg class="auth-edge" viewBox="0 0 400 3" preserveAspectRatio="none" aria-hidden="true">
+                    <path id="authEdge" d="M0 1.5 H400" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+
+                <div class="auth-lockup">
+                    <span class="auth-mark" data-liv="fill" aria-hidden="true"></span>
+                    <span class="auth-wordmark">Ventel<small>Sistema de cotizaciones</small></span>
+                </div>
+
+                <h1 class="auth-title" data-split>Crea tu cuenta</h1>
+                <p class="auth-sub" data-reveal>
+                    ¿Ya tienes una?
+                    <button type="button" class="auth-link" id="loginLink">Inicia sesión</button>
+                </p>
+
+                <div id="formContainer">
+                    <div id="message-container" role="status" aria-live="polite"></div>
+
+                    <!-- Sin novalidate: se conserva la validación nativa de los campos. -->
+                    <form id="registerForm" class="auth-form">
+                        <div class="auth-row" data-reveal>
+                            <label for="name" class="v-label">Nombre completo</label>
+                            <div class="field">
+                                <span class="field-ic" data-icon="user" aria-hidden="true"></span>
+                                <input id="name" type="text" autocomplete="name" required
+                                       placeholder="Tu nombre y apellido" class="v-input">
+                            </div>
+                        </div>
+
+                        <div class="auth-row" data-reveal>
+                            <label for="email" class="v-label">Correo electrónico</label>
+                            <div class="field">
+                                <span class="field-ic" data-icon="mail" aria-hidden="true"></span>
+                                <input id="email" type="email" autocomplete="email" required
+                                       placeholder="tu.usuario@liverpool.com.mx" class="v-input"
+                                       aria-describedby="emailError">
+                            </div>
+                            <p id="emailError" class="auth-error"></p>
+                        </div>
+
+                        <div class="auth-row" data-reveal>
+                            <label for="password" class="v-label">Contraseña</label>
+                            <div class="field">
+                                <span class="field-ic" data-icon="lock" aria-hidden="true"></span>
+                                <input id="password" type="password" autocomplete="new-password" required minlength="6"
+                                       placeholder="Mínimo 6 caracteres" class="v-input" data-has-toggle
+                                       aria-describedby="strengthLabel passwordError">
+                                <button type="button" id="togglePassword" class="field-toggle"
+                                        aria-label="Mostrar contraseña" aria-pressed="false">
+                                    <span id="toggleIcon" data-icon="eye"></span>
+                                </button>
+                            </div>
+                            <div class="auth-meter" aria-hidden="true">
+                                <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
+                            </div>
+                            <p id="strengthLabel" class="auth-meter-label" aria-live="polite"></p>
+                            <p id="passwordError" class="auth-error">La contraseña debe tener al menos 6 caracteres.</p>
+                        </div>
+
+                        <div class="auth-row" data-reveal>
+                            <label for="confirmPassword" class="v-label">Confirmar contraseña</label>
+                            <div class="field">
+                                <span class="field-ic" data-icon="lock" aria-hidden="true"></span>
+                                <input id="confirmPassword" type="password" autocomplete="new-password" required
+                                       placeholder="Repite tu contraseña" class="v-input"
+                                       aria-describedby="confirmPasswordError">
+                            </div>
+                            <p id="confirmPasswordError" class="auth-error">Las contraseñas no coinciden.</p>
+                        </div>
+
+                        <div data-reveal>
+                            <button type="submit" id="registerButton" class="v-btn v-btn-primary auth-submit">
+                                Crear cuenta
+                                <svg class="auth-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M4 12h15M13 6l6 6-6 6"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="loadingContainer" class="auth-loading hidden">
+                    <div class="auth-loader" id="loadingIcon" data-liv="stroke" data-liv-width="5" aria-hidden="true"></div>
+                    <h2 id="loadingText">Creando tu cuenta…</h2>
+                    <p>Esto tomará un momento.</p>
+                </div>
+            </div>
+
+            <!-- Áreas públicas: no requieren sesión, así que se ofrecen antes de pedirla. -->
+            <nav class="auth-jump" aria-label="Ir a otras áreas de Ventel">
+                <span class="auth-jump-lbl">¿Solo vienes a consultar?</span>
+                <a class="auth-jump-item" data-jump="portal" target="_top">
+                    <span class="auth-jump-ic"><span data-icon="globe" aria-hidden="true"></span></span>
+                    <span class="auth-jump-tx"><b>Portal Ventel</b><small>Información y procesos</small></span>
+                </a>
+                <a class="auth-jump-item" data-jump="promociones" target="_top">
+                    <span class="auth-jump-ic"><span data-icon="star" aria-hidden="true"></span></span>
+                    <span class="auth-jump-tx"><b>Monitor Promos</b><small>Vigencias y precios</small></span>
+                </a>
+            </nav>
+
+            <ul class="auth-notes">
+                <li><span data-icon="bolt" aria-hidden="true"></span> Rápido y simple</li>
+                <li><span data-icon="shield" aria-hidden="true"></span> Datos seguros</li>
+            </ul>
+        </main>
+
+        <p class="auth-foot">Sistema de cotizaciones Ventel · Liverpool</p>
+    </div>
+
+    <script>
+        window.__APP__ = { baseUrl: <?!= JSON.stringify(baseUrl) ?> };
+    </script>
+    <?!= include('app_core'); ?>
+    <?!= include('app_icons'); ?>
+    <?!= include('app_motion'); ?>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/SplitText.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/DrawSVGPlugin.min.js"></script>
+    <script>
+        const formContainer = document.getElementById('formContainer');
+        const loadingContainer = document.getElementById('loadingContainer');
+        const loadingIcon = document.getElementById('loadingIcon');
+        const loadingText = document.getElementById('loadingText');
+        const registerForm = document.getElementById('registerForm');
+        const nameInput = document.getElementById('name');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const emailError = document.getElementById('emailError');
+        const passwordError = document.getElementById('passwordError');
+        const confirmPasswordError = document.getElementById('confirmPasswordError');
+        const messageContainer = document.getElementById('message-container');
+        const loginLink = document.getElementById('loginLink');
+        const togglePassword = document.getElementById('togglePassword');
+        const toggleIcon = document.getElementById('toggleIcon');
+        const meterFills = Array.from(document.querySelectorAll('.auth-meter i > b'));
+        const strengthLabel = document.getElementById('strengthLabel');
+        let loaderTween = null;
+
+        const showMessage = (text, isError = true) => {
+            messageContainer.textContent = text;
+            messageContainer.classList.toggle('ok', !isError);
+            if (text && isError) AppMotion.shake(messageContainer);
+        };
+
+        const hideAllErrors = () => {
+            [emailError, passwordError, confirmPasswordError].forEach(el => el.classList.remove('show'));
+            [emailInput, passwordInput, confirmPasswordInput].forEach(el => el.removeAttribute('aria-invalid'));
+            showMessage('');
+        };
+
+        // Indicador orientativo de robustez de la contraseña.
+        const LEVELS = [
+            { t: '', c: 'var(--ink-faint)' },
+            { t: 'Débil', c: 'var(--alert)' },
+            { t: 'Regular', c: 'var(--warn)' },
+            { t: 'Buena', c: 'var(--ok)' },
+            { t: 'Excelente', c: 'var(--ok)' }
+        ];
+
+        passwordInput.addEventListener('input', () => {
+            const v = passwordInput.value;
+            let score = 0;
+            if (v.length >= 6) score++;
+            if (v.length >= 10) score++;
+            if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
+            if (/\d/.test(v) || /[^A-Za-z0-9]/.test(v)) score++;
+            if (!v) score = 0;
+            const lvl = LEVELS[score];
+            AuthStage.meter(meterFills, strengthLabel, score, lvl.t, lvl.c);
+            if (v.length >= 6) {
+                passwordError.classList.remove('show');
+                passwordInput.removeAttribute('aria-invalid');
+            }
+        });
+
+        togglePassword.addEventListener('click', () => {
+            const willShow = passwordInput.type === 'password';
+            passwordInput.type = willShow ? 'text' : 'password';
+            toggleIcon.innerHTML = Icons.svg(willShow ? 'eye-off' : 'eye');
+            togglePassword.setAttribute('aria-pressed', String(willShow));
+            togglePassword.setAttribute('aria-label', willShow ? 'Ocultar contraseña' : 'Mostrar contraseña');
+            AppMotion.pop(togglePassword);
+        });
+
+        const showLoadingState = () => AppMotion.swap(formContainer, loadingContainer, () => {
+            loaderTween = AuthStage.startLoader(loadingIcon);
+        });
+
+        const hideLoadingState = () => {
+            AuthStage.stopLoader(loaderTween, loadingIcon);
+            loaderTween = null;
+            loadingIcon.__livDone = false;
+            loadingIcon.style.color = '';
+            loadingText.textContent = 'Creando tu cuenta…';
+            AuthStage.paint();
+            AppMotion.swap(loadingContainer, formContainer);
+        };
+
+        const showSuccessStateAndRedirect = () => {
+            AuthStage.stopLoader(loaderTween, loadingIcon);
+            loaderTween = null;
+            AuthStage.success(loadingIcon, '¡Cuenta creada! Redirigiendo…', loadingText);
+            setTimeout(() => {
+                if (!AppUrl.go('login')) {
+                    hideLoadingState();
+                    showMessage('No se pudo determinar la URL de la aplicación. Recarga e intenta de nuevo.');
+                }
+            }, 1300);
+        };
+
+        registerForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            hideAllErrors();
+
+            let firstInvalid = null;
+            if (passwordInput.value.length < 6) {
+                passwordError.classList.add('show');
+                passwordInput.setAttribute('aria-invalid', 'true');
+                AppMotion.shake(passwordInput.parentElement);
+                firstInvalid = firstInvalid || passwordInput;
+            }
+            if (passwordInput.value !== confirmPasswordInput.value) {
+                confirmPasswordError.classList.add('show');
+                confirmPasswordInput.setAttribute('aria-invalid', 'true');
+                AppMotion.shake(confirmPasswordInput.parentElement);
+                firstInvalid = firstInvalid || confirmPasswordInput;
+            }
+            if (firstInvalid) { firstInvalid.focus(); return; }
+
+            showLoadingState();
+
+            google.script.run
+                .withSuccessHandler(response => {
+                    if (response.success) {
+                        showSuccessStateAndRedirect();
+                    } else {
+                        hideLoadingState();
+                        showMessage(response.message || 'Ocurrió un error.');
+                    }
+                })
+                .withFailureHandler(error => {
+                    hideLoadingState();
+                    showMessage('Error de comunicación: ' + error.message);
+                })
+                .registerUser(nameInput.value, emailInput.value, passwordInput.value);
+        });
+
+        [emailInput, confirmPasswordInput].forEach(input => {
+            input.addEventListener('input', () => hideAllErrors());
+        });
+
+        loginLink.addEventListener('click', () => AppUrl.go('login'));
+
+        // El script va al final del <body>: el DOM ya está listo, se arranca directo.
+        (function () {
+            Icons.render();
+            AuthStage.paint();
+            AuthStage.wireJumps();
+            AuthStage.play({ title: '[data-split]' });
+        })();
+    </script>
+</body>
+</html>
