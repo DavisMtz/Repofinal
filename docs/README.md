@@ -45,6 +45,8 @@ clientes y el panel de supervisión.
 | [Visión y alcance](proyecto/VISION-Y-ALCANCE.md) | Qué problema resuelve, qué sí hace y qué no. |
 | [Equipo y roles](proyecto/EQUIPO-Y-ROLES.md) | Quién participa y de qué responde cada quien. |
 | [Impacto operativo](proyecto/IMPACTO-OPERATIVO.md) | Cómo se mide el ahorro en horas. |
+| [Oportunidades de mejora](proyecto/OPORTUNIDADES-DE-MEJORA.md) | Qué falta en flujos, interacción y experiencia de uso, priorizado. |
+| [Catálogo de métricas](proyecto/CATALOGO-DE-METRICAS.md) | Todo lo que se puede medir, qué cuesta cada nivel y qué lo frena. |
 | [Plan de adopción](operacion/PLAN-DE-ADOPCION.md) | Las fases de liberación, del grupo semilla al resto. |
 | [Runbook](operacion/RUNBOOK.md) | Qué hacer cuando algo se rompe. |
 | [Seguridad](operacion/SEGURIDAD.md) | Riesgos abiertos y qué falta antes de producción. |

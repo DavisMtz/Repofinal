@@ -38,6 +38,11 @@ seguridad cerrados. Mientras tanto se mantiene en `0.x`. Ver [Seguridad](../oper
 - Siete registros de decisión de arquitectura (ADR) con el contexto y las consecuencias de las
   decisiones estructurales del proyecto.
 - `EQUIPO-Y-ROLES.md` con los responsables del proyecto y la matriz de responsabilidades.
+- `OPORTUNIDADES-DE-MEJORA.md`: revisión de experiencia de usuario sobre los cuatro flujos del
+  sistema, con recomendaciones priorizadas por relación valor/esfuerzo y las que conviene descartar.
+- `CATALOGO-DE-METRICAS.md`: inventario de 91 métricas en cuatro niveles según lo que cuesta
+  llegar al dato, los nueve frenos técnicos que lo limitan y la arquitectura de medición que los
+  resuelve (hoja `Eventos`, escritura por lote y consolidado nocturno).
 
 ---
 

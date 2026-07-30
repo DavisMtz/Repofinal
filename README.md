@@ -33,6 +33,8 @@ URL con la cuenta que ya tiene.
 | **Desplegar** | [Guía de despliegue](docs/tecnico/GUIA-DE-DESPLIEGUE.md) |
 | **Resolver una falla** | [Runbook](docs/operacion/RUNBOOK.md) |
 | **Decidir sobre el proyecto** | [Visión y alcance](docs/proyecto/VISION-Y-ALCANCE.md) |
+| **Priorizar lo que sigue** | [Oportunidades de mejora](docs/proyecto/OPORTUNIDADES-DE-MEJORA.md) |
+| **Saber qué se puede medir** | [Catálogo de métricas](docs/proyecto/CATALOGO-DE-METRICAS.md) |
 | **Contribuir** | [Guía de contribución](docs/contribuir/GUIA-DE-CONTRIBUCION.md) |
 | **Entender por qué algo es así** | [Decisiones de arquitectura](docs/decisiones/README.md) |
 
@@ -64,7 +66,7 @@ Repofinal/
 ├── appsscript.json            ← configuración del proyecto de Apps Script
 │
 ├── docs/                      ← 📚 toda la documentación
-│   ├── proyecto/              ·  visión, equipo, impacto, glosario
+│   ├── proyecto/              ·  visión, equipo, impacto, oportunidades, métricas, glosario
 │   ├── guias/                 ·  uso, supervisión, anuncios, FAQ
 │   ├── tecnico/               ·  arquitectura, datos, funciones, diseño, despliegue
 │   ├── operacion/             ·  runbook, adopción, seguridad
