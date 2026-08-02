@@ -176,21 +176,20 @@
             }
             
             /* Hace visible únicamente el contenedor de la vista previa y su contenido.
-               Se incluye el CCL para que Ctrl+P imprima la vista que está en pantalla;
-               el PDF oficial no sale de aquí, lo exporta Google Sheets. */
-            #pdf-preview-content, #pdf-preview-content *,
-            #ccl-preview-content, #ccl-preview-content * {
+               Ctrl+P imprime la vista que está en pantalla; el PDF oficial no sale de
+               aquí, lo exporta Google Sheets. Las reglas equivalentes del formato CCL
+               viven en app_ccl.html, junto con su marcado. */
+            #pdf-preview-content, #pdf-preview-content * {
                 visibility: visible;
             }
 
             /* Un contenedor oculto no debe reaparecer al imprimir */
-            #pdf-preview-content.hidden, #pdf-preview-content.hidden *,
-            #ccl-preview-content.hidden, #ccl-preview-content.hidden * {
+            #pdf-preview-content.hidden, #pdf-preview-content.hidden * {
                 visibility: hidden;
             }
 
             /* Posiciona el contenedor para que ocupe toda la página de impresión */
-            #pdf-preview-content, #ccl-preview-content {
+            #pdf-preview-content {
                 position: absolute;
                 left: 0;
                 top: 0;
@@ -200,8 +199,6 @@
                 font-size: 10pt; /* Ajuste opcional del tamaño de fuente para impresión */
                 border: none;
             }
-
-            #ccl-preview-content { box-shadow: none; }
 
             /* Ajustes finos al contenedor para eliminar efectos visuales no deseados en la impresión */
             .container-pdf {
@@ -236,85 +233,7 @@
                 display: none !important;
             }
         }
-        /* --- VISTA PREVIA DEL FORMATO CCL ---
-           Replica la plantilla de Sheets: horizontal, tabla de 12 columnas y bloques
-           de vendedor/cliente. Es una representación en pantalla, no el PDF final:
-           el PDF lo exporta Google Sheets desde la hoja real. */
-        .ccl-sheet {
-            width: 100%;
-            max-width: 1100px;
-            background: #fff;
-            padding: 28px 32px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            font-size: 11px;
-            color: #222;
-        }
-        .ccl-header {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            border-bottom: 2px solid #E10098;
-            padding-bottom: 12px;
-        }
-        .ccl-logo { height: 38px; width: auto; }
-        .ccl-header-text { flex: 1; text-align: center; }
-        .ccl-contacto { font-size: 10px; color: #555; margin: 0 0 4px 0; }
-        .ccl-titulo { font-size: 15px; font-weight: 700; color: #E10098; margin: 0; letter-spacing: 0.5px; }
-        .ccl-fecha { font-size: 10px; color: #555; margin: 4px 0 0 0; }
-        .ccl-entrega { text-align: center; margin: 14px 0 18px 0; font-size: 11px; }
-
-        .ccl-partes { display: flex; gap: 16px; margin-bottom: 18px; }
-        .ccl-parte { flex: 1; border: 1px solid #d9d9d9; border-radius: 4px; overflow: hidden; }
-        .ccl-parte-titulo {
-            background: #E10098;
-            color: #fff;
-            font-weight: 700;
-            text-align: center;
-            padding: 5px;
-            letter-spacing: 1px;
-            font-size: 11px;
-        }
-        .ccl-parte-cuerpo { padding: 10px 12px; }
-        .ccl-parte-cuerpo p { margin: 2px 0; line-height: 1.45; }
-        .ccl-parte-nombre { font-weight: 700; font-size: 12px; }
-
-        .ccl-tabla { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 10px; }
-        .ccl-tabla th {
-            background: #f1f1f1;
-            border: 1px solid #bfbfbf;
-            padding: 6px 4px;
-            font-weight: 700;
-            text-align: center;
-            line-height: 1.25;
-        }
-        .ccl-tabla td {
-            border: 1px solid #bfbfbf;
-            padding: 6px 4px;
-            text-align: right;
-            vertical-align: middle;
-        }
-        .ccl-tabla td.ccl-txt { text-align: left; }
-        .ccl-tabla td.ccl-cen { text-align: center; }
-        .ccl-col-desc { width: 26%; }
-
-        .ccl-pie { display: flex; gap: 16px; align-items: flex-start; }
-        .ccl-info { flex: 1; border: 1px solid #d9d9d9; border-radius: 4px; overflow: hidden; }
-        .ccl-info-titulo {
-            background: #E10098;
-            color: #fff;
-            font-weight: 700;
-            text-align: center;
-            padding: 5px;
-            letter-spacing: 1px;
-            font-size: 11px;
-        }
-        .ccl-info p { margin: 0; padding: 10px 12px; }
-        .ccl-totales { width: 38%; border-collapse: collapse; }
-        .ccl-totales td { border: 1px solid #bfbfbf; padding: 6px 10px; }
-        .ccl-totales td:first-child { font-weight: 700; letter-spacing: 1px; background: #f1f1f1; }
-        .ccl-totales td:last-child { text-align: right; }
-        .ccl-total-final td { background: #fce4f3; color: #E10098; font-weight: 700; font-size: 12px; }
+        /* Los estilos del formato CCL viven en app_ccl.html, junto a su marcado. */
 
         /* Define el tamaño de página y elimina los márgenes del navegador */
         @page {
@@ -442,76 +361,10 @@
 
     <!--
         VISTA PREVIA DEL FORMATO CCL
-        Réplica en pantalla de la plantilla de Google Sheets. Los números se calculan con
-        las mismas fórmulas de la hoja para que lo que se ve aquí sea lo que sale en el PDF.
+        Marcado, estilos y cálculo compartidos con consulta_cotizacion.html.
+        Ver app_ccl.html (define #ccl-preview-content y populateCclPreview).
     -->
-    <div class="ccl-sheet hidden" id="ccl-preview-content">
-        <div class="ccl-header">
-            <img class="ccl-logo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Liverpool_logo.svg/1280px-Liverpool_logo.svg.png" alt="Liverpool">
-            <div class="ccl-header-text">
-                <p class="ccl-contacto">Centro de Contacto Liverpool (CCL) Ventas por Teléfono 55 52 62 99 99 Opción 3</p>
-                <h1 class="ccl-titulo">C O T I Z A C I Ó N&nbsp;&nbsp;&nbsp;V E N T A S&nbsp;&nbsp;&nbsp;A&nbsp;&nbsp;&nbsp;D I S T A N C I A</h1>
-                <p class="ccl-fecha" id="ccl-fecha"></p>
-            </div>
-        </div>
-
-        <p class="ccl-entrega">Por medio de la presente, hago entrega de la cotizacion solicitada.</p>
-
-        <div class="ccl-partes">
-            <div class="ccl-parte">
-                <div class="ccl-parte-titulo">V E N D E D O R</div>
-                <div class="ccl-parte-cuerpo">
-                    <p class="ccl-parte-nombre" id="ccl-asesorNombre"></p>
-                    <p>Asesor de Ventas por Teléfono e Internet</p>
-                    <p>postventaomnicanal@liverpool.com.mx</p>
-                    <p id="ccl-asesorTelefono">55-52-62-99-99 / Pregunte por su asesor</p>
-                </div>
-            </div>
-            <div class="ccl-parte">
-                <div class="ccl-parte-titulo">C L I E N T E</div>
-                <div class="ccl-parte-cuerpo">
-                    <p class="ccl-parte-nombre" id="ccl-clienteNombre"></p>
-                    <p id="ccl-clienteEmail"></p>
-                    <p id="ccl-clienteTelefono"></p>
-                    <p id="ccl-clienteObservacion"></p>
-                </div>
-            </div>
-        </div>
-
-        <table class="ccl-tabla">
-            <thead>
-                <tr>
-                    <th>Sku</th>
-                    <th>Cantidad</th>
-                    <th class="ccl-col-desc">Descripción</th>
-                    <th>Precio Unitario</th>
-                    <th>Precio por volumen</th>
-                    <th>Descuento</th>
-                    <th>Precio con descuento</th>
-                    <th>Subtotal</th>
-                    <th>IVA</th>
-                    <th>Descuento Adicional</th>
-                    <th>% Descuento Adicional</th>
-                    <th>Total</th>
-                </tr>
-            </thead>
-            <tbody id="ccl-productos-tbody"></tbody>
-        </table>
-
-        <div class="ccl-pie">
-            <div class="ccl-info">
-                <div class="ccl-info-titulo">I N F O R M A C I Ó N&nbsp;&nbsp;&nbsp;A D I C I O N A L</div>
-                <p>Disponibilidad, precios y promociones sujetas a cambios sin previo aviso.</p>
-            </div>
-            <table class="ccl-totales">
-                <tbody>
-                    <tr><td>S U B T O T A L</td><td id="ccl-subtotal"></td></tr>
-                    <tr><td>I V A</td><td id="ccl-iva"></td></tr>
-                    <tr class="ccl-total-final"><td>T O T A L</td><td id="ccl-total"></td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+    <?!= include('app_ccl'); ?>
 
     <div id="redirect-overlay" class="hidden">
         <div class="modern-spinner"></div>
@@ -688,116 +541,8 @@
             URL.revokeObjectURL(blobUrl);
         }
 
-        /**
-         * Calcula una fila del formato CCL con las mismas fórmulas que la plantilla de Sheets:
-         *   I = H*B          (precio por volumen)
-         *   K = I-(I*J)      (precio con descuento)
-         *   P = K-(O*K)      (total)
-         *   L = IF(N="NO", K/1.16, P/1.16)   (subtotal sin IVA)
-         *   M = base - L                      (IVA)
-         * Debe seguir igual que buildCclProductRow_ en Formatos.gs: si una cambia, la otra también.
-         */
-        function computeCclRow(p) {
-            const quantity = parseInt(p.quantity) || 0;
-            const unitPrice = parseFloat(p.unitPrice) || 0;
-            const costPaymentUnique = parseFloat(p.costPaymentUnique) || 0;
-            const priceVolume = unitPrice * quantity;
-
-            let discountFraction = (parseFloat(p.discountPublicPercent) || 0) / 100;
-            let additionalApplied = p.additionalDiscountApplied === 'Si' ? 'Si' : 'No';
-            let additionalFraction = (parseFloat(p.additionalDiscountPercent) || 0) / 100;
-
-            // El pago único no existe en el CCL: se traduce al descuento equivalente.
-            // Si el asesor marcó descuento ADICIONAL, se conserva en su columna (O) en
-            // lugar de pisarlo como descuento público (J). Igual que buildCclProductRow_.
-            if (costPaymentUnique > 0 && priceVolume > 0) {
-                if (additionalApplied === 'Si') {
-                    const priceWithPublic = priceVolume * (1 - discountFraction);
-                    additionalFraction = priceWithPublic > 0
-                        ? Math.min(1, Math.max(0, 1 - (costPaymentUnique / priceWithPublic)))
-                        : 0;
-                } else {
-                    discountFraction = Math.max(0, 1 - (costPaymentUnique / priceVolume));
-                    additionalFraction = 0;
-                }
-            }
-
-            const priceWithDiscount = priceVolume - (priceVolume * discountFraction);
-            const total = priceWithDiscount - (additionalFraction * priceWithDiscount);
-            const base = additionalApplied === 'No' ? priceWithDiscount : total;
-            const subtotal = base / 1.16;
-
-            return {
-                sku: p.sku || '',
-                description: p.description || '',
-                quantity: quantity,
-                unitPrice: unitPrice,
-                priceVolume: priceVolume,
-                discountFraction: discountFraction,
-                priceWithDiscount: priceWithDiscount,
-                subtotal: subtotal,
-                vat: base - subtotal,
-                additionalApplied: additionalApplied,
-                additionalFraction: additionalFraction,
-                total: total
-            };
-        }
-
-        function formatPercentJS(fraction) {
-            return (fraction * 100).toFixed(2) + '%';
-        }
-
-        /**
-         * Llena la vista previa con la estructura del formato CCL.
-         */
-        function populateCclPreview(data) {
-            const fecha = new Date(data.timestamp || Date.now());
-            document.getElementById('ccl-fecha').textContent =
-                fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' }) +
-                '   |   Folio: ' + (data.folio || 'NUEVO');
-
-            document.getElementById('ccl-asesorNombre').textContent = data.advisorName || 'N/A';
-            document.getElementById('ccl-asesorTelefono').textContent =
-                data.advisorExt ? `55-52-62-99-99 / Extensión: ${data.advisorExt}` : '55-52-62-99-99 / Pregunte por su asesor';
-
-            document.getElementById('ccl-clienteNombre').textContent = 'Dirigida a: ' + (data.clientName || 'Cliente');
-            document.getElementById('ccl-clienteEmail').textContent = 'Correo: ' + (data.clientEmail || '');
-            document.getElementById('ccl-clienteTelefono').textContent = 'Teléfono: ' + (data.clientPhone || '');
-            document.getElementById('ccl-clienteObservacion').textContent = 'Observación: ' + (data.observations || '');
-
-            const tbody = document.getElementById('ccl-productos-tbody');
-            tbody.innerHTML = '';
-
-            let sumSubtotal = 0, sumVat = 0, sumTotal = 0;
-
-            (data.products || []).forEach(p => {
-                const r = computeCclRow(p);
-                sumSubtotal += r.subtotal;
-                sumVat += r.vat;
-                sumTotal += r.total;
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="ccl-txt">${r.sku}</td>
-                    <td class="ccl-cen">${r.quantity}</td>
-                    <td class="ccl-txt">${r.description}</td>
-                    <td>${formatCurrencyJS(r.unitPrice)}</td>
-                    <td>${formatCurrencyJS(r.priceVolume)}</td>
-                    <td>${formatPercentJS(r.discountFraction)}</td>
-                    <td>${formatCurrencyJS(r.priceWithDiscount)}</td>
-                    <td>${formatCurrencyJS(r.subtotal)}</td>
-                    <td>${formatCurrencyJS(r.vat)}</td>
-                    <td class="ccl-cen">${r.additionalApplied}</td>
-                    <td>${formatPercentJS(r.additionalFraction)}</td>
-                    <td>${formatCurrencyJS(r.total)}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            document.getElementById('ccl-subtotal').textContent = formatCurrencyJS(sumSubtotal);
-            document.getElementById('ccl-iva').textContent = formatCurrencyJS(sumVat);
-            document.getElementById('ccl-total').textContent = formatCurrencyJS(sumTotal);
-        }
+        /* computeCclRow / formatPercentJS / populateCclPreview viven en app_ccl.html
+           (incluido más arriba, junto al marcado del formato CCL). */
 
         /**
          * Muestra la vista previa que corresponde al formato elegido.

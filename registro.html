@@ -34,6 +34,16 @@
                 </p>
 
                 <div id="formContainer">
+                    <!-- El alta ya no es un solo envío: hay que confirmar el correo. -->
+                    <ol class="auth-steps" id="pasos" aria-label="Progreso del registro">
+                        <li class="is-on" aria-current="step">
+                            <span class="auth-step-dot">1</span><span class="auth-step-tx">Tus datos</span>
+                        </li>
+                        <li>
+                            <span class="auth-step-dot">2</span><span class="auth-step-tx">Confirma tu correo</span>
+                        </li>
+                    </ol>
+
                     <div id="message-container" role="status" aria-live="polite"></div>
 
                     <!-- Sin novalidate: se conserva la validación nativa de los campos. -->
@@ -43,8 +53,10 @@
                             <div class="field">
                                 <span class="field-ic" data-icon="user" aria-hidden="true"></span>
                                 <input id="name" type="text" autocomplete="name" required
-                                       placeholder="Tu nombre y apellido" class="v-input">
+                                       placeholder="Tu nombre y apellido" class="v-input"
+                                       aria-describedby="nameError">
                             </div>
+                            <p id="nameError" class="auth-error"></p>
                         </div>
 
                         <div class="auth-row" data-reveal>
@@ -53,8 +65,14 @@
                                 <span class="field-ic" data-icon="mail" aria-hidden="true"></span>
                                 <input id="email" type="email" autocomplete="email" required
                                        placeholder="tu.usuario@liverpool.com.mx" class="v-input"
-                                       aria-describedby="emailError">
+                                       aria-describedby="emailHelp emailError">
                             </div>
+                            <!-- La regla la impone el servidor (propiedad CUENTAS_DOMINIO en
+                                 Cuentas.gs). Si algún día se cambia ese dominio, hay que
+                                 corregir también este texto. -->
+                            <p id="emailHelp" class="auth-help">
+                                Debe ser tu correo corporativo <b>@liverpool.com.mx</b>. Ahí te llegará el código de confirmación.
+                            </p>
                             <p id="emailError" class="auth-error"></p>
                         </div>
 
@@ -90,20 +108,57 @@
 
                         <div data-reveal>
                             <button type="submit" id="registerButton" class="v-btn v-btn-primary auth-submit">
-                                Crear cuenta
+                                Continuar
                                 <svg class="auth-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <path d="M4 12h15M13 6l6 6-6 6"/>
                                 </svg>
                             </button>
                         </div>
+
+                        <p class="auth-meta" data-reveal>
+                            <span data-icon="shield" aria-hidden="true"></span>
+                            <span>La cuenta se crea cuando confirmes el código que te enviemos.</span>
+                        </p>
+                    </form>
+
+                    <!-- ── Paso 2: confirmar el correo ── -->
+                    <form id="verifyForm" class="auth-form hidden">
+                        <button type="button" class="auth-back" id="backToData">
+                            <span data-icon="arrow-left" aria-hidden="true"></span> Corregir mis datos
+                        </button>
+
+                        <p class="auth-hint">
+                            <span data-icon="mail" aria-hidden="true"></span>
+                            <span>Enviamos un código de 6 dígitos a <b id="maskedEmail">tu correo</b>.
+                                  Escríbelo para crear tu cuenta.</span>
+                        </p>
+
+                        <div class="auth-row">
+                            <label class="v-label" for="otpFirst">Código de confirmación</label>
+                            <div id="otpBox" aria-describedby="otpError"></div>
+                            <p id="otpError" class="auth-error"></p>
+                        </div>
+
+                        <div>
+                            <button type="submit" id="verifyButton" class="v-btn v-btn-primary auth-submit">
+                                Crear mi cuenta
+                            </button>
+                        </div>
+
+                        <p class="auth-meta">
+                            <span data-icon="clock" aria-hidden="true"></span>
+                            <span>Caduca en <span class="auth-count" id="expiryCount">10:00</span></span>
+                            <span class="auth-meta-sep"></span>
+                            <button type="button" class="auth-link" id="resendBtn" disabled>Reenviar código</button>
+                        </p>
                     </form>
                 </div>
 
                 <div id="loadingContainer" class="auth-loading hidden">
                     <div class="auth-loader" id="loadingIcon" data-liv="stroke" data-liv-width="5" aria-hidden="true"></div>
                     <h2 id="loadingText">Creando tu cuenta…</h2>
-                    <p>Esto tomará un momento.</p>
+                    <p id="loadingSub">Esto tomará un momento.</p>
                 </div>
             </div>
 
@@ -122,7 +177,7 @@
 
             <ul class="auth-notes">
                 <li><span data-icon="bolt" aria-hidden="true"></span> Rápido y simple</li>
-                <li><span data-icon="shield" aria-hidden="true"></span> Datos seguros</li>
+                <li><span data-icon="shield" aria-hidden="true"></span> Correo verificado</li>
             </ul>
         </main>
 
@@ -138,15 +193,29 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/SplitText.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/DrawSVGPlugin.min.js"></script>
     <script>
+        /**
+         * ALTA EN DOS PASOS.
+         *
+         * El primer envío NO crea la cuenta: pide un código al correo (Cuentas.gs). La
+         * cuenta nace al confirmar ese código, de modo que un correo ajeno no puede
+         * quedar dado de alta por alguien que solo lo conoce.
+         *
+         * La contraseña se conserva en memoria de la página mientras se confirma el
+         * código (hace falta para reenviarlo). No se guarda en localStorage ni en
+         * sessionStorage, y se olvida en cuanto la cuenta queda creada.
+         */
         const formContainer = document.getElementById('formContainer');
         const loadingContainer = document.getElementById('loadingContainer');
         const loadingIcon = document.getElementById('loadingIcon');
         const loadingText = document.getElementById('loadingText');
+        const loadingSub = document.getElementById('loadingSub');
         const registerForm = document.getElementById('registerForm');
+        const verifyForm = document.getElementById('verifyForm');
         const nameInput = document.getElementById('name');
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
         const confirmPasswordInput = document.getElementById('confirmPassword');
+        const nameError = document.getElementById('nameError');
         const emailError = document.getElementById('emailError');
         const passwordError = document.getElementById('passwordError');
         const confirmPasswordError = document.getElementById('confirmPasswordError');
@@ -156,18 +225,58 @@
         const toggleIcon = document.getElementById('toggleIcon');
         const meterFills = Array.from(document.querySelectorAll('.auth-meter i > b'));
         const strengthLabel = document.getElementById('strengthLabel');
+        const registerButton = document.getElementById('registerButton');
+        const verifyButton = document.getElementById('verifyButton');
+        const resendBtn = document.getElementById('resendBtn');
+        const expiryCount = document.getElementById('expiryCount');
+        const maskedEmail = document.getElementById('maskedEmail');
+        const otpBoxEl = document.getElementById('otpBox');
+        const otpError = document.getElementById('otpError');
+
+        const pendiente = { nombre: '', correo: '', clave: '' };
+        const relojes = { codigo: null, reenvio: null };
+        let otp = null;
         let loaderTween = null;
+        let paso = 0;
 
         const showMessage = (text, isError = true) => {
-            messageContainer.textContent = text;
+            messageContainer.textContent = text || '';
             messageContainer.classList.toggle('ok', !isError);
             if (text && isError) AppMotion.shake(messageContainer);
         };
 
+        const setError = (el, input, text) => {
+            if (text) {
+                el.textContent = text;
+                el.classList.add('show');
+                if (input) input.setAttribute('aria-invalid', 'true');
+            } else {
+                el.classList.remove('show');
+                if (input) input.removeAttribute('aria-invalid');
+            }
+        };
+
         const hideAllErrors = () => {
-            [emailError, passwordError, confirmPasswordError].forEach(el => el.classList.remove('show'));
-            [emailInput, passwordInput, confirmPasswordInput].forEach(el => el.removeAttribute('aria-invalid'));
+            [[nameError, nameInput], [emailError, emailInput], [confirmPasswordError, confirmPasswordInput]]
+                .forEach(par => setError(par[0], par[1], ''));
+            passwordError.classList.remove('show');
+            passwordInput.removeAttribute('aria-invalid');
             showMessage('');
+        };
+
+        const ocupado = (btn, on, texto) => {
+            if (on) {
+                if (!btn.__html) btn.__html = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="v-spinner" aria-hidden="true"></span> ' + (texto || 'Un momento…');
+            } else {
+                btn.disabled = false;
+                if (btn.__html) btn.innerHTML = btn.__html;
+            }
+        };
+
+        const pararRelojes = () => {
+            ['codigo', 'reenvio'].forEach(k => { if (relojes[k]) { relojes[k].stop(); relojes[k] = null; } });
         };
 
         // Indicador orientativo de robustez de la contraseña.
@@ -204,30 +313,104 @@
             AppMotion.pop(togglePassword);
         });
 
-        const showLoadingState = () => AppMotion.swap(formContainer, loadingContainer, () => {
-            loaderTween = AuthStage.startLoader(loadingIcon);
-        });
+        const mostrarCarga = (titulo, sub) => {
+            loadingText.textContent = titulo;
+            loadingSub.textContent = sub || 'Esto tomará un momento.';
+            AppMotion.swap(formContainer, loadingContainer, () => {
+                loaderTween = AuthStage.startLoader(loadingIcon);
+            });
+        };
 
-        const hideLoadingState = () => {
+        const ocultarCarga = () => {
             AuthStage.stopLoader(loaderTween, loadingIcon);
             loaderTween = null;
             loadingIcon.__livDone = false;
             loadingIcon.style.color = '';
-            loadingText.textContent = 'Creando tu cuenta…';
             AuthStage.paint();
             AppMotion.swap(loadingContainer, formContainer);
         };
 
-        const showSuccessStateAndRedirect = () => {
-            AuthStage.stopLoader(loaderTween, loadingIcon);
-            loaderTween = null;
-            AuthStage.success(loadingIcon, '¡Cuenta creada! Redirigiendo…', loadingText);
-            setTimeout(() => {
-                if (!AppUrl.go('login')) {
-                    hideLoadingState();
-                    showMessage('No se pudo determinar la URL de la aplicación. Recarga e intenta de nuevo.');
+        const irAPaso = (n) => {
+            const paneles = [registerForm, verifyForm];
+            // El panel de origen se lee del DOM, no de la variable: si alguna vez se
+            // desincronizan (una respuesta que llega tarde, un doble clic), manda lo que
+            // el asesor tiene delante y la pantalla no se queda en blanco.
+            const desde = paneles.filter(p => !p.classList.contains('hidden'))[0] || paneles[paso];
+            const hacia = paneles[n];
+            paso = n;
+            AuthStage.paso('#pasos', n);
+            showMessage('');
+            if (desde === hacia) return;
+            AppMotion.swap(desde, hacia, () => {
+                if (n === 1 && otp) otp.focus();
+                if (n === 0) emailInput.focus();
+            });
+        };
+
+        // ── Paso 1: validar y pedir el código ────────────────────────────────
+        const arrancarCaducidad = (segundos) => {
+            if (relojes.codigo) relojes.codigo.stop();
+            relojes.codigo = AuthStage.cuenta(expiryCount, segundos, {
+                onEnd: () => {
+                    if (otp) otp.disable(true);
+                    expiryCount.textContent = '0:00';
+                    setError(otpError, null, 'El código caducó. Pide uno nuevo.');
+                    resendBtn.disabled = false;
+                    resendBtn.textContent = 'Enviar un código nuevo';
                 }
-            }, 1300);
+            });
+        };
+
+        const arrancarReenvio = (segundos) => {
+            if (relojes.reenvio) relojes.reenvio.stop();
+            resendBtn.disabled = true;
+            relojes.reenvio = AuthStage.cuenta(resendBtn, segundos, {
+                prefijo: 'Reenviar en ',
+                onEnd: () => {
+                    resendBtn.disabled = false;
+                    resendBtn.textContent = 'Reenviar código';
+                }
+            });
+        };
+
+        /** Mapa campo del servidor → elemento de error de esta pantalla. */
+        const CAMPOS = {
+            name: [nameError, nameInput],
+            email: [emailError, emailInput],
+            password: [passwordError, passwordInput]
+        };
+
+        const pedirCodigo = (btn, textoBoton) => {
+            ocupado(btn, true, textoBoton);
+            google.script.run
+                .withSuccessHandler(res => {
+                    ocupado(btn, false);
+                    if (!res || !res.success) {
+                        const msg = (res && res.message) || 'No se pudo enviar el código.';
+                        const campo = res && CAMPOS[res.campo];
+                        if (campo && paso === 0) {
+                            setError(campo[0], campo[1], msg);
+                            AppMotion.shake(campo[1].parentElement);
+                            campo[1].focus();
+                        } else {
+                            showMessage(msg);
+                        }
+                        if (res && res.esperaSegundos) arrancarReenvio(res.esperaSegundos);
+                        return;
+                    }
+                    maskedEmail.textContent = res.correoMascara || pendiente.correo;
+                    if (otp) { otp.clear(); otp.disable(false); }
+                    setError(otpError, null, '');
+                    arrancarCaducidad(res.expiraSegundos || 600);
+                    arrancarReenvio(res.reenvioSegundos || 60);
+                    if (paso !== 1) irAPaso(1);
+                    else { showMessage(res.message, false); otp.focus(); }
+                })
+                .withFailureHandler(err => {
+                    ocupado(btn, false);
+                    showMessage('Error de comunicación: ' + err.message);
+                })
+                .solicitarCodigoRegistro(pendiente.nombre, pendiente.correo, pendiente.clave);
         };
 
         registerForm.addEventListener('submit', (event) => {
@@ -235,6 +418,11 @@
             hideAllErrors();
 
             let firstInvalid = null;
+            if (nameInput.value.trim().length < 3) {
+                setError(nameError, nameInput, 'Escribe tu nombre completo.');
+                AppMotion.shake(nameInput.parentElement);
+                firstInvalid = nameInput;
+            }
             if (passwordInput.value.length < 6) {
                 passwordError.classList.add('show');
                 passwordInput.setAttribute('aria-invalid', 'true');
@@ -242,32 +430,76 @@
                 firstInvalid = firstInvalid || passwordInput;
             }
             if (passwordInput.value !== confirmPasswordInput.value) {
-                confirmPasswordError.classList.add('show');
-                confirmPasswordInput.setAttribute('aria-invalid', 'true');
+                setError(confirmPasswordError, confirmPasswordInput, 'Las contraseñas no coinciden.');
                 AppMotion.shake(confirmPasswordInput.parentElement);
                 firstInvalid = firstInvalid || confirmPasswordInput;
             }
             if (firstInvalid) { firstInvalid.focus(); return; }
 
-            showLoadingState();
-
-            google.script.run
-                .withSuccessHandler(response => {
-                    if (response.success) {
-                        showSuccessStateAndRedirect();
-                    } else {
-                        hideLoadingState();
-                        showMessage(response.message || 'Ocurrió un error.');
-                    }
-                })
-                .withFailureHandler(error => {
-                    hideLoadingState();
-                    showMessage('Error de comunicación: ' + error.message);
-                })
-                .registerUser(nameInput.value, emailInput.value, passwordInput.value);
+            pendiente.nombre = nameInput.value.trim();
+            pendiente.correo = emailInput.value.trim().toLowerCase();
+            pendiente.clave = passwordInput.value;
+            pedirCodigo(registerButton, 'Enviando el código…');
         });
 
-        [emailInput, confirmPasswordInput].forEach(input => {
+        // ── Paso 2: confirmar y crear la cuenta ──────────────────────────────
+        const confirmar = () => {
+            const codigo = otp.value();
+            setError(otpError, null, '');
+            showMessage('');
+            if (codigo.length !== 6) {
+                setError(otpError, null, 'Escribe los 6 dígitos del código.');
+                otp.error(true);
+                otp.focus();
+                return;
+            }
+
+            mostrarCarga('Creando tu cuenta…', 'Confirmando tu correo.');
+            google.script.run
+                .withSuccessHandler(res => {
+                    if (!res || !res.success) {
+                        ocultarCarga();
+                        setError(otpError, null, (res && res.message) || 'No se pudo crear la cuenta.');
+                        if (otp) { otp.error(true); otp.clear(); otp.focus(); }
+                        return;
+                    }
+                    pararRelojes();
+                    pendiente.clave = '';   // ya no hace falta tenerla en memoria
+                    AuthStage.stopLoader(loaderTween, loadingIcon);
+                    loaderTween = null;
+                    AuthStage.success(loadingIcon, '¡Cuenta creada!', loadingText);
+                    loadingSub.textContent = 'Te llevamos al inicio de sesión…';
+                    // El correo queda precargado en el login (AppSession.lastEmail).
+                    try { localStorage.setItem('ventel-last-email', res.userEmail || pendiente.correo); } catch (e) {}
+                    setTimeout(() => {
+                        if (!AppUrl.go('login')) {
+                            ocultarCarga();
+                            showMessage('Tu cuenta ya existe, pero no pudimos abrir el inicio de sesión. Recarga la página.');
+                        }
+                    }, 1400);
+                })
+                .withFailureHandler(err => {
+                    ocultarCarga();
+                    showMessage('Error de comunicación: ' + err.message);
+                })
+                .confirmarCodigoRegistro(pendiente.correo, codigo);
+        };
+
+        verifyForm.addEventListener('submit', (e) => { e.preventDefault(); confirmar(); });
+
+        resendBtn.addEventListener('click', () => {
+            if (resendBtn.disabled) return;
+            pedirCodigo(verifyButton, 'Enviando…');
+        });
+
+        document.getElementById('backToData').addEventListener('click', () => {
+            pararRelojes();
+            if (otp) otp.clear();
+            setError(otpError, null, '');
+            irAPaso(0);
+        });
+
+        [emailInput, confirmPasswordInput, nameInput].forEach(input => {
             input.addEventListener('input', () => hideAllErrors());
         });
 
@@ -278,6 +510,14 @@
             Icons.render();
             AuthStage.paint();
             AuthStage.wireJumps();
+
+            otp = AuthOtp.mount(otpBoxEl, {
+                label: 'Código de confirmación de 6 dígitos',
+                describedBy: 'otpError',
+                onComplete: () => confirmar()   // con los 6 dígitos ya se puede crear la cuenta
+            });
+            if (otp && otp.cells[0]) otp.cells[0].id = 'otpFirst';
+
             AuthStage.play({ title: '[data-split]' });
         })();
     </script>

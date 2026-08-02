@@ -7,6 +7,216 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <?!= include('app_theme'); ?>
     <style>
+        /*
+         * ── COLA DE REVISIÓN ──────────────────────────────────────────────────────
+         * Es lo PRIMERO de la pantalla y va fuera del bloque de estadísticas a
+         * propósito: las métricas describen lo que ya pasó; esto es lo único que
+         * está parado esperando a que alguien de supervisión haga algo. Si las
+         * estadísticas fallan o tardan, la cola tiene que salir igual.
+         */
+        .pend-card {
+            border: 1px solid var(--line, #E4E9F0);
+            border-left: 4px solid var(--warn, #B45309);
+            border-radius: var(--rad-lg, 14px);
+            background: var(--surface, #fff);
+            box-shadow: var(--sh-sm);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        .pend-card.al-dia { border-left-color: var(--ok, #0E7A4F); }
+        .pend-head {
+            display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+            padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--line-soft, #EEF2F7);
+        }
+        .pend-head h2 { margin: 0; font-size: 1.15rem; font-weight: 600; color: var(--ink, #1B2330); }
+        .pend-head p  { margin: .15rem 0 0; font-size: .82rem; color: var(--ink-soft, #5C6B7E); }
+        .pend-num {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 2.6rem; height: 2.6rem; padding: 0 .6rem; border-radius: 999px;
+            background: var(--warn-bg, #FDF1E0); color: var(--warn, #B45309);
+            font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; flex: none;
+        }
+        .pend-card.al-dia .pend-num { background: var(--ok-bg, #E5F5EE); color: var(--ok, #0E7A4F); }
+        .pend-acciones { margin-left: auto; display: flex; gap: .5rem; flex-wrap: wrap; }
+
+        .pend-fila {
+            display: grid; grid-template-columns: minmax(0, 1fr) auto;
+            gap: .5rem 1rem; align-items: center;
+            padding: .85rem 1.5rem; border-bottom: 1px solid var(--line-soft, #EEF2F7);
+        }
+        .pend-fila:last-child { border-bottom: 0; }
+        .pend-fila:hover { background: var(--surface-2, #F4F7FA); }
+        .pend-datos { min-width: 0; }
+        .pend-folio {
+            font-family: var(--f-mono, monospace); font-size: .88rem; font-weight: 600;
+            color: var(--ink, #1B2330);
+        }
+        .pend-meta {
+            display: flex; flex-wrap: wrap; gap: .25rem .75rem;
+            font-size: .78rem; color: var(--ink-soft, #5C6B7E); margin-top: .15rem;
+        }
+        .pend-meta strong { color: var(--ink, #1B2330); font-weight: 600; font-variant-numeric: tabular-nums; }
+        /* Lo que lleva más de dos días parado se dice con palabras, no solo con color. */
+        .pend-viejo { color: var(--alert, #C81E3C); font-weight: 600; }
+        .pend-btns { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+        .pend-vacio {
+            display: grid; gap: .5rem; justify-items: center; text-align: center;
+            padding: 2.5rem 1.5rem; color: var(--ink-soft, #5C6B7E); font-size: .9rem;
+        }
+        .pend-vacio svg { width: 2.25rem; height: 2.25rem; color: var(--ok, #0E7A4F); }
+        .pend-mas { padding: .75rem 1.5rem; font-size: .8rem; color: var(--ink-faint, #94A1B2); text-align: center; }
+        @media (max-width: 640px) {
+            .pend-fila { grid-template-columns: minmax(0, 1fr); }
+            .pend-btns { justify-content: flex-start; }
+        }
+        [data-theme="carbon"] .pend-num { color: #F2B65A; }
+        [data-theme="carbon"] .pend-card.al-dia .pend-num { color: #4ADE80; }
+        [data-theme="carbon"] .pend-vacio svg { color: #4ADE80; }
+        [data-theme="carbon"] .pend-viejo { color: #FCA5A5; }
+
+        /*
+         * ── POLÍTICA DE REVISIÓN ──────────────────────────────────────────────────
+         * Configura QUÉ cotizaciones tienen que pasar por la cola de arriba. Va justo
+         * después de ella porque es su gobierno: primero se ve el efecto (cuántas
+         * esperan), luego la regla que lo produce.
+         *
+         * El estado peligroso —revisión apagada— se marca en rojo y con palabras, no
+         * con un interruptor gris más. Aquí se decide si un precio sale al cliente sin
+         * que nadie lo mire.
+         */
+        .pol-card {
+            border: 1px solid var(--line, #E4E9F0);
+            border-radius: var(--rad-lg, 14px);
+            background: var(--surface, #fff);
+            box-shadow: var(--sh-sm);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        .pol-head {
+            display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap;
+            padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--line-soft, #EEF2F7);
+        }
+        .pol-head h3 { margin: 0; font-size: 1.15rem; font-weight: 600; color: var(--ink, #1B2330); }
+        .pol-head p  { margin: .2rem 0 0; font-size: .82rem; color: var(--ink-soft, #5C6B7E); max-width: 46rem; }
+        .pol-body { padding: 1.25rem 1.5rem; display: grid; gap: 1.25rem; }
+
+        /* Aviso permanente cuando la revisión está apagada. */
+        .pol-alarma {
+            display: flex; gap: .75rem; align-items: flex-start;
+            padding: .9rem 1.1rem; border-radius: var(--rad, 12px);
+            background: var(--alert-bg, #FDE8EC);
+            border: 1px solid var(--alert, #C81E3C); border-left-width: 4px;
+        }
+        .pol-alarma svg { width: 1.35rem; height: 1.35rem; flex: none; color: var(--alert, #C81E3C); margin-top: .1rem; }
+        .pol-alarma strong { display: block; color: var(--ink, #1B2330); font-size: .9rem; }
+        .pol-alarma span { font-size: .82rem; color: var(--ink-soft, #5C6B7E); line-height: 1.5; }
+
+        .pol-fila-ajuste {
+            display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+            padding: .9rem 1.1rem; border: 1px solid var(--line, #E4E9F0); border-radius: var(--rad, 12px);
+            background: var(--surface-2, #F4F7FA);
+        }
+        .pol-fila-ajuste .pol-txt { flex: 1 1 20rem; min-width: 0; }
+        .pol-fila-ajuste strong { display: block; font-size: .9rem; color: var(--ink, #1B2330); }
+        .pol-fila-ajuste span { font-size: .8rem; color: var(--ink-soft, #5C6B7E); line-height: 1.5; }
+
+        /* Lista de criterios */
+        .pol-reglas { display: grid; gap: .6rem; }
+        .pol-regla {
+            display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+            gap: .5rem .9rem; align-items: center;
+            padding: .75rem .9rem; border: 1px solid var(--line, #E4E9F0);
+            border-radius: var(--rad, 12px); background: var(--surface, #fff);
+        }
+        .pol-regla.apagada { opacity: .55; }
+        .pol-orden {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 1.7rem; height: 1.7rem; border-radius: 999px; flex: none;
+            background: var(--surface-2, #F4F7FA); color: var(--ink-soft, #5C6B7E);
+            font-size: .78rem; font-weight: 700; font-variant-numeric: tabular-nums;
+        }
+        .pol-regla-txt { min-width: 0; font-size: .87rem; color: var(--ink, #1B2330); line-height: 1.5; }
+        .pol-regla-tipo {
+            display: inline-block; font-size: .68rem; font-weight: 600; letter-spacing: .06em;
+            text-transform: uppercase; color: var(--ink-faint, #94A1B2); margin-bottom: .1rem;
+        }
+        .pol-regla-nota { font-size: .78rem; color: var(--ink-soft, #5C6B7E); font-style: italic; }
+        .pol-acciones { display: flex; align-items: center; gap: .25rem; flex-wrap: wrap; justify-content: flex-end; }
+        .pol-iconbtn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 1.9rem; height: 1.9rem; padding: 0; border-radius: var(--rad-sm, 8px);
+            border: 1px solid var(--line, #E4E9F0); background: var(--surface, #fff);
+            color: var(--ink-soft, #5C6B7E); cursor: pointer; transition: var(--tr);
+        }
+        .pol-iconbtn:hover:not(:disabled) { background: var(--surface-2, #F4F7FA); color: var(--ink, #1B2330); }
+        .pol-iconbtn:disabled { opacity: .35; cursor: not-allowed; }
+        .pol-iconbtn:focus-visible { outline: 2px solid var(--brand, #E10098); outline-offset: 2px; }
+        .pol-iconbtn svg { width: 1rem; height: 1rem; }
+        .pol-iconbtn.peligro:hover:not(:disabled) { background: var(--alert-bg, #FDE8EC); color: var(--alert, #C81E3C); }
+
+        .pol-vacio {
+            padding: 1.75rem 1rem; text-align: center;
+            font-size: .85rem; color: var(--ink-soft, #5C6B7E);
+            border: 1px dashed var(--line, #E4E9F0); border-radius: var(--rad, 12px);
+        }
+
+        /* Editor de un criterio */
+        .pol-editor {
+            border: 1px solid var(--brand, #E10098); border-radius: var(--rad, 12px);
+            background: var(--surface, #fff); padding: 1.1rem; display: grid; gap: .9rem;
+        }
+        .pol-editor h4 { margin: 0; font-size: .95rem; font-weight: 600; color: var(--ink, #1B2330); }
+        .pol-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .75rem; }
+        .pol-campos label { display: block; }
+        .pol-dias { display: flex; flex-wrap: wrap; gap: .35rem; }
+        .pol-dia {
+            display: inline-flex; align-items: center; gap: .3rem;
+            padding: .3rem .6rem; border-radius: 999px; cursor: pointer;
+            border: 1px solid var(--line, #E4E9F0); background: var(--surface, #fff);
+            font-size: .78rem; color: var(--ink-soft, #5C6B7E);
+        }
+        .pol-dia input { margin: 0; accent-color: var(--brand, #E10098); }
+        .pol-dia.sel { border-color: var(--brand, #E10098); background: var(--brand-tint, #FDE7F4); color: var(--brand-deep, #A8006F); }
+
+        /* Simulador */
+        .pol-sim { border: 1px solid var(--line, #E4E9F0); border-radius: var(--rad, 12px); overflow: hidden; }
+        .pol-sim-head {
+            padding: .8rem 1.1rem; background: var(--surface-2, #F4F7FA);
+            border-bottom: 1px solid var(--line, #E4E9F0);
+        }
+        .pol-sim-head strong { font-size: .9rem; color: var(--ink, #1B2330); }
+        .pol-sim-head span { display: block; font-size: .78rem; color: var(--ink-soft, #5C6B7E); margin-top: .1rem; }
+        .pol-sim-body { padding: 1.1rem; display: grid; gap: .9rem; }
+        .pol-veredicto {
+            display: flex; gap: .75rem; align-items: flex-start;
+            padding: .9rem 1.1rem; border-radius: var(--rad, 12px);
+            border: 1px solid var(--line, #E4E9F0); border-left-width: 4px;
+        }
+        .pol-veredicto svg { width: 1.35rem; height: 1.35rem; flex: none; margin-top: .1rem; }
+        .pol-veredicto strong { display: block; font-size: .9rem; color: var(--ink, #1B2330); }
+        .pol-veredicto span { font-size: .82rem; color: var(--ink-soft, #5C6B7E); line-height: 1.5; }
+        .pol-ver-revisar { border-left-color: var(--warn, #B45309); background: var(--warn-bg, #FDF1E0); }
+        .pol-ver-revisar svg { color: var(--warn, #B45309); }
+        .pol-ver-directo { border-left-color: var(--info, #1D4ED8); background: var(--info-bg, #EAF0FE); }
+        .pol-ver-directo svg { color: var(--info, #1D4ED8); }
+
+        /* Barra de guardado: aparece solo cuando hay cambios sin aplicar. */
+        .pol-guardar {
+            display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+            padding: .85rem 1.5rem; border-top: 1px solid var(--line, #E4E9F0);
+            background: var(--brand-tint, #FDE7F4);
+        }
+        .pol-guardar .pol-sucio { flex: 1 1 16rem; font-size: .83rem; color: var(--brand-deep, #A8006F); font-weight: 500; }
+        .pol-historial { font-size: .75rem; color: var(--ink-faint, #94A1B2); line-height: 1.6; }
+        .pol-historial li { margin-bottom: .2rem; }
+
+        [data-theme="carbon"] .pol-alarma      { border-color: #FCA5A5; }
+        [data-theme="carbon"] .pol-alarma svg  { color: #FCA5A5; }
+        [data-theme="carbon"] .pol-ver-revisar svg { color: #F2B65A; }
+        [data-theme="carbon"] .pol-ver-directo svg { color: #93B4FF; }
+        [data-theme="carbon"] .pol-dia.sel     { color: #FF7ACF; }
+        [data-theme="carbon"] .pol-guardar .pol-sucio { color: #FF7ACF; }
+
         /* Interruptor de formatos */
         .v-switch { position: relative; display: inline-flex; align-items: center; cursor: pointer; flex-shrink: 0; }
         .v-switch input { position: absolute; opacity: 0; pointer-events: none; }
@@ -43,6 +253,69 @@
                 </button>
             </div>
         </header>
+
+        <!--
+          COLA DE REVISIÓN — apartado principal del panel.
+          Va ANTES de los KPIs y fuera de #dashboard-content: las métricas cuentan lo que
+          ya ocurrió, esto es trabajo detenido esperando a supervisión. Se alimenta de las
+          mismas cotizaciones que ya carga el panel (getSupervisionQuotes), así que no
+          añade ni una llamada más al servidor.
+        -->
+        <section id="pend-seccion" class="pend-card" data-animate aria-labelledby="pend-titulo">
+            <div class="pend-head">
+                <span class="pend-num" id="pend-num">—</span>
+                <div>
+                    <h2 id="pend-titulo">Cotizaciones pendientes de revisión</h2>
+                    <p id="pend-sub">Cargando la cola…</p>
+                </div>
+                <div class="pend-acciones">
+                    <button id="pend-ver-todas" class="v-btn v-btn-ghost v-btn-sm hidden">
+                        <span class="w-4 h-4 block" data-icon="search"></span>
+                        Ver todas en la tabla
+                    </button>
+                    <button id="pend-refrescar" class="v-btn v-btn-ghost v-btn-sm" title="Volver a leer la hoja de cotizaciones">
+                        <span class="w-4 h-4 block" data-icon="refresh"></span>
+                        Actualizar
+                    </button>
+                </div>
+            </div>
+            <div id="pend-lista">
+                <div class="pend-vacio"><div class="v-spinner"></div> Cargando cotizaciones…</div>
+            </div>
+            <div id="pend-mas" class="pend-mas hidden"></div>
+        </section>
+
+        <!--
+          POLÍTICA DE REVISIÓN — el gobierno de la cola de arriba.
+          Decide qué cotizaciones tienen que pasar por revisión y cuáles pueden enviarse en
+          cuanto se guardan. La evaluación real vive en el servidor (PoliticaRevision.gs);
+          esta pantalla solo la edita y la consulta — incluido el simulador, que llama al
+          servidor en vez de recalcular por su cuenta.
+        -->
+        <section id="pol-seccion" class="pol-card" data-animate aria-labelledby="pol-titulo">
+            <div class="pol-head">
+                <div style="flex:1 1 22rem;min-width:0">
+                    <h3 id="pol-titulo">Política de revisión</h3>
+                    <p id="pol-resumen">Cargando la política…</p>
+                </div>
+                <button id="pol-recargar" class="v-btn v-btn-ghost v-btn-sm" title="Descartar cambios y releer lo guardado">
+                    <span class="w-4 h-4 block" data-icon="refresh"></span>
+                    Descartar cambios
+                </button>
+            </div>
+
+            <div class="pol-body" id="pol-body">
+                <div class="pol-vacio"><div class="v-spinner"></div> Cargando…</div>
+            </div>
+
+            <div id="pol-guardar-barra" class="pol-guardar hidden">
+                <span class="pol-sucio" id="pol-sucio-txt">Hay cambios sin aplicar.</span>
+                <button id="pol-guardar" class="v-btn v-btn-primary v-btn-sm">
+                    <span class="w-4 h-4 block" data-icon="check"></span>
+                    Guardar la política
+                </button>
+            </div>
+        </section>
 
         <div id="loading-placeholder" class="text-center p-12 text-slate-500"><div class="flex items-center justify-center gap-3"><div class="v-spinner w-6 h-6"></div> Cargando estadísticas...</div></div>
 
@@ -226,6 +499,7 @@
     </script>
     <?!= include('app_core'); ?>
     <?!= include('app_icons'); ?>
+    <?!= include('app_estatus'); ?>
     <?!= include('app_motion'); ?>
     <?!= include('app_support'); ?>
     <?!= include('app_shell'); ?>
@@ -240,6 +514,11 @@
         window.navigateToQuoteEdit = function (folio) {
             if (!folio) return AppMotion.toast('Error: no se pudo obtener el folio.', 'error');
             AppUrl.go('cotizacion', { folio: folio, action: 'edit' });
+        };
+        /** Abre la pantalla de revisión. Solo sale en las filas que aún no están autorizadas. */
+        window.navigateToRevision = function (folio) {
+            if (!folio) return AppMotion.toast('Error: no se pudo obtener el folio.', 'error');
+            AppUrl.go('revision_cotizacion', { folio: folio });
         };
         window.navigateToResend = function (folio) {
             if (!folio) return AppMotion.toast('Error: no se pudo obtener el folio.', 'error');
@@ -456,14 +735,15 @@
             let filteredQuotes = [];
 
             const FORMAT_NAMES = { 'actual': 'Actual', 'ccl_liverpool': 'CCL Liverpool' };
-            const STATUS_CLASSES = {
-                'autorizada': 'v-badge-green',
-                'enviada-por-correo': 'v-badge-green',
-                'rechazada': 'v-badge-red',
-                'en-revision': 'v-badge-yellow',
-                'folio-generado': 'v-badge-yellow',
-                'default': 'v-badge-blue'
-            };
+            /*
+             * El catálogo de estatus vive en app_estatus.html, compartido con el panel del
+             * asesor y con la pantalla de revisión. Antes cada pantalla tenía su propio mapa
+             * de colores y "Aprobada" y "Enviada por Correo" salían las dos VERDES: no se
+             * distinguía lo autorizado de lo ya entregado, ni "En Revisión" (esperando a
+             * alguien) de "Folio Generado". Ahora cada estado trae color, icono y palabra
+             * propios, y son los mismos en las tres pestañas.
+             */
+
             const escapeFolio = (folio) => String(folio || '').replace(/'/g, "\\'");
             const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -568,7 +848,12 @@
                 visible.forEach(q => {
                     const row = document.createElement('tr');
                     row.style.opacity = '0';
-                    const estatusLower = String(q.status || '').toLowerCase().replace(/\s+/g, '-');
+                    const est = AppEstatus.info(q.status, q.revisionEstado);
+                    const necesitaRevision = est.pendiente;
+                    // Filo de color en la primera celda: la fila que espera revisión se
+                    // localiza recorriendo la columna del folio, sin llegar a la de estatus.
+                    if (est.pendiente) row.className = 'v-fila-pendiente';
+                    else if (est.clave === 'rechazada') row.className = 'v-fila-rechazada';
                     const folioJs = escapeFolio(q.folio);
                     const fecha = q.timestamp ? new Date(q.timestamp).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
 
@@ -578,11 +863,12 @@
                         <td>${escapeHtml(q.advisorName)}</td>
                         <td>${escapeHtml(q.clientName)}</td>
                         <td class="font-medium">${formatMoney(q.total)}</td>
-                        <td><span class="v-badge ${STATUS_CLASSES[estatusLower] || STATUS_CLASSES.default}">${escapeHtml(q.status)}</span></td>
+                        <td>${AppEstatus.badge(q.status, q.revisionEstado)}</td>
                         <td>${escapeHtml(FORMAT_NAMES[q.format] || q.format)}</td>
                         <td>
                             <div class="flex items-center justify-center gap-1 flex-wrap">
                                 <button onclick="navigateToQuoteView('${folioJs}')" title="Ver la cotización" class="v-row-action v-act-pink">Ver</button>
+                                ${necesitaRevision ? `<button onclick="navigateToRevision('${folioJs}')" title="Revisar y autorizar esta cotización" class="v-row-action v-act-green">Revisar</button>` : ''}
                                 <button onclick="navigateToQuoteEdit('${folioJs}')" title="Editar y volver a cotizar" class="v-row-action v-act-blue">Editar</button>
                                 <button onclick="navigateToResend('${folioJs}')" title="Reenviar por correo al cliente" class="v-row-action v-act-slate">Reenviar</button>
                                 <button onclick="copyQuoteLink('${folioJs}')" title="Copiar enlace directo a esta cotización" class="v-row-action v-act-slate">Enlace</button>
@@ -649,8 +935,657 @@
             const AppCache = window.AppCache || { get: () => null, set: () => {}, remove: () => {}, ageLabel: () => '' };
             const SUP_CACHE_KEY = 'sup-quotes-' + currentUserEmail;
 
+            // ==========================================================
+            // COLA DE REVISIÓN (apartado principal)
+            // Sale de las MISMAS cotizaciones que ya carga el panel: cero llamadas
+            // extra al servidor y cero posibilidad de que la cola y la tabla de abajo
+            // digan cosas distintas del mismo folio.
+            // ==========================================================
+            const PEND_VISIBLES = 8;      // más que esto ya es la tabla completa
+            const PEND_DIAS_VIEJO = 2;    // a partir de aquí se marca como retrasada
+
+            const pendientesDe = (quotes) => (quotes || [])
+                .filter(q => AppEstatus.info(q.status, q.revisionEstado).pendiente)
+                // Primero lo que lleva MÁS tiempo esperando: la cola se atiende por
+                // antigüedad, no por lo último que entró (que es como llega ordenado).
+                .sort((a, b) => String(a.timestamp || '').localeCompare(String(b.timestamp || '')));
+
+            const renderPendientes = (quotes) => {
+                const pendientes = pendientesDe(quotes);
+                const seccion = document.getElementById('pend-seccion');
+                const lista = document.getElementById('pend-lista');
+                const mas = document.getElementById('pend-mas');
+                const verTodas = document.getElementById('pend-ver-todas');
+
+                document.getElementById('pend-num').textContent = pendientes.length;
+                seccion.classList.toggle('al-dia', pendientes.length === 0);
+                verTodas.classList.toggle('hidden', pendientes.length === 0);
+
+                if (!pendientes.length) {
+                    document.getElementById('pend-sub').textContent =
+                        'No hay nada esperando revisión. Todo lo que entró ya está aprobado, rechazado o enviado.';
+                    lista.innerHTML = '<div class="pend-vacio">' + Icons.svg('check-circle', '') +
+                        '<span>La cola está al día.</span></div>';
+                    mas.classList.add('hidden');
+                    return;
+                }
+
+                const viejas = pendientes.filter(q => AppEstatus.diasEsperando(q.timestamp) >= PEND_DIAS_VIEJO).length;
+                document.getElementById('pend-sub').textContent =
+                    (pendientes.length === 1 ? 'Una cotización espera' : pendientes.length + ' cotizaciones esperan') +
+                    ' a que alguien las apruebe. Hasta entonces el asesor no puede enviarlas al cliente.' +
+                    (viejas ? ' ' + viejas + (viejas === 1 ? ' lleva' : ' llevan') +
+                              ' más de ' + PEND_DIAS_VIEJO + ' días parada' + (viejas === 1 ? '' : 's') + '.' : '');
+
+                lista.innerHTML = pendientes.slice(0, PEND_VISIBLES).map(q => {
+                    const dias = AppEstatus.diasEsperando(q.timestamp);
+                    const espera = AppEstatus.antiguedad(q.timestamp) || 'sin fecha';
+                    const folioJs = escapeFolio(q.folio);
+                    return `
+                        <div class="pend-fila">
+                            <div class="pend-datos">
+                                <span class="pend-folio">${escapeHtml(q.folio)}</span>
+                                <div class="pend-meta">
+                                    <span class="${dias >= PEND_DIAS_VIEJO ? 'pend-viejo' : ''}">Esperando ${escapeHtml(espera)}</span>
+                                    <span>${escapeHtml(q.advisorName)}</span>
+                                    <span>${escapeHtml(q.clientName || 'Sin cliente')}</span>
+                                    <span><strong>${formatMoney(q.total)}</strong></span>
+                                    ${AppEstatus.badge(q.status, q.revisionEstado)}
+                                </div>
+                            </div>
+                            <div class="pend-btns">
+                                <button onclick="navigateToRevision('${folioJs}')" class="v-btn v-btn-primary v-btn-sm">
+                                    Revisar
+                                </button>
+                                <button onclick="navigateToQuoteView('${folioJs}')" class="v-btn v-btn-ghost v-btn-sm">
+                                    Ver
+                                </button>
+                            </div>
+                        </div>`;
+                }).join('');
+
+                if (pendientes.length > PEND_VISIBLES) {
+                    mas.textContent = 'Se muestran las ' + PEND_VISIBLES + ' más antiguas de ' +
+                        pendientes.length + '. Usa "Ver todas en la tabla" para el resto.';
+                    mas.classList.remove('hidden');
+                } else {
+                    mas.classList.add('hidden');
+                }
+
+                AppMotion.staggerRows(lista.querySelectorAll('.pend-fila'));
+            };
+
+            // "Ver todas": deja la tabla de abajo filtrada por lo que sigue pendiente y
+            // lleva la vista hasta ella, en vez de abrir otra pantalla.
+            document.getElementById('pend-ver-todas').addEventListener('click', () => {
+                supSearch.value = '';
+                supDateFrom.value = '';
+                supDateTo.value = '';
+                supAdvisor.value = '';
+                supFormat.value = '';
+                // El <select> de estatus se llena con los valores REALES de la hoja: se
+                // busca el que corresponde a "pendiente" en vez de escribirlo a mano.
+                const opcionPendiente = Array.from(supStatus.options)
+                    .find(o => o.value && AppEstatus.info(o.value).pendiente);
+                supStatus.value = opcionPendiente ? opcionPendiente.value : '';
+                applyFilters();
+                document.getElementById('sup-table-body').closest('section')
+                    .scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+
+            // ==========================================================
+            // POLÍTICA DE REVISIÓN
+            // Edita QUÉ cotizaciones pasan por la cola. Tres cosas importan aquí:
+            //  · Nada se aplica hasta pulsar "Guardar": una política a medias es peor
+            //    que la anterior, y el borrador permite descartar sin consecuencias.
+            //  · El simulador NO recalcula en JavaScript; manda el borrador al servidor
+            //    y deja que decida el mismo motor que decide de verdad. Una vista previa
+            //    con su propia lógica acaba mintiendo, y lo que se configura aquí es si
+            //    un precio sale al cliente sin que nadie lo mire.
+            //  · El orden de los criterios ES la prioridad: gana el primero que coincide.
+            // ==========================================================
+            let polGuardada = null;   // copia de lo que está en el servidor
+            let polBorrador = null;   // lo que se está editando en pantalla
+            let polCatalogo = null;
+            let polEditando = null;   // regla en edición, o null
+            let polNueva = false;     // ¿el editor abierto es de un criterio nuevo?
+
+            const polClonar = (o) => JSON.parse(JSON.stringify(o));
+            const polSucio = () => !!polBorrador && JSON.stringify(polBorrador) !== JSON.stringify(polGuardada);
+
+            const polMoneda = (n) => formatMoney(n);
+            const polNombreTipo = (id) => {
+                const t = (polCatalogo.tipos || []).find(x => x.id === id);
+                return t ? t.nombre : id;
+            };
+
+            /** Describe una regla en español. Espeja revpolDescribirRegla_ del servidor:
+             *  aquí es solo TEXTO —la decisión nunca se toma en el navegador—, así que si
+             *  alguna vez se separan, lo peor que pasa es una frase desactualizada. */
+            const polDescribir = (r) => {
+                const fmtNum = (n) => String(n);
+                const comparacion = (fmt) => {
+                    if (r.operador === 'menor') return 'es menor que ' + fmt(r.valor);
+                    if (r.operador === 'entre') return 'está entre ' + fmt(r.valor) + ' y ' + fmt(r.valor2);
+                    return 'es mayor o igual a ' + fmt(r.valor);
+                };
+                let cond = '';
+                if (r.tipo === 'monto')      cond = 'el total ' + comparacion(polMoneda);
+                else if (r.tipo === 'descuento') cond = 'el descuento más alto ' + comparacion(n => n + '%');
+                else if (r.tipo === 'articulos') cond = 'el número de artículos ' + comparacion(fmtNum);
+                else if (r.tipo === 'formato') {
+                    const nombres = (r.formatos || []).map(id => {
+                        const f = (polCatalogo.formatos || []).find(x => x.id === id);
+                        return f ? f.nombre : id;
+                    });
+                    cond = 'el formato es ' + (nombres.join(' o ') || '(ninguno elegido)');
+                } else if (r.tipo === 'asesor') {
+                    // Los correos los teclea una persona y esta cadena entra por innerHTML.
+                    cond = 'cotiza ' + (escapeHtml((r.correos || []).join(', ')) || '(nadie)');
+                } else if (r.tipo === 'horario') {
+                    const dias = (r.dias || []).length === 7 ? 'cualquier día'
+                        : (r.dias || []).map(d => (polCatalogo.dias || [])[d]).join(', ');
+                    cond = 'se guarda ' + (r.dentro ? 'dentro' : 'fuera') + ' de ' +
+                           r.desde + '–' + r.hasta + ' (' + dias + ')';
+                }
+                return 'Si ' + cond + ', <strong>' +
+                       (r.accion === 'revisar' ? 'pasa a revisión' : 'se envía sin revisar') + '</strong>.';
+            };
+
+            const polCargar = () => {
+                google.script.run
+                    .withSuccessHandler(res => {
+                        if (!res || !res.success) {
+                            document.getElementById('pol-body').innerHTML =
+                                '<div class="pol-vacio">' + escapeHtml((res && res.message) || 'No se pudo leer la política.') + '</div>';
+                            return;
+                        }
+                        polCatalogo = res.catalogo;
+                        polGuardada = res.politica;
+                        polBorrador = polClonar(res.politica);
+                        polEditando = null;
+                        polPintar();
+                    })
+                    .withFailureHandler(err => {
+                        document.getElementById('pol-body').innerHTML =
+                            '<div class="pol-vacio">Error de comunicación: ' + escapeHtml(err.message) + '</div>';
+                    })
+                    .getPoliticaRevision(currentUserEmail);
+            };
+
+            const polPintar = () => {
+                const p = polBorrador;
+                const body = document.getElementById('pol-body');
+                const activas = p.reglas.filter(r => r.activa).length;
+
+                document.getElementById('pol-resumen').textContent = !p.exigirRevision
+                    ? 'La revisión está DESACTIVADA: toda cotización se puede enviar en cuanto se guarda.'
+                    : ((p.accionPorDefecto === 'revisar' ? 'Por defecto todo pasa a revisión' : 'Por defecto todo se envía sin revisar') +
+                       (activas ? ', con ' + activas + (activas === 1 ? ' criterio que lo modifica.' : ' criterios que lo modifican.')
+                                : ' y no hay criterios configurados.'));
+
+                body.innerHTML = `
+                    ${!p.exigirRevision ? `
+                    <div class="pol-alarma">
+                        ${Icons.svg('warning')}
+                        <div>
+                            <strong>Nadie está revisando las cotizaciones</strong>
+                            <span>Cualquier cotización, de cualquier monto, se puede enviar al cliente en cuanto
+                            se guarda. Las que ya estaban en la cola también quedan liberadas. Lo único que sigue
+                            bloqueado es lo que alguien rechazó a mano.</span>
+                        </div>
+                    </div>` : ''}
+
+                    <div class="pol-fila-ajuste">
+                        <div class="pol-txt">
+                            <strong>Exigir revisión antes de enviar</strong>
+                            <span>Apagarlo desactiva la cola por completo e ignora todos los criterios de abajo.</span>
+                        </div>
+                        <label class="v-switch">
+                            <input type="checkbox" id="pol-maestro" ${p.exigirRevision ? 'checked' : ''}>
+                            <span class="track"></span><span class="thumb"></span>
+                        </label>
+                    </div>
+
+                    <div class="pol-fila-ajuste" ${p.exigirRevision ? '' : 'style="opacity:.5;pointer-events:none"'}>
+                        <div class="pol-txt">
+                            <strong>Si ningún criterio coincide…</strong>
+                            <span>Es la regla de fondo. Los criterios de abajo son las excepciones a esto.</span>
+                        </div>
+                        <select id="pol-defecto" class="v-select" style="width:auto;min-width:14rem">
+                            <option value="revisar" ${p.accionPorDefecto === 'revisar' ? 'selected' : ''}>Pasa a revisión</option>
+                            <option value="auto" ${p.accionPorDefecto === 'auto' ? 'selected' : ''}>Se envía sin revisar</option>
+                        </select>
+                    </div>
+
+                    <div ${p.exigirRevision ? '' : 'style="opacity:.5;pointer-events:none"'}>
+                        <div class="flex items-center justify-between gap-3 flex-wrap mb-2">
+                            <div>
+                                <strong style="font-size:.9rem;color:var(--ink)">Criterios</strong>
+                                <span style="display:block;font-size:.8rem;color:var(--ink-soft)">
+                                    Se evalúan de arriba abajo y manda el primero que coincide. Muévelos para cambiar la prioridad.
+                                </span>
+                            </div>
+                            <button id="pol-nuevo" class="v-btn v-btn-ghost v-btn-sm"
+                                    ${p.reglas.length >= polCatalogo.maxReglas ? 'disabled' : ''}>
+                                <span class="w-4 h-4 block" data-icon="plus"></span>
+                                Añadir criterio
+                            </button>
+                        </div>
+                        <div class="pol-reglas" id="pol-reglas"></div>
+                        <div id="pol-editor-host" style="margin-top:.75rem"></div>
+                    </div>
+
+                    <div class="pol-sim">
+                        <div class="pol-sim-head">
+                            <strong>Probar antes de guardar</strong>
+                            <span>Describe una cotización y el servidor responde qué haría con ella
+                            <em>usando los cambios que tienes en pantalla</em>, estén guardados o no.</span>
+                        </div>
+                        <div class="pol-sim-body">
+                            <div class="pol-campos">
+                                <label><span class="v-label">Total con IVA</span>
+                                    <input type="number" id="sim-total" class="v-input" min="0" step="0.01" value="3730.90"></label>
+                                <label><span class="v-label">Descuento más alto (%)</span>
+                                    <input type="number" id="sim-desc" class="v-input" min="0" max="100" step="0.1" value="30"></label>
+                                <label><span class="v-label">Artículos</span>
+                                    <input type="number" id="sim-arts" class="v-input" min="0" step="1" value="3"></label>
+                                <label><span class="v-label">Formato</span>
+                                    <select id="sim-formato" class="v-select">
+                                        ${(polCatalogo.formatos || []).map(f =>
+                                            `<option value="${escapeHtml(f.id)}">${escapeHtml(f.nombre)}</option>`).join('')}
+                                    </select></label>
+                                <label><span class="v-label">Correo del asesor</span>
+                                    <input type="email" id="sim-asesor" class="v-input" placeholder="asesor@liverpool.com.mx"></label>
+                                <label><span class="v-label">Fecha y hora</span>
+                                    <input type="datetime-local" id="sim-fecha" class="v-input"></label>
+                            </div>
+                            <div>
+                                <button id="pol-simular" class="v-btn v-btn-dark v-btn-sm">
+                                    <span class="w-4 h-4 block" data-icon="bolt"></span>
+                                    Simular
+                                </button>
+                                <span style="font-size:.75rem;color:var(--ink-faint);margin-left:.6rem">
+                                    Zona horaria del sistema: ${escapeHtml(polCatalogo.zonaHoraria || '')}
+                                </span>
+                            </div>
+                            <div id="pol-veredicto"></div>
+                        </div>
+                    </div>
+
+                    ${(p.historial && p.historial.length) ? `
+                    <details>
+                        <summary style="cursor:pointer;font-size:.85rem;color:var(--ink-soft)">
+                            Historial de cambios (${p.historial.length})
+                        </summary>
+                        <ul class="pol-historial" style="margin-top:.5rem">
+                            ${p.historial.slice(0, 10).map(h => `<li>
+                                ${escapeHtml(new Date(h.fecha).toLocaleString('es-MX'))} ·
+                                ${escapeHtml(h.por)} — ${escapeHtml(h.que)}
+                            </li>`).join('')}
+                        </ul>
+                    </details>` : ''}
+                `;
+
+                Icons.render(body);
+                polPintarReglas();
+                if (polEditando) polPintarEditor();
+
+                // La hora del simulador arranca en "ahora", que es el caso que más se prueba.
+                const f = document.getElementById('sim-fecha');
+                if (f && !f.value) {
+                    const d = new Date();
+                    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                    f.value = d.toISOString().slice(0, 16);
+                }
+
+                document.getElementById('pol-maestro').addEventListener('change', ev => {
+                    polBorrador.exigirRevision = ev.target.checked;
+                    polPintar(); polActualizarBarra();
+                });
+                document.getElementById('pol-defecto').addEventListener('change', ev => {
+                    polBorrador.accionPorDefecto = ev.target.value;
+                    polPintar(); polActualizarBarra();
+                });
+                document.getElementById('pol-nuevo').addEventListener('click', () => polAbrirEditor(null));
+                document.getElementById('pol-simular').addEventListener('click', polSimular);
+
+                polActualizarBarra();
+            };
+
+            const polPintarReglas = () => {
+                const cont = document.getElementById('pol-reglas');
+                if (!cont) return;
+                const reglas = polBorrador.reglas;
+
+                if (!reglas.length) {
+                    cont.innerHTML = `<div class="pol-vacio">
+                        Sin criterios: todas las cotizaciones siguen la regla de fondo de arriba.
+                        Añade uno para tratar distinto, por ejemplo, las de monto bajo.
+                    </div>`;
+                    return;
+                }
+
+                cont.innerHTML = reglas.map((r, i) => `
+                    <div class="pol-regla ${r.activa ? '' : 'apagada'}">
+                        <span class="pol-orden">${i + 1}</span>
+                        <div class="pol-regla-txt">
+                            <span class="pol-regla-tipo">${escapeHtml(polNombreTipo(r.tipo))}${r.activa ? '' : ' · apagado'}</span>
+                            ${polDescribir(r)}
+                            ${r.nota ? `<div class="pol-regla-nota">${escapeHtml(r.nota)}</div>` : ''}
+                        </div>
+                        <div class="pol-acciones">
+                            <button class="pol-iconbtn" data-pol="subir" data-i="${i}" ${i === 0 ? 'disabled' : ''}
+                                    aria-label="Subir prioridad" title="Subir">↑</button>
+                            <button class="pol-iconbtn" data-pol="bajar" data-i="${i}" ${i === reglas.length - 1 ? 'disabled' : ''}
+                                    aria-label="Bajar prioridad" title="Bajar">↓</button>
+                            <button class="pol-iconbtn" data-pol="toggle" data-i="${i}"
+                                    aria-label="${r.activa ? 'Apagar' : 'Encender'} criterio"
+                                    title="${r.activa ? 'Apagar' : 'Encender'}">${r.activa ? '◉' : '○'}</button>
+                            <button class="pol-iconbtn" data-pol="editar" data-i="${i}" aria-label="Editar criterio" title="Editar">
+                                ${Icons.svg('pencil')}
+                            </button>
+                            <button class="pol-iconbtn peligro" data-pol="borrar" data-i="${i}" aria-label="Eliminar criterio" title="Eliminar">
+                                ${Icons.svg('x-circle')}
+                            </button>
+                        </div>
+                    </div>`).join('');
+
+                cont.querySelectorAll('[data-pol]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const i = parseInt(btn.dataset.i, 10);
+                        const accion = btn.dataset.pol;
+                        const rs = polBorrador.reglas;
+                        if (accion === 'subir' && i > 0) { const t = rs[i - 1]; rs[i - 1] = rs[i]; rs[i] = t; }
+                        else if (accion === 'bajar' && i < rs.length - 1) { const t = rs[i + 1]; rs[i + 1] = rs[i]; rs[i] = t; }
+                        else if (accion === 'toggle') { rs[i].activa = !rs[i].activa; }
+                        else if (accion === 'editar') { polAbrirEditor(rs[i]); return; }
+                        else if (accion === 'borrar') {
+                            rs.splice(i, 1);
+                            polEditando = null;
+                            // No se pide confirmación: nada de esto toca el servidor hasta
+                            // "Guardar", y "Descartar cambios" lo devuelve todo.
+                            AppMotion.toast('Criterio eliminado del borrador. Puedes descartar los cambios si te equivocaste.', 'warn');
+                        }
+                        polPintar(); polActualizarBarra();
+                    });
+                });
+            };
+
+            /** Abre el editor. `regla` null = criterio nuevo. */
+            const polAbrirEditor = (regla) => {
+                polNueva = !regla;
+                polEditando = regla ? polClonar(regla) : {
+                    id: 'r' + Date.now(),
+                    tipo: 'monto', activa: true, accion: 'auto',
+                    operador: 'menor', valor: 5000, valor2: 0,
+                    formatos: [], correos: [],
+                    dias: [1, 2, 3, 4, 5], desde: '09:00', hasta: '18:00', dentro: true,
+                    nota: ''
+                };
+                polPintarEditor();
+                const host = document.getElementById('pol-editor-host');
+                if (host) host.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            };
+
+            const polPintarEditor = () => {
+                const host = document.getElementById('pol-editor-host');
+                if (!host) return;
+                if (!polEditando) { host.innerHTML = ''; return; }
+                const e = polEditando;
+                const tipo = (polCatalogo.tipos || []).find(t => t.id === e.tipo) || {};
+                const numerico = ['monto', 'descuento', 'articulos'].indexOf(e.tipo) > -1;
+                const paso = e.tipo === 'articulos' ? '1' : (e.tipo === 'descuento' ? '0.1' : '0.01');
+
+                host.innerHTML = `
+                    <div class="pol-editor">
+                        <h4>${polNueva ? 'Nuevo criterio' : 'Editar criterio'}</h4>
+
+                        <div class="pol-campos">
+                            <label><span class="v-label">Criterio</span>
+                                <select id="ed-tipo" class="v-select">
+                                    ${(polCatalogo.tipos || []).map(t =>
+                                        `<option value="${escapeHtml(t.id)}" ${t.id === e.tipo ? 'selected' : ''}>${escapeHtml(t.nombre)}</option>`).join('')}
+                                </select></label>
+                            <label><span class="v-label">Cuando coincida…</span>
+                                <select id="ed-accion" class="v-select">
+                                    <option value="revisar" ${e.accion === 'revisar' ? 'selected' : ''}>Pasa a revisión</option>
+                                    <option value="auto" ${e.accion === 'auto' ? 'selected' : ''}>Se envía sin revisar</option>
+                                </select></label>
+                        </div>
+
+                        <p style="margin:0;font-size:.8rem;color:var(--ink-soft)">${escapeHtml(tipo.descripcion || '')}</p>
+
+                        ${numerico ? `
+                        <div class="pol-campos">
+                            <label><span class="v-label">Comparación</span>
+                                <select id="ed-op" class="v-select">
+                                    ${(polCatalogo.operadores || []).map(o =>
+                                        `<option value="${escapeHtml(o.id)}" ${o.id === e.operador ? 'selected' : ''}>${escapeHtml(o.nombre)}</option>`).join('')}
+                                </select></label>
+                            <label><span class="v-label">${e.operador === 'entre' ? 'Desde' : 'Valor'}</span>
+                                <input type="number" id="ed-valor" class="v-input" min="0" step="${paso}" value="${e.valor}"></label>
+                            ${e.operador === 'entre' ? `
+                            <label><span class="v-label">Hasta</span>
+                                <input type="number" id="ed-valor2" class="v-input" min="0" step="${paso}" value="${e.valor2}"></label>` : ''}
+                        </div>` : ''}
+
+                        ${e.tipo === 'formato' ? `
+                        <div class="pol-dias">
+                            ${(polCatalogo.formatos || []).map(f => `
+                                <label class="pol-dia ${(e.formatos || []).indexOf(f.id) > -1 ? 'sel' : ''}">
+                                    <input type="checkbox" data-ed-formato="${escapeHtml(f.id)}"
+                                           ${(e.formatos || []).indexOf(f.id) > -1 ? 'checked' : ''}>
+                                    ${escapeHtml(f.nombre)}
+                                </label>`).join('')}
+                        </div>` : ''}
+
+                        ${e.tipo === 'asesor' ? `
+                        <label><span class="v-label">Correos (uno por línea o separados por coma)</span>
+                            <textarea id="ed-correos" class="v-textarea" rows="3"
+                                placeholder="ana.ramirez@liverpool.com.mx">${escapeHtml((e.correos || []).join('\n'))}</textarea></label>` : ''}
+
+                        ${e.tipo === 'horario' ? `
+                        <div>
+                            <span class="v-label">Días</span>
+                            <div class="pol-dias">
+                                ${(polCatalogo.dias || []).map((d, i) => `
+                                    <label class="pol-dia ${(e.dias || []).indexOf(i) > -1 ? 'sel' : ''}">
+                                        <input type="checkbox" data-ed-dia="${i}" ${(e.dias || []).indexOf(i) > -1 ? 'checked' : ''}>
+                                        ${escapeHtml(d)}
+                                    </label>`).join('')}
+                            </div>
+                        </div>
+                        <div class="pol-campos">
+                            <label><span class="v-label">Desde</span>
+                                <input type="time" id="ed-desde" class="v-input" value="${escapeHtml(e.desde)}"></label>
+                            <label><span class="v-label">Hasta</span>
+                                <input type="time" id="ed-hasta" class="v-input" value="${escapeHtml(e.hasta)}"></label>
+                            <label><span class="v-label">Aplicar</span>
+                                <select id="ed-dentro" class="v-select">
+                                    <option value="si" ${e.dentro ? 'selected' : ''}>Dentro de esa franja</option>
+                                    <option value="no" ${e.dentro ? '' : 'selected'}>Fuera de esa franja</option>
+                                </select></label>
+                        </div>` : ''}
+
+                        <label><span class="v-label">Nota (opcional)</span>
+                            <input type="text" id="ed-nota" class="v-input" maxlength="200"
+                                   placeholder="Por qué existe este criterio" value="${escapeHtml(e.nota || '')}"></label>
+
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button id="ed-aplicar" class="v-btn v-btn-primary v-btn-sm">
+                                <span class="w-4 h-4 block" data-icon="check"></span>
+                                ${polNueva ? 'Añadir criterio' : 'Aplicar cambios'}
+                            </button>
+                            <button id="ed-cancelar" class="v-btn v-btn-ghost v-btn-sm">Cancelar</button>
+                        </div>
+                    </div>`;
+
+                Icons.render(host);
+
+                // Cambiar el tipo o el operador repinta el editor: los campos que hacen falta
+                // no son los mismos, y arrastrar los de antes deja valores que no aplican.
+                const repintarCon = (cambio) => { polLeerEditor(); Object.assign(polEditando, cambio); polPintarEditor(); };
+                document.getElementById('ed-tipo').addEventListener('change', ev => repintarCon({ tipo: ev.target.value }));
+                document.getElementById('ed-accion').addEventListener('change', ev => { polEditando.accion = ev.target.value; });
+                const op = document.getElementById('ed-op');
+                if (op) op.addEventListener('change', ev => repintarCon({ operador: ev.target.value }));
+
+                host.querySelectorAll('.pol-dia input').forEach(cb => {
+                    cb.addEventListener('change', () => cb.closest('.pol-dia').classList.toggle('sel', cb.checked));
+                });
+
+                document.getElementById('ed-cancelar').addEventListener('click', () => {
+                    polEditando = null; polPintarEditor();
+                });
+                document.getElementById('ed-aplicar').addEventListener('click', () => {
+                    polLeerEditor();
+                    const problema = polValidarRegla(polEditando);
+                    if (problema) { AppMotion.toast(problema, 'error'); return; }
+                    const rs = polBorrador.reglas;
+                    const idx = rs.findIndex(r => r.id === polEditando.id);
+                    if (idx > -1) rs[idx] = polEditando; else rs.push(polEditando);
+                    polEditando = null;
+                    polPintar(); polActualizarBarra();
+                    AppMotion.toast('Criterio listo en el borrador. Pulsa "Guardar la política" para aplicarlo.', 'ok');
+                });
+            };
+
+            /** Vuelca los campos del editor al objeto en edición. */
+            const polLeerEditor = () => {
+                const e = polEditando;
+                if (!e) return;
+                const val = (id) => { const el = document.getElementById(id); return el ? el.value : null; };
+
+                if (document.getElementById('ed-accion')) e.accion = val('ed-accion');
+                if (document.getElementById('ed-op')) e.operador = val('ed-op');
+                if (document.getElementById('ed-valor')) e.valor = parseFloat(val('ed-valor')) || 0;
+                if (document.getElementById('ed-valor2')) e.valor2 = parseFloat(val('ed-valor2')) || 0;
+                if (document.getElementById('ed-nota')) e.nota = val('ed-nota') || '';
+
+                const formatos = document.querySelectorAll('[data-ed-formato]');
+                if (formatos.length) {
+                    e.formatos = Array.from(formatos).filter(c => c.checked).map(c => c.dataset.edFormato);
+                }
+                const correos = document.getElementById('ed-correos');
+                if (correos) {
+                    e.correos = correos.value.split(/[\s,;]+/).map(s => s.trim().toLowerCase()).filter(s => s.indexOf('@') > 0);
+                }
+                const dias = document.querySelectorAll('[data-ed-dia]');
+                if (dias.length) {
+                    e.dias = Array.from(dias).filter(c => c.checked).map(c => parseInt(c.dataset.edDia, 10));
+                }
+                if (document.getElementById('ed-desde')) e.desde = val('ed-desde') || '09:00';
+                if (document.getElementById('ed-hasta')) e.hasta = val('ed-hasta') || '18:00';
+                if (document.getElementById('ed-dentro')) e.dentro = val('ed-dentro') === 'si';
+            };
+
+            /** @return {string} el problema, o '' si la regla es usable. */
+            const polValidarRegla = (r) => {
+                if (r.tipo === 'formato' && !(r.formatos || []).length) {
+                    return 'Elige al menos un formato o el criterio no coincidirá nunca.';
+                }
+                if (r.tipo === 'asesor' && !(r.correos || []).length) {
+                    return 'Escribe al menos un correo válido (tiene que llevar @).';
+                }
+                if (r.tipo === 'horario' && !(r.dias || []).length) {
+                    return 'Elige al menos un día o el criterio no coincidirá nunca.';
+                }
+                if (r.operador === 'entre' && r.valor2 <= r.valor) {
+                    return 'En un rango, "hasta" tiene que ser mayor que "desde".';
+                }
+                return '';
+            };
+
+            const polActualizarBarra = () => {
+                const barra = document.getElementById('pol-guardar-barra');
+                const sucio = polSucio();
+                barra.classList.toggle('hidden', !sucio);
+                if (sucio) {
+                    document.getElementById('pol-sucio-txt').textContent =
+                        polBorrador.exigirRevision
+                            ? 'Hay cambios sin aplicar. Pruébalos en el simulador antes de guardar.'
+                            : 'Vas a DESACTIVAR la revisión: revisa el aviso rojo antes de guardar.';
+                }
+            };
+
+            const polSimular = () => {
+                const caso = {
+                    total: parseFloat(document.getElementById('sim-total').value) || 0,
+                    descuentoMax: parseFloat(document.getElementById('sim-desc').value) || 0,
+                    articulos: parseInt(document.getElementById('sim-arts').value, 10) || 0,
+                    formato: document.getElementById('sim-formato').value,
+                    asesorCorreo: document.getElementById('sim-asesor').value,
+                    fechaHora: document.getElementById('sim-fecha').value
+                };
+                const caja = document.getElementById('pol-veredicto');
+                caja.innerHTML = '<div class="pol-veredicto"><div class="v-spinner"></div><span>Consultando al servidor…</span></div>';
+
+                google.script.run
+                    .withSuccessHandler(res => {
+                        if (!res || !res.success) {
+                            caja.innerHTML = '<div class="pol-veredicto pol-ver-revisar">' + Icons.svg('warning') +
+                                '<div><strong>No se pudo simular</strong><span>' +
+                                escapeHtml((res && res.message) || '') + '</span></div></div>';
+                            return;
+                        }
+                        const revisar = res.revisar;
+                        caja.innerHTML = `
+                            <div class="pol-veredicto ${revisar ? 'pol-ver-revisar' : 'pol-ver-directo'}">
+                                ${Icons.svg(revisar ? 'clock' : 'send')}
+                                <div>
+                                    <strong>${revisar ? 'Esta cotización PASARÍA a revisión' : 'Esta cotización SE ENVIARÍA sin revisar'}</strong>
+                                    <span>${escapeHtml(res.motivo)}<br>
+                                    Evaluada como ${escapeHtml(res.contexto.hora)} (hora del sistema).</span>
+                                </div>
+                            </div>`;
+                    })
+                    .withFailureHandler(err => {
+                        caja.innerHTML = '<div class="pol-veredicto pol-ver-revisar">' + Icons.svg('warning') +
+                            '<div><strong>Error de comunicación</strong><span>' + escapeHtml(err.message) + '</span></div></div>';
+                    })
+                    // Se manda el BORRADOR: la gracia es ver el efecto de lo que aún no se guarda.
+                    .simularPoliticaRevision(currentUserEmail, caso, polBorrador);
+            };
+
+            document.getElementById('pol-guardar').addEventListener('click', (ev) => {
+                const btn = ev.currentTarget;
+                btn.disabled = true;
+                google.script.run
+                    .withSuccessHandler(res => {
+                        btn.disabled = false;
+                        if (!res || !res.success) {
+                            AppMotion.toast((res && res.message) || 'No se pudo guardar la política.', 'error');
+                            return;
+                        }
+                        polCatalogo = res.catalogo;
+                        polGuardada = res.politica;
+                        polBorrador = polClonar(res.politica);
+                        polEditando = null;
+                        polPintar();
+                        AppMotion.toast(res.message || 'Política guardada.', 'ok');
+                        if (res.aviso) AppMotion.toast(res.aviso, 'warn');
+                        // La política cambió: lo que sigue en la cola pudo quedar liberado.
+                        try { AppCache.remove(SUP_CACHE_KEY); } catch (e) {}
+                        loadSupervisionQuotes();
+                    })
+                    .withFailureHandler(err => {
+                        btn.disabled = false;
+                        AppMotion.toast('Error al guardar la política: ' + err.message, 'error');
+                    })
+                    .guardarPoliticaRevision(currentUserEmail, polBorrador);
+            });
+
+            document.getElementById('pol-recargar').addEventListener('click', () => {
+                document.getElementById('pol-body').innerHTML = '<div class="pol-vacio"><div class="v-spinner"></div> Releyendo…</div>';
+                polCargar();
+            });
+
+            polCargar();
+
             const paintSupervision = (quotes) => {
                 allQuotes = quotes || [];
+                renderPendientes(allQuotes);
                 populateFilterOptions();
                 applyFilters();
 
@@ -661,6 +1596,15 @@
                     .filter(q => q.timestamp && new Date(q.timestamp) >= monthStart)
                     .reduce((sum, q) => sum + (q.total || 0), 0);
                 AppMotion.countUp(document.getElementById('kpi-monthly-amount'), monthAmount, v => formatMoney(v));
+            };
+
+            /** La cola no se queda "cargando" para siempre si el servidor no responde. */
+            const pendientesEnError = (mensaje) => {
+                document.getElementById('pend-num').textContent = '—';
+                document.getElementById('pend-sub').textContent =
+                    'No se pudo leer la cola de revisión.';
+                document.getElementById('pend-lista').innerHTML =
+                    '<div class="pend-vacio">' + escapeHtml(mensaje) + '</div>';
             };
 
             const loadSupervisionQuotes = () => {
@@ -678,6 +1622,7 @@
                             paintSupervision(response.quotes || []);
                         } else if (!cached) {
                             showSupPlaceholder(escapeHtml(response.message || 'No se pudieron cargar las cotizaciones.'));
+                            pendientesEnError(response.message || 'No se pudieron cargar las cotizaciones.');
                         }
                     })
                     .withFailureHandler(error => {
@@ -685,10 +1630,21 @@
                             AppMotion.toast('No se pudo actualizar desde el servidor; se muestran los últimos datos guardados.', 'warn');
                         } else {
                             showSupPlaceholder('Error de comunicación al cargar las cotizaciones: ' + escapeHtml(error.message));
+                            pendientesEnError('Error de comunicación: ' + error.message);
                         }
                     })
                     .getSupervisionQuotes(currentUserEmail);
             };
+
+            // "Actualizar" de la cola: tira la copia local y vuelve a preguntar. Es el botón
+            // que se pulsa después de aprobar un folio en otra pestaña.
+            document.getElementById('pend-refrescar').addEventListener('click', (ev) => {
+                try { AppCache.remove(SUP_CACHE_KEY); } catch (e) {}
+                document.getElementById('pend-lista').innerHTML =
+                    '<div class="pend-vacio"><div class="v-spinner"></div> Actualizando…</div>';
+                loadSupervisionQuotes();
+                AppMotion.pop(ev.currentTarget);
+            });
 
             let searchDebounce = null;
             supSearch.addEventListener('input', () => {

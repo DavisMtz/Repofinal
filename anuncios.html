@@ -4,137 +4,287 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Constructor de Anuncios - Portal Ventel</title>
+    <!-- Preferencias de vista (tema · densidad · texto · contraste) ANTES del tema,
+         igual que Index.html y Promociones.html: sin esto la pantalla ignoraba el
+         tema carbón del usuario y se veía como una isla blanca dentro del shell. -->
+    <?!= include('ViewPrefsPartial'); ?>
     <?!= include('app_theme'); ?>
     <style>
-      /* ── Constructor de Anuncios (portado de PortalVentel/Constructor.html) ──
-         Todo va bajo .anc-wrap para NO pisar los tokens del shell (--ink/--line/--brand). */
+      /* ═══ Constructor de Anuncios ═══════════════════════════════════════════
+         Consume los tokens del tema (app_theme) — NO redefine colores propios.
+         Antes esta hoja clonaba la paleta con hex fijos (#FFFFFF, #1B1F2A…), por
+         eso no seguía el tema del usuario y se desincronizaba del portal real.
+         Lo único que se declara aquí es lo que el tema no tiene: escala de
+         espaciado, escala tipográfica y los componentes propios del constructor. */
       .anc-wrap{
-        --bg:#F6F7FB; --card:#FFFFFF; --ink:#1B1F2A; --muted:#6B7280; --line:#E5E7EB;
-        --brand:#E10098; --brand-d:#B80079;
-        --info:#1D4ED8; --info-bg:#EAF0FE; --warn:#B45309; --warn-bg:#FDF1E0;
-        --alert:#C81E3C; --alert-bg:#FDE8EC; --ok:#0E7A4F; --ok-bg:#E5F5EE;
-        --radius:12px; --sh:0 4px 14px rgba(20,20,40,.08);
-        color:var(--ink); font-size:13.5px; line-height:1.5;
+        /* Espaciado: escala de 4px. Solo estos valores. */
+        --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+        /* Tipografía: 4 niveles reales, en rem para que respete data-textscale. */
+        --fs-xs:.75rem; --fs-sm:.8125rem; --fs-md:.875rem; --fs-lg:1.0625rem;
+        color:var(--ink); font-family:var(--f-ui); font-size:var(--fs-md); line-height:1.5;
       }
       .anc-wrap *{box-sizing:border-box}
-      .anc-grid{display:grid;grid-template-columns:1fr;gap:18px;align-items:start}
+      /* Tamaño base de los iconos en línea. DEBE ir antes que las reglas
+         específicas (.pv-banner .ic, etc.): misma especificidad, gana la última. */
+      .anc-wrap .ic{display:inline-block;width:1em;height:1em;vertical-align:-.15em;flex:none}
+
+      /* ── Layout ── */
+      .anc-grid{display:grid;grid-template-columns:1fr;gap:var(--s5);align-items:start}
       @media(min-width:1024px){ .anc-grid{grid-template-columns:minmax(0,1fr) minmax(0,400px)} }
       @media(min-width:1440px){ .anc-grid{grid-template-columns:minmax(0,1fr) minmax(0,440px)} }
-      .anc-side{display:flex;flex-direction:column;gap:16px}
-      @media(min-width:1024px){ .anc-side{position:sticky;top:1.25rem} }
+      .anc-side{display:flex;flex-direction:column;gap:var(--s4)}
+      @media(min-width:1024px){ .anc-side{position:sticky;top:var(--s5)} }
 
-      .anc-wrap .lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
-        color:var(--muted);margin:12px 0 5px;display:block}
-      .anc-wrap .lbl:first-child{margin-top:0}
-      .anc-wrap input[type=text],.anc-wrap input[type=url],.anc-wrap input[type=number],
-      .anc-wrap input[type=date],.anc-wrap textarea,.anc-wrap select{
-        width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 9px;font:inherit;
-        color:var(--ink);background:#fff;outline:none}
-      .anc-wrap input:focus,.anc-wrap textarea:focus,.anc-wrap select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(225,0,152,.12)}
-      .anc-wrap textarea{min-height:62px;resize:vertical}
-      .anc-wrap .row{display:flex;gap:8px}
-      .anc-wrap .row>*{flex:1;min-width:0}
-      .anc-wrap .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-      .anc-wrap .seg button{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 6px;
-        font:inherit;font-weight:600;cursor:pointer;color:var(--ink);transition:.15s}
-      .anc-wrap .seg button .t{font-size:11px;color:var(--muted);font-weight:500;display:block}
-      .anc-wrap .seg button.on{border-color:var(--brand);background:#FFF0F8;color:var(--brand-d)}
-      .anc-wrap .tones{display:flex;gap:6px;flex-wrap:wrap}
-      .anc-wrap .tone{border:1px solid var(--line);border-radius:20px;padding:5px 11px;font-size:12px;
-        font-weight:600;cursor:pointer;background:#fff}
-      .anc-wrap .tone[data-t=info].on{background:var(--info-bg);color:var(--info);border-color:var(--info)}
-      .anc-wrap .tone[data-t=warn].on{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
-      .anc-wrap .tone[data-t=alert].on{background:var(--alert-bg);color:var(--alert);border-color:var(--alert)}
-      .anc-wrap .tone[data-t=ok].on{background:var(--ok-bg);color:var(--ok);border-color:var(--ok)}
-      .anc-wrap .chk{display:flex;align-items:center;gap:7px;font-weight:600;cursor:pointer;margin-top:6px}
-      .anc-wrap .chk input{width:16px;height:16px;accent-color:var(--brand)}
-      .anc-wrap .hint{font-size:11px;color:var(--muted);margin-top:3px}
-      .anc-wrap .hint .vl-spin{vertical-align:middle;margin-right:5px}
-      .anc-wrap .vl-spin{display:inline-block;position:relative;vertical-align:middle;width:var(--vl-sz,16px);height:var(--vl-sz,16px)}
-      .anc-wrap .vl-spin i{position:absolute;top:0;left:50%;width:calc(var(--vl-sz,16px)*.2);height:calc(var(--vl-sz,16px)*.2);
-        margin-left:calc(var(--vl-sz,16px)*-.1);border-radius:50%;opacity:.2;
-        transform-origin:50% calc(var(--vl-sz,16px)*.5);animation:vl-trail 1s linear infinite}
-      .anc-wrap .vl-spin i:nth-child(odd){background:#F28C00}
-      .anc-wrap .vl-spin i:nth-child(even){background:#8E2A8B}
-      @keyframes vl-trail{0%,100%{opacity:.2}40%{opacity:1}}
-      .anc-wrap .btn{width:100%;border:none;border-radius:10px;padding:11px;font:inherit;font-weight:700;
-        cursor:pointer;background:var(--brand);color:#fff;margin-top:14px;transition:.15s}
-      .anc-wrap .btn:hover{background:var(--brand-d)}
-      .anc-wrap .btn[disabled]{opacity:.6;cursor:default}
-      .anc-wrap .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
-      .anc-wrap .msg{font-size:12px;border-radius:9px;padding:8px 10px;margin-top:10px;display:none}
-      .anc-wrap .msg.ok{display:block;background:var(--ok-bg);color:var(--ok)}
-      .anc-wrap .msg.err{display:block;background:var(--alert-bg);color:var(--alert)}
-      .anc-wrap .hidden{display:none!important}
-      .anc-wrap .cc{font-size:10px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0}
-      .anc-wrap .cc.over{color:var(--alert)}
-      .anc-wrap select{appearance:auto}
+      .anc-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--rad);
+        box-shadow:var(--sh-sm);padding:var(--s5)}
+      .anc-card+.anc-card{margin-top:0}
 
-      /* Card interno del constructor (distinto de v-card del shell) */
-      .anc-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-        box-shadow:var(--sh);padding:16px}
-      .anc-card h2{font-size:15px;margin:0 0 12px;font-weight:800;color:var(--ink)}
+      /* ── Secciones del formulario: agrupar por tema, no una lista infinita ──
+         El espacio ENTRE grupos (s5) es mayor que DENTRO del grupo (s3). */
+      .anc-sec{border:0;padding:0;margin:0}
+      .anc-sec+.anc-sec{margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--line-soft)}
+      .anc-sec>legend{padding:0;font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;
+        letter-spacing:.06em;color:var(--ink-faint);margin-bottom:var(--s3)}
+      .anc-field+.anc-field{margin-top:var(--s3)}
+      .anc-lbl{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s2);
+        font-size:var(--fs-sm);font-weight:600;color:var(--ink-soft);margin-bottom:var(--s1)}
+      .anc-help{font-size:var(--fs-xs);color:var(--ink-faint);margin-top:var(--s1);line-height:1.45}
 
-      /* Vista previa */
-      .anc-wrap .prev-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
-        color:var(--muted);margin-bottom:7px;display:flex;align-items:center;justify-content:space-between}
-      .anc-wrap .pv-toggle{border:1px solid var(--line);background:#fff;border-radius:7px;padding:3px 8px;
-        font:inherit;font-size:10.5px;font-weight:700;cursor:pointer;color:var(--ink);text-transform:none;letter-spacing:0}
-      .anc-wrap #preview.dark{background:#11141c;border-radius:12px;padding:10px;margin-top:2px}
-      .anc-wrap #preview.dark .pv-dest{background:linear-gradient(135deg,#1c2130,#241526);border-color:#2c3344}
-      .anc-wrap #preview.dark .pv-dest .pc,.anc-wrap #preview.dark .pv-card .pc,.anc-wrap #preview.dark .pv-modal .pc{color:#c4ccd8}
-      .anc-wrap #preview.dark .pv-card,.anc-wrap #preview.dark .pv-modal{background:#171b25;border-color:#2c3344;color:#eef2f6}
-      .anc-wrap #preview.dark .pv-card .pt,.anc-wrap #preview.dark .pv-modal .pt{color:#f3f5f8}
-      .anc-wrap .pv-banner{display:flex;align-items:flex-start;gap:8px;border-radius:12px;padding:10px 12px;
-        font-size:12.5px;font-weight:600;line-height:1.4}
-      .anc-wrap .pv-banner.info{background:var(--info-bg);color:var(--info)}
-      .anc-wrap .pv-banner.warn{background:var(--warn-bg);color:var(--warn)}
-      .anc-wrap .pv-banner.alert{background:var(--alert-bg);color:var(--alert)}
-      .anc-wrap .pv-banner.ok{background:var(--ok-bg);color:var(--ok)}
-      .anc-wrap .pv-dest{border-radius:14px;padding:14px;border:1px solid var(--line);background:linear-gradient(135deg,#fff,#FFF0F8)}
-      .anc-wrap .pv-dest .pt{font-size:14px;font-weight:800;margin-bottom:3px}
-      .anc-wrap .pv-dest .pc{font-size:12.5px;color:#374151}
-      .anc-wrap .pv-card{border-radius:14px;border:1px solid var(--line);overflow:hidden;background:#fff}
-      .anc-wrap .pv-card img{width:100%;height:96px;object-fit:cover;display:block;background:#eee}
-      .anc-wrap .pv-card .pb{padding:11px}
-      .anc-wrap .pv-card .pt{font-size:13.5px;font-weight:800}
-      .anc-wrap .pv-card .pv{font-size:11px;color:var(--brand-d);font-weight:700;margin-top:2px}
-      .anc-wrap .pv-card .pc{font-size:12px;color:#374151;margin-top:4px}
-      .anc-wrap .pv-cta{display:inline-block;margin-top:9px;background:var(--brand);color:#fff;
-        border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;text-decoration:none}
-      .anc-wrap .pv-cta2{background:#fff;color:var(--brand-d);border:1.5px solid var(--brand);margin-left:6px}
-      .anc-wrap .pv-modal{border-radius:14px;border:1px dashed var(--line);padding:12px;text-align:center;background:#fff}
-      .anc-wrap .pv-modal img{width:100%;height:90px;object-fit:cover;border-radius:9px;margin-bottom:8px;background:#eee}
+      /* ── Controles: heredan .v-input/.v-select/.v-textarea del tema ── */
+      .anc-wrap textarea.v-textarea{min-height:66px;resize:vertical}
+      .anc-row{display:flex;gap:var(--s2);flex-wrap:wrap}
+      .anc-row>*{flex:1 1 160px;min-width:0}
 
-      /* Lista de existentes */
-      .anc-wrap .item{border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:8px;background:#fff}
-      .anc-wrap .item .hd{display:flex;align-items:center;gap:6px;margin-bottom:4px}
-      .anc-wrap .badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;
-        padding:2px 7px;border-radius:20px;background:#EEF;color:#334}
-      .anc-wrap .badge.off{background:#F3F4F6;color:#9CA3AF}
-      .anc-wrap .badge.est.activo{background:var(--ok-bg);color:var(--ok)}
-      .anc-wrap .badge.est.programado{background:var(--info-bg);color:var(--info)}
-      .anc-wrap .badge.est.expirado{background:var(--warn-bg);color:var(--warn)}
-      .anc-wrap .badge.est.inactivo{background:#F3F4F6;color:#9CA3AF}
-      .anc-wrap .item .tt{font-weight:700;font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-      .anc-wrap .item .ac{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
-      .anc-wrap .item .ac button{flex:1;border:1px solid var(--line);background:#fff;border-radius:8px;
-        padding:6px;font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--ink)}
-      .anc-wrap .item .ac button.mini{flex:0 0 32px;padding:6px 0;font-size:13px;line-height:1}
-      .anc-wrap .item .ac button.del{color:var(--alert)}
-      .anc-wrap .empty{color:var(--muted);font-size:12px;text-align:center;padding:8px}
-      .anc-wrap .spin{color:var(--muted);font-size:12px;text-align:center;padding:8px}
+      /* ── Selector de formato ── */
+      .anc-seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
+      .anc-seg button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+        border:1.5px solid var(--line);background:var(--surface);border-radius:var(--rad-sm);
+        padding:var(--s2) var(--s3);font:inherit;font-size:var(--fs-sm);font-weight:700;
+        color:var(--ink);cursor:pointer;text-align:left;transition:var(--tr)}
+      .anc-seg button:hover{border-color:var(--brand-soft)}
+      .anc-seg button .t{font-size:var(--fs-xs);color:var(--ink-faint);font-weight:500}
+      .anc-seg button[aria-pressed="true"]{border-color:var(--brand);background:var(--brand-tint);color:var(--brand-deep)}
+      .anc-seg button[aria-pressed="true"] .t{color:var(--brand-deep);opacity:.8}
+      .anc-seg button:focus-visible{outline:none;box-shadow:var(--ring)}
 
-      /* Estado de programación (vigencia legible) */
-      .anc-wrap .sched{display:flex;align-items:center;gap:7px;margin-top:8px;border-radius:9px;
-        padding:8px 10px;font-size:12px;font-weight:600;line-height:1.35;background:var(--info-bg);color:var(--info)}
-      .anc-wrap .sched.ok{background:var(--ok-bg);color:var(--ok)}
-      .anc-wrap .sched.prog{background:var(--info-bg);color:var(--info)}
-      .anc-wrap .sched.warn{background:var(--warn-bg);color:var(--warn)}
-      .anc-wrap .sched.alert{background:var(--alert-bg);color:var(--alert)}
-      .anc-wrap .sched .si-ic{font-size:14px;line-height:1}
-      .anc-wrap .hint.soon{color:var(--warn);font-weight:700}
-      .anc-wrap .hint.expired{color:var(--alert);font-weight:700}
+      /* ── Tonos: <button> reales (antes eran <span>: sin teclado ni foco) ── */
+      .anc-tones{display:flex;gap:var(--s2);flex-wrap:wrap}
+      .anc-tone{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);
+        border-radius:999px;padding:6px var(--s3);font:inherit;font-size:var(--fs-sm);font-weight:600;
+        background:var(--surface);color:var(--ink-soft);cursor:pointer;transition:var(--tr)}
+      .anc-tone::before{content:'';width:9px;height:9px;border-radius:999px;background:currentColor;opacity:.55}
+      .anc-tone:focus-visible{outline:none;box-shadow:var(--ring)}
+      .anc-tone[data-t=info]{color:var(--info)} .anc-tone[data-t=warn]{color:var(--warn)}
+      .anc-tone[data-t=alert]{color:var(--alert)} .anc-tone[data-t=ok]{color:var(--ok)}
+      .anc-tone[aria-pressed="true"]{border-color:currentColor;font-weight:700}
+      .anc-tone[aria-pressed="true"]::before{opacity:1}
+      .anc-tone[aria-pressed="true"][data-t=info]{background:var(--info-bg)}
+      .anc-tone[aria-pressed="true"][data-t=warn]{background:var(--warn-bg)}
+      .anc-tone[aria-pressed="true"][data-t=alert]{background:var(--alert-bg)}
+      .anc-tone[aria-pressed="true"][data-t=ok]{background:var(--ok-bg)}
+
+      /* ── Casilla ── */
+      .anc-chk{display:flex;align-items:center;gap:var(--s2);font-size:var(--fs-md);font-weight:600;
+        color:var(--ink);cursor:pointer;padding:var(--s1) 0}
+      .anc-chk input{width:18px;height:18px;accent-color:var(--brand);cursor:pointer;flex:none}
+      .anc-chk input:focus-visible{outline:none;box-shadow:var(--ring);border-radius:4px}
+
+      /* ── Contador de caracteres (bloquea, no solo avisa) ── */
+      .anc-cc{font-size:var(--fs-xs);font-weight:600;color:var(--ink-faint);
+        font-variant-numeric:tabular-nums;letter-spacing:0;text-transform:none}
+      .anc-cc.warn{color:var(--warn)}
+      .anc-cc.over{color:var(--alert)}
+
+      /* ── Error por campo (junto al campo, no solo en un banner arriba) ── */
+      .anc-err{display:none;align-items:center;gap:6px;font-size:var(--fs-xs);font-weight:600;
+        color:var(--alert);margin-top:var(--s1)}
+      .anc-err.on{display:flex}
+      .anc-err .ic{width:14px;height:14px;flex:none}
+      .anc-wrap [aria-invalid="true"]{border-color:var(--alert)}
+      .anc-wrap [aria-invalid="true"]:focus{box-shadow:0 0 0 4px var(--alert-bg)}
+
+      /* ── Estado de programación ── */
+      .anc-sched{display:flex;align-items:flex-start;gap:var(--s2);margin-top:var(--s3);
+        border-radius:var(--rad-sm);padding:var(--s2) var(--s3);font-size:var(--fs-sm);
+        font-weight:600;line-height:1.4;background:var(--info-bg);color:var(--info)}
+      .anc-sched.ok{background:var(--ok-bg);color:var(--ok)}
+      .anc-sched.prog{background:var(--info-bg);color:var(--info)}
+      .anc-sched.warn{background:var(--warn-bg);color:var(--warn)}
+      .anc-sched.alert{background:var(--alert-bg);color:var(--alert)}
+      .anc-sched .ic{width:16px;height:16px;flex:none;margin-top:1px}
+
+      /* ── Barra de acciones: UNA primaria; cancelar es terciaria ── */
+      .anc-actions{display:flex;align-items:center;gap:var(--s3);margin-top:var(--s5);
+        padding-top:var(--s4);border-top:1px solid var(--line-soft)}
+      .anc-actions .v-btn-primary{flex:1}
+      .anc-link{background:none;border:0;padding:var(--s2);font:inherit;font-size:var(--fs-sm);
+        font-weight:600;color:var(--ink-soft);cursor:pointer;border-radius:var(--rad-sm)}
+      .anc-link:hover{color:var(--alert)}
+      .anc-link:focus-visible{outline:none;box-shadow:var(--ring)}
+
+      /* ── Subida de imagen ── */
+      .anc-drop{display:flex;align-items:center;gap:var(--s3);border:1.5px dashed var(--line);
+        border-radius:var(--rad-sm);padding:var(--s3);background:var(--surface-2);
+        cursor:pointer;transition:var(--tr)}
+      .anc-drop:hover,.anc-drop.is-over{border-color:var(--brand);background:var(--brand-tint)}
+      .anc-drop:focus-within{box-shadow:var(--ring)}
+      .anc-drop input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+      .anc-drop .ic{width:20px;height:20px;color:var(--ink-faint);flex:none}
+      .anc-drop-t{font-size:var(--fs-sm);font-weight:600;color:var(--ink)}
+      .anc-drop-s{font-size:var(--fs-xs);color:var(--ink-faint)}
+      .anc-thumb{width:44px;height:44px;border-radius:var(--rad-sm);object-fit:cover;flex:none;
+        border:1px solid var(--line);background:var(--surface-2)}
+
+      /* ═══ VISTA PREVIA ═══════════════════════════════════════════════════════
+         Replica la maquetación real de Index.html (.aviso/.anc-destacado/.anc-card/
+         .anc-modal) para que lo que se ve aquí sea lo que se publica. */
+      .anc-pv-hd{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);
+        flex-wrap:wrap;margin-bottom:var(--s3)}
+      .anc-pv-t{font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;
+        letter-spacing:.06em;color:var(--ink-faint)}
+      .anc-pv-tools{display:flex;gap:var(--s1)}
+      .anc-pv-tools .v-btn{padding:.3rem .6rem;font-size:var(--fs-xs)}
+      .anc-pv-tools .v-btn[aria-pressed="true"]{background:var(--brand-tint);
+        border-color:var(--brand);color:var(--brand-deep)}
+      /* El escenario aplica los tokens del tema elegido: con data-theme="carbon"
+         hereda los colores oscuros REALES del portal, no un gris inventado. */
+      .anc-stage{background:var(--content-bg);border:1px solid var(--line);
+        border-radius:var(--rad);padding:var(--s3);transition:max-width .3s cubic-bezier(.2,.8,.2,1)}
+      .anc-stage.is-mobile{max-width:340px;margin-inline:auto}
+      .anc-stage>*+*{margin-top:var(--s3)}
+
+      /* Medidas calcadas de .aviso (Index.html): radio 14, padding .8/1rem, .88rem,
+         borde teñido y sombra. Sin el borde la vista previa se veía más plana que
+         el banner real. */
+      .pv-banner{display:flex;align-items:flex-start;gap:.7rem;border-radius:14px;
+        padding:.8rem 1rem;font-size:.88rem;font-weight:600;line-height:1.45;
+        border:1px solid transparent;box-shadow:var(--sh-xs)}
+      .pv-banner .ic{width:18px;height:18px;flex:none;margin-top:.1rem}
+      .pv-banner .pv-x{margin-left:auto;opacity:.65;flex:none;width:26px;height:26px;
+        border-radius:50%;display:flex;align-items:center;justify-content:center}
+      .pv-banner .pv-x .ic{width:13px;height:13px;margin:0}
+      .pv-banner.info{background:var(--info-bg);color:var(--info);border-color:color-mix(in srgb,var(--info) 24%,transparent)}
+      .pv-banner.warn{background:var(--warn-bg);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 26%,transparent)}
+      .pv-banner.alert{background:var(--alert-bg);color:var(--alert);border-color:color-mix(in srgb,var(--alert) 26%,transparent)}
+      .pv-banner.ok{background:var(--ok-bg);color:var(--ok);border-color:color-mix(in srgb,var(--ok) 24%,transparent)}
+
+      /* .anc-destacado real: radio 16, padding 1rem 1.1rem, gap .9rem. */
+      .pv-dest{display:flex;gap:.9rem;align-items:flex-start;border-radius:16px;
+        padding:1rem 1.1rem;border:1px solid transparent;box-shadow:var(--sh-xs)}
+      .pv-dest.info{background:var(--info-bg);border-color:color-mix(in srgb,var(--info) 24%,transparent)}
+      .pv-dest.warn{background:var(--warn-bg);border-color:color-mix(in srgb,var(--warn) 26%,transparent)}
+      .pv-dest.alert{background:var(--alert-bg);border-color:color-mix(in srgb,var(--alert) 26%,transparent)}
+      .pv-dest.ok{background:var(--ok-bg);border-color:color-mix(in srgb,var(--ok) 24%,transparent)}
+      .pv-d-ic{flex:none;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;
+        justify-content:center;background:rgba(255,255,255,.6)}
+      .pv-d-ic .ic{width:20px;height:20px}
+      .pv-dest.info .pv-d-ic{color:var(--info)} .pv-dest.warn .pv-d-ic{color:var(--warn)}
+      .pv-dest.alert .pv-d-ic{color:var(--alert)} .pv-dest.ok .pv-d-ic{color:var(--ok)}
+      .pv-dest .pt{font-weight:800;font-size:var(--fs-lg);line-height:1.25;color:var(--ink)}
+      .pv-dest .pc{font-size:var(--fs-md);font-weight:500;line-height:1.5;color:var(--ink-soft);margin-top:2px}
+
+      /* .anc-card real: radio 16, imagen de 140 px, cuerpo .95/1.05/1.1rem. */
+      .pv-card{position:relative;border-radius:16px;border:1px solid var(--line);overflow:hidden;
+        background:var(--surface);box-shadow:var(--sh-xs)}
+      .pv-card.info{border-top:3px solid var(--info)} .pv-card.warn{border-top:3px solid var(--warn)}
+      .pv-card.alert{border-top:3px solid var(--alert)} .pv-card.ok{border-top:3px solid var(--ok)}
+      .pv-card img{width:100%;height:140px;object-fit:cover;display:block;background:#eef0f5}
+      /* El distintivo de ampliar existe en el portal (aparece al pasar el ratón). Aquí
+         se deja fijo y atenuado: recuerda que la tarjeta se abre en grande al pulsarla. */
+      .pv-card .pv-zoom{position:absolute;top:.55rem;right:.55rem;width:30px;height:30px;
+        border-radius:50%;display:flex;align-items:center;justify-content:center;
+        background:rgba(20,20,40,.5);color:#fff;opacity:.75}
+      .pv-card .pv-zoom .ic{width:15px;height:15px}
+      .pv-card .pb{padding:.95rem 1.05rem 1.1rem}
+      .pv-card .pt{font-weight:800;font-size:1.02rem;line-height:1.25;color:var(--ink)}
+      .pv-card .pvig{display:inline-flex;align-items:center;gap:.35rem;font-size:.76rem;
+        font-weight:700;color:var(--brand-deep);margin-top:.3rem}
+      .pv-card .pvig .ic{width:14px;height:14px}
+      .pv-card .pc{font-size:.86rem;font-weight:500;line-height:1.5;
+        color:var(--ink-soft);margin-top:.45rem}
+
+      /* .anc-modal-card real: radio 20 y la foto NO se recorta — se muestra entera
+         sobre fondo oscuro (object-fit:contain). Recortarla aquí hacía prometer un
+         encuadre que el portal no aplica. */
+      .pv-modal{position:relative;border-radius:20px;border:1px solid var(--line);
+        overflow:hidden;background:var(--surface);box-shadow:var(--sh-md)}
+      .pv-modal img{width:100%;max-height:180px;height:auto;object-fit:contain;
+        display:block;background:#0e1119}
+      .pv-modal .pb{padding:1.1rem 1.2rem 1.3rem}
+      .pv-modal .pt{font-weight:800;font-size:1.15rem;line-height:1.2;color:var(--ink)}
+      .pv-modal .pc{font-size:var(--fs-md);font-weight:500;line-height:1.55;
+        color:var(--ink-soft);margin-top:var(--s2)}
+      .pv-modal .pv-x{position:absolute;top:.8rem;right:.8rem;width:30px;height:30px;
+        border-radius:50%;background:rgba(255,255,255,.9);color:#1b1f2a;display:flex;
+        align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+      .pv-modal .pv-x .ic{width:15px;height:15px}
+
+      .pv-ctas{display:flex;flex-wrap:wrap;gap:var(--s2);align-items:center;margin-top:var(--s3)}
+      .pv-cta{display:inline-flex;align-items:center;gap:5px;background:var(--brand);color:#fff;
+        border-radius:10px;padding:6px var(--s3);font-size:var(--fs-sm);font-weight:700;text-decoration:none}
+      .pv-cta .ic{width:13px;height:13px}
+      .pv-cta.sec{background:transparent;color:var(--brand-deep);
+        border:1.5px solid color-mix(in srgb,var(--brand) 42%,transparent)}
+
+      /* ── Nota de contexto bajo la vista previa ── */
+      .anc-where{display:flex;gap:var(--s2);align-items:flex-start;margin-top:var(--s3);
+        font-size:var(--fs-xs);color:var(--ink-faint);line-height:1.45}
+      .anc-where .ic{width:14px;height:14px;flex:none;margin-top:2px}
+
+      /* ═══ LISTA DE PUBLICACIONES ═════════════════════════════════════════════ */
+      .anc-filters{display:flex;gap:var(--s1);flex-wrap:wrap;margin-bottom:var(--s3)}
+      .anc-filter{border:1px solid var(--line);background:var(--surface);border-radius:999px;
+        padding:4px var(--s3);font:inherit;font-size:var(--fs-xs);font-weight:600;
+        color:var(--ink-soft);cursor:pointer;transition:var(--tr)}
+      .anc-filter:hover{border-color:var(--brand-soft)}
+      .anc-filter:focus-visible{outline:none;box-shadow:var(--ring)}
+      .anc-filter[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+
+      .anc-item{border:1px solid var(--line);border-radius:var(--rad-sm);padding:var(--s3);
+        background:var(--surface);transition:border-color .16s ease}
+      .anc-item+.anc-item{margin-top:var(--s2)}
+      .anc-item:hover{border-color:var(--brand-soft)}
+      .anc-item.is-editing{border-color:var(--brand);box-shadow:var(--ring)}
+      .anc-item-hd{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
+      .anc-item-tt{font-weight:700;font-size:var(--fs-md);flex:1;min-width:0;
+        overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+      .anc-meta{font-size:var(--fs-xs);color:var(--ink-faint);margin-top:var(--s1);
+        display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center}
+      .anc-meta .soon{color:var(--warn);font-weight:700}
+      .anc-meta .expired{color:var(--alert);font-weight:700}
+      .anc-item-ac{display:flex;gap:var(--s1);margin-top:var(--s2);flex-wrap:wrap}
+      .anc-item-ac button{display:inline-flex;align-items:center;justify-content:center;gap:5px;
+        border:1px solid var(--line);background:var(--surface);border-radius:var(--rad-sm);
+        padding:5px var(--s2);font:inherit;font-size:var(--fs-xs);font-weight:600;
+        color:var(--ink-soft);cursor:pointer;transition:var(--tr);min-height:30px}
+      .anc-item-ac button:hover:not(:disabled){color:var(--ink);border-color:var(--brand-soft)}
+      .anc-item-ac button:focus-visible{outline:none;box-shadow:var(--ring)}
+      .anc-item-ac button:disabled{opacity:.4;cursor:not-allowed}
+      .anc-item-ac button.icon{padding:5px;width:30px}
+      .anc-item-ac button.icon .ic{width:15px;height:15px}
+      .anc-item-ac button.danger:hover:not(:disabled){color:var(--alert);border-color:var(--alert)}
+      .anc-item-ac .sep{flex:1}
+
+      /* Estados: cargando (skeleton) · vacío · error */
+      .anc-sk{border:1px solid var(--line-soft);border-radius:var(--rad-sm);padding:var(--s3)}
+      .anc-sk+.anc-sk{margin-top:var(--s2)}
+      .anc-sk i{display:block;height:9px;border-radius:999px;background:var(--surface-2);
+        animation:anc-pulse 1.4s ease-in-out infinite}
+      .anc-sk i+i{margin-top:var(--s2)}
+      .anc-sk i:nth-child(1){width:45%} .anc-sk i:nth-child(2){width:80%} .anc-sk i:nth-child(3){width:60%}
+      @keyframes anc-pulse{0%,100%{opacity:1}50%{opacity:.45}}
+      .anc-empty{text-align:center;padding:var(--s5) var(--s3);color:var(--ink-faint)}
+      .anc-empty .ic{width:28px;height:28px;margin:0 auto var(--s2);display:block;opacity:.5}
+      .anc-empty-t{font-size:var(--fs-md);font-weight:600;color:var(--ink-soft);margin-bottom:var(--s1)}
+      .anc-empty-s{font-size:var(--fs-xs);line-height:1.5;max-width:34ch;margin-inline:auto}
+
+      .anc-hidden{display:none!important}
+
+      /* El movimiento se apaga por completo si el sistema lo pide. */
+      @media (prefers-reduced-motion: reduce){
+        .anc-wrap *,.anc-wrap *::before,.anc-wrap *::after{
+          animation-duration:.01ms!important;transition-duration:.01ms!important}
+      }
     </style>
 <!-- Utilidades Tailwind compiladas: va al final del head, igual que la hoja que el CDN inyectaba. -->
 <?!= include('app_tailwind'); ?>
@@ -144,135 +294,201 @@
 
     <main id="main-content" class="max-w-[1280px] mx-auto p-4 sm:p-6 lg:p-8">
         <header class="mb-6" data-animate>
-            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">📢 Constructor de Anuncios</h1>
-            <p class="text-slate-600 mt-1">Crea la publicación, mírala en vivo y publícala. Se guarda en la hoja <b>Anuncios</b> del Portal y el portal la interpreta al instante.</p>
+            <h1 class="text-3xl font-bold tracking-tight" style="color:var(--ink)">Constructor de Anuncios</h1>
+            <p class="mt-1" style="color:var(--ink-soft)">Crea la publicación, mírala en vivo y publícala. Se guarda en la hoja <b>Anuncios</b> del Portal y el portal la interpreta al instante.</p>
         </header>
 
         <div class="anc-wrap" data-animate>
           <div class="anc-grid">
 
             <!-- ══ COLUMNA IZQUIERDA: FORMULARIO ══ -->
-            <div class="anc-card">
+            <form class="anc-card" id="ancForm" novalidate>
               <input type="hidden" id="f-id">
 
-              <span class="lbl">Formato</span>
-              <div class="seg" id="formatos">
-                <button data-f="banner" class="on" type="button">Banner<span class="t">aviso descartable</span></button>
-                <button data-f="destacado" type="button">Destacado<span class="t">fijo al inicio</span></button>
-                <button data-f="tarjeta" type="button">Tarjeta<span class="t">imagen + botón</span></button>
-                <button data-f="modal" type="button">Modal<span class="t">pop-up de inicio</span></button>
-              </div>
-
-              <div id="grp-tono">
-                <span class="lbl">Tono / color</span>
-                <div class="tones" id="tones">
-                  <span class="tone on" data-t="info">Info</span>
-                  <span class="tone" data-t="warn">Aviso</span>
-                  <span class="tone" data-t="alert">Urgente</span>
-                  <span class="tone" data-t="ok">Éxito</span>
+              <!-- ── 1. Formato ── -->
+              <fieldset class="anc-sec">
+                <legend>1 · Formato de la publicación</legend>
+                <div class="anc-seg" id="formatos" role="group" aria-label="Formato">
+                  <button type="button" data-f="banner" aria-pressed="true">Banner<span class="t">aviso descartable</span></button>
+                  <button type="button" data-f="destacado" aria-pressed="false">Destacado<span class="t">fijo al inicio</span></button>
+                  <button type="button" data-f="tarjeta" aria-pressed="false">Tarjeta<span class="t">imagen + botón</span></button>
+                  <button type="button" data-f="modal" aria-pressed="false">Modal<span class="t">pop-up de inicio</span></button>
                 </div>
-              </div>
+              </fieldset>
 
-              <div id="grp-mensaje">
-                <span class="lbl">Mensaje <span class="cc" id="cc-mensaje"></span></span>
-                <textarea id="f-mensaje" placeholder="Texto del aviso…"></textarea>
-              </div>
+              <!-- ── 2. Contenido ── -->
+              <fieldset class="anc-sec">
+                <legend>2 · Contenido</legend>
 
-              <div id="grp-titulo">
-                <span class="lbl">Título <span class="cc" id="cc-titulo"></span></span>
-                <input type="text" id="f-titulo" placeholder="Título de la publicación">
-              </div>
-
-              <div id="grp-icono">
-                <span class="lbl">Ícono</span>
-                <select id="f-icono">
-                  <option value="megaphone">📣 Megáfono</option>
-                  <option value="sparkle">✨ Destello</option>
-                  <option value="bolt">⚡ Rayo</option>
-                  <option value="flag">🚩 Bandera</option>
-                  <option value="pin">📍 Pin</option>
-                  <option value="calendar">📅 Calendario</option>
-                  <option value="chart">📈 Gráfica</option>
-                  <option value="store">🏬 Tienda</option>
-                  <option value="truck">🚚 Envío</option>
-                  <option value="money">💵 Dinero</option>
-                  <option value="card">💳 Tarjeta</option>
-                  <option value="gear">⚙️ Ajustes</option>
-                  <option value="mail">✉️ Correo</option>
-                </select>
-              </div>
-
-              <div id="grp-cuerpo">
-                <span class="lbl">Cuerpo <span class="cc" id="cc-cuerpo"></span></span>
-                <textarea id="f-cuerpo" placeholder="Detalle del anuncio…"></textarea>
-              </div>
-
-              <div id="grp-desc">
-                <span class="lbl">Descripción <span class="cc" id="cc-desc"></span></span>
-                <textarea id="f-desc" placeholder="Descripción corta…"></textarea>
-              </div>
-
-              <div id="grp-imagen">
-                <span class="lbl">Imagen</span>
-                <input type="file" id="f-imagenFile" accept="image/*">
-                <div class="hint" id="imgHint">Súbela a Drive (carpeta «Portal Ventel») o pega una URL pública abajo.</div>
-                <input type="url" id="f-imagen" placeholder="https://…/imagen.jpg" style="margin-top:6px">
-              </div>
-
-              <div id="grp-vigencia">
-                <span class="lbl">Vigencia (texto)</span>
-                <input type="text" id="f-vigencia" placeholder="Ej. 3 al 15 de junio">
-              </div>
-
-              <div id="grp-cta">
-                <span class="lbl">Botón principal (opcional)</span>
-                <div class="row">
-                  <input type="text" id="f-ctaTexto" placeholder="Texto del botón">
-                  <input type="url" id="f-ctaUrl" placeholder="https://…">
+                <div class="anc-field" id="grp-tono">
+                  <span class="anc-lbl" id="lbl-tono">Tono</span>
+                  <div class="anc-tones" id="tones" role="group" aria-labelledby="lbl-tono">
+                    <button type="button" class="anc-tone" data-t="info"  aria-pressed="true">Info</button>
+                    <button type="button" class="anc-tone" data-t="warn"  aria-pressed="false">Aviso</button>
+                    <button type="button" class="anc-tone" data-t="alert" aria-pressed="false">Urgente</button>
+                    <button type="button" class="anc-tone" data-t="ok"    aria-pressed="false">Éxito</button>
+                  </div>
+                  <p class="anc-help">Define el color del anuncio en el portal. El texto también debe explicar la urgencia: el color por sí solo no informa a todo el mundo.</p>
                 </div>
-                <span class="lbl">Botón secundario (opcional)</span>
-                <div class="row">
-                  <input type="text" id="f-cta2Texto" placeholder="Texto del 2º botón">
-                  <input type="url" id="f-cta2Url" placeholder="https://…">
-                </div>
-              </div>
 
-              <div class="row">
-                <div>
-                  <span class="lbl">Publicar desde</span>
-                  <input type="date" id="f-desde">
+                <div class="anc-field" id="grp-mensaje">
+                  <label class="anc-lbl" for="f-mensaje">Mensaje <span class="anc-cc" id="cc-mensaje"></span></label>
+                  <textarea class="v-textarea" id="f-mensaje" placeholder="Ej. El sistema estará en mantenimiento el sábado de 8 a 11 h." aria-describedby="err-f-mensaje"></textarea>
+                  <p class="anc-err" id="err-f-mensaje" role="alert"></p>
                 </div>
-                <div>
-                  <span class="lbl">Expira</span>
-                  <input type="date" id="f-hasta">
-                </div>
-              </div>
-              <div class="hint">Sin «desde» se publica ya; sin «expira» no caduca. Programa a futuro con «desde».</div>
-              <div class="sched" id="schedInfo"></div>
-              <span class="lbl">Orden <span class="cc">menor = más arriba · o usa ↑/↓ en la lista</span></span>
-              <input type="number" id="f-orden" value="0" min="0">
-              <label class="chk"><input type="checkbox" id="f-activo" checked> Publicar activo</label>
 
-              <button class="btn" id="btnPublicar" type="button">Publicar anuncio</button>
-              <button class="btn ghost hidden" id="btnCancelar" type="button">Cancelar edición</button>
-              <div class="msg" id="msg"></div>
-            </div>
+                <div class="anc-field" id="grp-titulo">
+                  <label class="anc-lbl" for="f-titulo">Título <span class="anc-cc" id="cc-titulo"></span></label>
+                  <input class="v-input" type="text" id="f-titulo" placeholder="Ej. Nueva tarifa de paquetería" aria-describedby="err-f-titulo">
+                  <p class="anc-err" id="err-f-titulo" role="alert"></p>
+                </div>
+
+                <div class="anc-field" id="grp-icono">
+                  <label class="anc-lbl" for="f-icono">Ícono</label>
+                  <select class="v-select" id="f-icono">
+                    <option value="megaphone">Megáfono</option>
+                    <option value="sparkle">Destello</option>
+                    <option value="bolt">Rayo</option>
+                    <option value="flag">Bandera</option>
+                    <option value="pin">Pin</option>
+                    <option value="calendar">Calendario</option>
+                    <option value="chart">Gráfica</option>
+                    <option value="store">Tienda</option>
+                    <option value="truck">Envío</option>
+                    <option value="money">Dinero</option>
+                    <option value="card">Tarjeta</option>
+                    <option value="gear">Ajustes</option>
+                    <option value="mail">Correo</option>
+                  </select>
+                </div>
+
+                <div class="anc-field" id="grp-cuerpo">
+                  <label class="anc-lbl" for="f-cuerpo">Cuerpo <span class="anc-cc" id="cc-cuerpo"></span></label>
+                  <textarea class="v-textarea" id="f-cuerpo" placeholder="Detalle del anuncio…" aria-describedby="err-f-cuerpo"></textarea>
+                  <p class="anc-err" id="err-f-cuerpo" role="alert"></p>
+                </div>
+
+                <div class="anc-field" id="grp-desc">
+                  <label class="anc-lbl" for="f-desc">Descripción <span class="anc-cc" id="cc-desc"></span></label>
+                  <textarea class="v-textarea" id="f-desc" placeholder="Descripción corta…" aria-describedby="err-f-desc"></textarea>
+                  <p class="anc-err" id="err-f-desc" role="alert"></p>
+                </div>
+
+                <div class="anc-field" id="grp-imagen">
+                  <span class="anc-lbl">Imagen</span>
+                  <label class="anc-drop" id="imgDrop">
+                    <img class="anc-thumb anc-hidden" id="imgThumb" alt="">
+                    <span class="ic" data-icon-anc="upload" id="imgIcon"></span>
+                    <span>
+                      <span class="anc-drop-t" id="imgTitle">Arrastra una imagen o haz clic</span>
+                      <span class="anc-drop-s" id="imgHint">Se sube a Drive (carpeta «Portal Ventel»). JPG o PNG, máx. 8 MB.</span>
+                    </span>
+                    <input type="file" id="f-imagenFile" accept="image/*">
+                  </label>
+                  <label class="anc-lbl" for="f-imagen" style="margin-top:var(--s2)">…o pega una URL pública</label>
+                  <input class="v-input" type="url" id="f-imagen" placeholder="https://…/imagen.jpg" aria-describedby="err-f-imagen">
+                  <p class="anc-err" id="err-f-imagen" role="alert"></p>
+                </div>
+
+                <div class="anc-field" id="grp-vigencia">
+                  <label class="anc-lbl" for="f-vigencia">Vigencia (texto visible)</label>
+                  <input class="v-input" type="text" id="f-vigencia" placeholder="3 al 15 de junio">
+                  <p class="anc-help">Solo es el texto que lee el asesor. Las fechas que ocultan el anuncio se configuran abajo.</p>
+                </div>
+              </fieldset>
+
+              <!-- ── 3. Botones ── -->
+              <fieldset class="anc-sec" id="grp-cta">
+                <legend>3 · Botones (opcional)</legend>
+                <div class="anc-field">
+                  <span class="anc-lbl">Botón principal</span>
+                  <div class="anc-row">
+                    <input class="v-input" type="text" id="f-ctaTexto" placeholder="Texto del botón" aria-describedby="err-f-ctaTexto">
+                    <input class="v-input" type="url" id="f-ctaUrl" placeholder="https://…">
+                  </div>
+                  <p class="anc-err" id="err-f-ctaTexto" role="alert"></p>
+                </div>
+                <div class="anc-field">
+                  <span class="anc-lbl">Botón secundario</span>
+                  <div class="anc-row">
+                    <input class="v-input" type="text" id="f-cta2Texto" placeholder="Texto del 2º botón" aria-describedby="err-f-cta2Texto">
+                    <input class="v-input" type="url" id="f-cta2Url" placeholder="https://…">
+                  </div>
+                  <p class="anc-err" id="err-f-cta2Texto" role="alert"></p>
+                </div>
+              </fieldset>
+
+              <!-- ── 4. Publicación ── -->
+              <fieldset class="anc-sec">
+                <legend>4 · Publicación</legend>
+                <div class="anc-field anc-row">
+                  <div>
+                    <label class="anc-lbl" for="f-desde">Publicar desde</label>
+                    <input class="v-input" type="date" id="f-desde">
+                  </div>
+                  <div>
+                    <label class="anc-lbl" for="f-hasta">Expira</label>
+                    <input class="v-input" type="date" id="f-hasta" aria-describedby="err-f-hasta">
+                  </div>
+                </div>
+                <p class="anc-err" id="err-f-hasta" role="alert"></p>
+                <p class="anc-help">Sin «desde» se publica ya; sin «expira» no caduca.</p>
+                <div class="anc-sched" id="schedInfo" aria-live="polite"></div>
+
+                <div class="anc-field">
+                  <label class="anc-lbl" for="f-orden">Orden <span class="anc-cc">menor = más arriba · o usa ↑/↓ en la lista</span></label>
+                  <input class="v-input" type="number" id="f-orden" value="0" min="0" style="max-width:120px">
+                </div>
+                <label class="anc-chk"><input type="checkbox" id="f-activo" checked> Publicar activo</label>
+              </fieldset>
+
+              <div class="anc-actions">
+                <button class="v-btn v-btn-primary" id="btnPublicar" type="submit">Publicar anuncio</button>
+                <button class="anc-link anc-hidden" id="btnCancelar" type="button">Cancelar edición</button>
+              </div>
+            </form>
 
             <!-- ══ COLUMNA DERECHA: VISTA PREVIA + EXISTENTES ══ -->
             <div class="anc-side">
               <div class="anc-card">
-                <div class="prev-label">Vista previa <button class="pv-toggle" id="pvTheme" type="button">🌙 Oscuro</button></div>
-                <div id="preview"></div>
+                <div class="anc-pv-hd">
+                  <span class="anc-pv-t">Vista previa</span>
+                  <div class="anc-pv-tools" role="group" aria-label="Opciones de vista previa">
+                    <button class="v-btn v-btn-ghost" type="button" id="pvDevice" aria-pressed="false" title="Ver como en un celular">Móvil</button>
+                    <button class="v-btn v-btn-ghost" type="button" id="pvTheme"  aria-pressed="false" title="Ver con el tema oscuro">Oscuro</button>
+                  </div>
+                </div>
+                <div class="anc-stage" id="preview"></div>
+                <p class="anc-where"><span class="ic" data-icon-anc="pin"></span><span id="pvWhere"></span></p>
               </div>
+
               <div class="anc-card">
-                <div class="prev-label">Publicaciones existentes</div>
-                <div id="lista"><div class="spin">Cargando…</div></div>
+                <div class="anc-pv-hd">
+                  <span class="anc-pv-t">Publicaciones existentes</span>
+                </div>
+                <div class="anc-filters" id="filtros" role="group" aria-label="Filtrar por estado"></div>
+                <div id="lista" aria-live="polite"></div>
               </div>
             </div>
 
           </div>
         </div>
     </main>
+
+    <!-- Confirmación de borrado: modal propio del tema (Esc, foco atrapado y
+         devuelto). Sustituye al confirm() nativo, que bloquea el iframe de GAS. -->
+    <div class="v-modal-overlay" id="ancConfirm" role="dialog" aria-modal="true" aria-labelledby="ancConfirmT" aria-describedby="ancConfirmD">
+      <div class="v-modal" id="ancConfirmCard">
+        <h2 id="ancConfirmT" style="font-size:1.15rem;font-weight:800;color:var(--ink);margin:0 0 .5rem">¿Borrar esta publicación?</h2>
+        <p id="ancConfirmD" style="color:var(--ink-soft);font-size:.875rem;line-height:1.55;margin:0 0 1.25rem">
+          Se elimina de la hoja <b>Anuncios</b> y desaparece del portal. Esta acción no se puede deshacer.
+        </p>
+        <div style="display:flex;gap:.75rem;justify-content:flex-end">
+          <button class="v-btn v-btn-ghost" type="button" id="ancConfirmNo">Cancelar</button>
+          <button class="v-btn v-btn-danger" type="button" id="ancConfirmYes">Sí, borrar</button>
+        </div>
+      </div>
+    </div>
 
     <script>
         window.__APP__ = { baseUrl: <?!= JSON.stringify(baseUrl) ?> };
@@ -287,22 +503,72 @@
       // (Portal.gs → portalGateAvanzado_) en cada operación de escritura.
       var ADV_EMAIL = '';
 
-      var state = { formato:'banner', tono:'info' };
-
-      function $(id){ return document.getElementById(id); }
-      function miniSpinner(){
-        var s = '';
-        for (var i = 0; i < 8; i++){ s += '<i style="transform:rotate(' + (i*45) + 'deg);animation-delay:' + (-(8-i)*0.125).toFixed(3) + 's"></i>'; }
-        return '<span class="vl-spin" aria-hidden="true">' + s + '</span>';
+      /* ── Iconos ────────────────────────────────────────────────────────────
+         Copia EXACTA de los trazos de Index.html (const ICONS): la vista previa
+         tiene que dibujar el mismo ícono que el portal, no un emoji parecido.
+         Si se añade un ícono al selector, hay que añadirlo en los dos sitios. */
+      var ANC_ICONS = {
+        megaphone:'<path d="M3 11v3a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M14 7.5a5 5 0 0 1 0 7M17.5 5a9 9 0 0 1 0 12"/>',
+        sparkle:'<path d="M12 3l2.3 6.2L21 11l-6 2 6 2-6.7 1.8L12 21l-2.3-4.2L3 15l6-2-6-2 6.7-1.8Z"/>',
+        bolt:'<path d="M13 2 4 14h7l-2 8 9-12h-7l2-8Z"/>',
+        flag:'<path d="M5 21V4a1 1 0 0 1 1-1h11l-2 4 2 4H6"/>',
+        pin:'<path d="M12 17v5M7 4h10l-1.5 6 2.5 4H6l2.5-4L7 4Z"/>',
+        calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 3v4M16 3v4"/>',
+        chart:'<path d="M4 20V9M10 20V4M16 20v-7M21 20H3"/>',
+        store:'<path d="M3 7l1.4-3h15.2L21 7M3 7h18v3a2.6 2.6 0 0 1-5.2 0 2.6 2.6 0 0 1-5.2 0 2.6 2.6 0 0 1-5.2 0V7ZM5 12.5V20h14v-7.5"/>',
+        truck:'<path d="M3 6h11v9H3zM14 9h3.2L21 12.5V15h-7z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',
+        money:'<rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5h.5M18 14.5h-.5"/>',
+        card:'<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19"/>',
+        gear:'<circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+        mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/>',
+        close:'<path d="M6 6l12 12M18 6 6 18"/>',
+        external:'<path d="M7 17 17 7M8 7h9v9"/>',
+        check:'<path d="M20 6 9 17l-5-5"/>',
+        warning:'<path d="M12 9v4M12 17h.01M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>',
+        clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+        ban:'<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>',
+        upload:'<path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>',
+        trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+        copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+        pencil:'<path d="M16.9 4.5 19.5 7.1M4 20l1-4L16.4 4.6a1.8 1.8 0 0 1 2.6 0l.4.4a1.8 1.8 0 0 1 0 2.6L8 19l-4 1Z"/>',
+        eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+        eyeoff:'<path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.2 4.2M9.9 5.2A9.7 9.7 0 0 1 12 5c6.5 0 10 7 10 7a17.7 17.7 0 0 1-3.4 4.3M6.6 6.7A17.6 17.6 0 0 0 2 12s3.5 7 10 7c1 0 1.9-.1 2.8-.4"/>',
+        up:'<path d="M12 19V5M5 12l7-7 7 7"/>',
+        down:'<path d="M12 5v14M19 12l-7 7-7-7"/>',
+        inbox:'<path d="M3 12h5l2 3h4l2-3h5"/><path d="M5.5 5h13l2.5 7v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5L5.5 5Z"/>',
+        maximize:'<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>'
+      };
+      function ancIcon(name, cls){
+        var p = ANC_ICONS[name] || ANC_ICONS.megaphone;
+        return '<svg class="ic' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" ' +
+               'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" ' +
+               'stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
       }
-      function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
-        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-      function safeUrl(u){ u=String(u||'').trim(); return /^https?:\/\//i.test(u)?u:''; }
+      /** Rellena los [data-icon-anc] estáticos del HTML. */
+      function ancRenderIcons(root){
+        var nodes = (root || document).querySelectorAll('[data-icon-anc]');
+        for (var i = 0; i < nodes.length; i++){
+          nodes[i].innerHTML = ancIcon(nodes[i].getAttribute('data-icon-anc'));
+        }
+      }
+
+      /* ── Utilidades ───────────────────────────────────────────────────────── */
+      function $(id){ return document.getElementById(id); }
+      function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+      function safeUrl(u){ u = String(u || '').trim(); return /^https?:\/\//i.test(u) ? u : ''; }
+      // Una URL válida puede llevar comillas y romper el atributo donde se inserta:
+      // safeUrl decide SI se usa, escAttr decide CÓMO se escribe.
+      function escAttr(u){ return esc(safeUrl(u)); }
+      function motionOK(){
+        return typeof window.gsap !== 'undefined' &&
+          !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      }
 
       var MES_ABR = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
       function hoy0(){ var d = new Date(); d.setHours(0,0,0,0); return d; }
       function parseISO(s){
-        s = String(s||'').trim(); var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+        s = String(s || '').trim(); var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
         if (!m) return null; var d = new Date(+m[1], +m[2]-1, +m[3]); d.setHours(0,0,0,0); return d;
       }
       function fmtFecha(d){ return d ? (d.getDate() + ' ' + MES_ABR[d.getMonth()]) : ''; }
@@ -310,85 +576,216 @@
       function avisoExpira(hastaStr){
         var h = parseISO(hastaStr); if (!h) return null;
         var n = diffDias(h);
-        if (n < 0)  return { txt:'Expiró el ' + fmtFecha(h), cls:'expired' };
-        if (n === 0) return { txt:'⚠️ Expira HOY', cls:'soon' };
-        if (n <= 3) return { txt:'Expira en ' + n + ' día' + (n!==1?'s':''), cls:'soon' };
+        if (n < 0)   return { txt:'Expiró el ' + fmtFecha(h), cls:'expired' };
+        if (n === 0) return { txt:'Expira hoy', cls:'soon' };
+        if (n <= 3)  return { txt:'Expira en ' + n + ' día' + (n !== 1 ? 's':''), cls:'soon' };
         return null;
       }
 
+      /* ── Estado ───────────────────────────────────────────────────────────── */
+      var state = { formato:'banner', tono:'info', filtro:'todos', dirty:false, editando:'' };
+      var anuncios = {};        // id → anuncio
+      var listaActual = [];     // orden con el que se pintó (para el filtro y el FLIP)
+
+      /* ── Vigencia legible ─────────────────────────────────────────────────── */
       function renderSched(){
         var box = $('schedInfo'); if (!box) return;
         var activo = $('f-activo').checked;
         var desde = parseISO($('f-desde').value), hasta = parseISO($('f-hasta').value);
-        var t = hoy0(), cls = 'ok', ic = '✅', msg = '';
-        if (!activo){ cls = 'warn'; ic = '🚫'; msg = 'Quedará oculto: no se mostrará en el portal hasta activarlo.'; }
-        else if (hasta && hasta < t){ cls = 'alert'; ic = '⚠️'; msg = 'Ya expiró (' + fmtFecha(hasta) + '): no se mostrará.'; }
-        else if (desde && desde > t){
-          cls = 'prog'; ic = '🗓️';
-          msg = 'Programado: se publicará el ' + fmtFecha(desde) + (hasta ? ' y expirará el ' + fmtFecha(hasta) : '') + '.';
+        var t = hoy0(), cls = 'ok', ic = 'check', msg = '';
+        if (!activo){
+          cls = 'warn'; ic = 'ban'; msg = 'Quedará oculto: no se mostrará en el portal hasta activarlo.';
+        } else if (desde && hasta && hasta < desde){
+          cls = 'alert'; ic = 'warning';
+          msg = 'La fecha de expiración es anterior a la de publicación: el anuncio no se vería nunca.';
+        } else if (hasta && hasta < t){
+          cls = 'alert'; ic = 'warning'; msg = 'Ya expiró (' + fmtFecha(hasta) + '): no se mostrará.';
+        } else if (desde && desde > t){
+          cls = 'prog'; ic = 'calendar';
+          msg = 'Programado: se publicará el ' + fmtFecha(desde) +
+                (hasta ? ' y expirará el ' + fmtFecha(hasta) : '') + '.';
         } else {
           var n = diffDias(hasta);
-          if (hasta && n === 0){ cls = 'warn'; ic = '⏳'; msg = 'Activo · expira HOY (último día visible).'; }
-          else if (hasta && n <= 3){ cls = 'warn'; ic = '⏳'; msg = 'Activo · expira en ' + n + ' día' + (n!==1?'s':'') + ' (' + fmtFecha(hasta) + ').'; }
-          else if (hasta){ cls = 'ok'; ic = '✅'; msg = 'Activo · visible hasta el ' + fmtFecha(hasta) + '.'; }
-          else { cls = 'ok'; ic = '✅'; msg = 'Se publica ya y no caduca.'; }
+          if (hasta && n === 0){ cls = 'warn'; ic = 'clock'; msg = 'Activo · expira hoy (último día visible).'; }
+          else if (hasta && n <= 3){ cls = 'warn'; ic = 'clock'; msg = 'Activo · expira en ' + n + ' día' + (n !== 1 ? 's':'') + ' (' + fmtFecha(hasta) + ').'; }
+          else if (hasta){ cls = 'ok'; ic = 'check'; msg = 'Activo · visible hasta el ' + fmtFecha(hasta) + '.'; }
+          else { cls = 'ok'; ic = 'check'; msg = 'Se publica ya y no caduca.'; }
         }
-        box.className = 'sched ' + cls;
-        box.innerHTML = '<span class="si-ic">' + ic + '</span><span>' + msg + '</span>';
+        box.className = 'anc-sched ' + cls;
+        box.innerHTML = ancIcon(ic) + '<span>' + esc(msg) + '</span>';
       }
 
+      /* ── Campos visibles por formato ──────────────────────────────────────── */
       var FIELDS = {
         banner:    ['grp-tono','grp-mensaje'],
         destacado: ['grp-tono','grp-titulo','grp-icono','grp-cuerpo','grp-cta'],
         tarjeta:   ['grp-tono','grp-titulo','grp-desc','grp-imagen','grp-vigencia','grp-cta'],
         modal:     ['grp-titulo','grp-cuerpo','grp-imagen','grp-cta']
       };
+      var ALL_GROUPS = ['grp-tono','grp-mensaje','grp-titulo','grp-icono','grp-cuerpo',
+                        'grp-desc','grp-imagen','grp-vigencia','grp-cta'];
 
-      function applyFormato(f){
+      var DONDE = {
+        banner:    'Aparece arriba del inicio, sobre las tarjetas. El asesor puede cerrarlo y no vuelve a verlo.',
+        destacado: 'Aparece arriba del inicio y NO se puede cerrar: úsalo solo para lo que todos deben leer.',
+        tarjeta:   'Aparece en la rejilla de anuncios del inicio. Al hacer clic se amplía a pantalla completa.',
+        modal:     'Se abre solo al entrar al portal, una vez por sesión. Solo se muestra UN modal: si hay varios, gana el de menor orden.'
+      };
+
+      function applyFormato(f, animar){
+        var previo = state.formato;
         state.formato = f;
-        Array.prototype.forEach.call($('formatos').children, function(b){ b.classList.toggle('on', b.dataset.f === f); });
+        Array.prototype.forEach.call($('formatos').children, function(b){
+          b.setAttribute('aria-pressed', b.dataset.f === f ? 'true' : 'false');
+        });
         var show = FIELDS[f] || [];
-        ['grp-tono','grp-mensaje','grp-titulo','grp-icono','grp-cuerpo','grp-desc','grp-imagen','grp-vigencia','grp-cta']
-          .forEach(function(g){ $(g).classList.toggle('hidden', show.indexOf(g) < 0); });
-        renderPreview();
+        var entrantes = [];
+        ALL_GROUPS.forEach(function(g){
+          var el = $(g), visible = show.indexOf(g) > -1, estaba = !el.classList.contains('anc-hidden');
+          el.classList.toggle('anc-hidden', !visible);
+          if (visible && !estaba) entrantes.push(el);
+        });
+        // Los campos que ENTRAN se anuncian con un desplazamiento corto y escalonado;
+        // los que salen desaparecen sin ceremonia (las salidas no merecen atención).
+        if (animar !== false && entrantes.length && motionOK() && previo !== f){
+          gsap.fromTo(entrantes, { opacity:0, y:10 },
+            { opacity:1, y:0, duration:.32, ease:'power2.out', stagger:.045, clearProps:'transform,opacity' });
+        }
+        $('pvWhere').textContent = DONDE[f] || '';
+        limpiarErrores();
+        renderPreview(true);
       }
 
-      function applyTono(t){
+      function applyTono(t, animar){
         state.tono = t;
-        Array.prototype.forEach.call($('tones').children, function(el){ el.classList.toggle('on', el.dataset.t === t); });
-        renderPreview();
+        Array.prototype.forEach.call($('tones').children, function(el){
+          var on = el.dataset.t === t;
+          el.setAttribute('aria-pressed', on ? 'true' : 'false');
+          if (on && animar !== false && window.AppMotion) AppMotion.pop(el);
+        });
+        renderPreview(true);
       }
 
-      function renderPreview(){
+      /* ── Vista previa ─────────────────────────────────────────────────────── */
+      function ctasHtml(){
+        var t = esc($('f-ctaTexto').value.trim()), u = escAttr($('f-ctaUrl').value);
+        var t2 = esc($('f-cta2Texto').value.trim()), u2 = escAttr($('f-cta2Url').value);
+        var b = '';
+        if (t && u)   b += '<a class="pv-cta" href="' + u + '" target="_blank" rel="noopener">' + t + ancIcon('external') + '</a>';
+        if (t2 && u2) b += '<a class="pv-cta sec" href="' + u2 + '" target="_blank" rel="noopener">' + t2 + ancIcon('external') + '</a>';
+        return b ? '<div class="pv-ctas">' + b + '</div>' : '';
+      }
+
+      function renderPreview(estructural){
         var f = state.formato, tono = state.tono;
         var titulo = esc($('f-titulo').value), cuerpo = esc($('f-cuerpo').value);
         var mensaje = esc($('f-mensaje').value), desc = esc($('f-desc').value);
-        var vig = esc($('f-vigencia').value), img = safeUrl($('f-imagen').value);
-        var ctaT = esc($('f-ctaTexto').value), ctaU = safeUrl($('f-ctaUrl').value);
-        var cta2T = esc($('f-cta2Texto').value), cta2U = safeUrl($('f-cta2Url').value);
-        var cta = '';
-        if (ctaT && ctaU) cta += '<a class="pv-cta" href="'+ctaU+'" target="_blank" rel="noopener">'+ctaT+'</a>';
-        if (cta2T && cta2U) cta += '<a class="pv-cta pv-cta2" href="'+cta2U+'" target="_blank" rel="noopener">'+cta2T+'</a>';
+        var vig = esc($('f-vigencia').value), img = escAttr($('f-imagen').value);
+        var ico = $('f-icono').value || 'megaphone';
+        var cta = ctasHtml();
         updateCounters();
+
         var html = '';
         if (f === 'banner'){
-          html = '<div class="pv-banner '+tono+'">📣 <span>'+(mensaje||'Texto del aviso…')+'</span></div>';
+          html = '<div class="pv-banner ' + tono + '">' + ancIcon('megaphone')
+               + '<span>' + (mensaje || 'Texto del aviso…') + '</span>'
+               + '<span class="pv-x">' + ancIcon('close') + '</span></div>';
         } else if (f === 'destacado'){
-          html = '<div class="pv-dest"><div class="pt">'+(titulo||'Título destacado')+'</div>'
-               + '<div class="pc">'+(cuerpo||'Cuerpo del anuncio…')+'</div>'+cta+'</div>';
+          html = '<div class="pv-dest ' + tono + '"><span class="pv-d-ic">' + ancIcon(ico) + '</span>'
+               + '<div><div class="pt">' + (titulo || 'Título destacado') + '</div>'
+               + '<div class="pc">' + (cuerpo || 'Cuerpo del anuncio…') + '</div>' + cta + '</div></div>';
         } else if (f === 'tarjeta'){
-          html = '<div class="pv-card">'+(img?'<img src="'+img+'" alt="">':'')
-               + '<div class="pb"><div class="pt">'+(titulo||'Título de la tarjeta')+'</div>'
-               + (vig?'<div class="pv">'+vig+'</div>':'')
-               + '<div class="pc">'+(desc||'Descripción…')+'</div>'+cta+'</div></div>';
+          html = '<div class="pv-card ' + tono + '">'
+               + '<span class="pv-zoom">' + ancIcon('maximize') + '</span>'
+               + (img ? '<img src="' + img + '" alt="">' : '')
+               + '<div class="pb"><div class="pt">' + (titulo || 'Título de la tarjeta') + '</div>'
+               + (vig ? '<div class="pvig">' + ancIcon('calendar') + vig + '</div>' : '')
+               + '<div class="pc">' + (desc || 'Descripción…') + '</div>' + cta + '</div></div>';
         } else if (f === 'modal'){
-          html = '<div class="pv-modal">'+(img?'<img src="'+img+'" alt="">':'')
-               + '<div class="pt" style="font-weight:800;font-size:14px">'+(titulo||'Título del modal')+'</div>'
-               + '<div class="pc" style="font-size:12px;color:#374151;margin-top:4px">'+(cuerpo||'Mensaje…')+'</div>'+cta+'</div>';
+          html = '<div class="pv-modal"><span class="pv-x">' + ancIcon('close') + '</span>'
+               + (img ? '<img src="' + img + '" alt="">' : '')
+               + '<div class="pb"><div class="pt">' + (titulo || 'Título del modal') + '</div>'
+               + '<div class="pc">' + (cuerpo || 'Mensaje…') + '</div>' + cta + '</div></div>';
         }
-        $('preview').innerHTML = html;
+        var stage = $('preview');
+        stage.innerHTML = html;
+        // Solo se anima cuando cambia la ESTRUCTURA (formato, tono, imagen). Animar en
+        // cada tecla convertiría la vista previa en un parpadeo constante.
+        if (estructural && motionOK() && stage.firstChild){
+          gsap.fromTo(stage.firstChild, { opacity:0, y:8, scale:.99 },
+            { opacity:1, y:0, scale:1, duration:.3, ease:'power2.out', clearProps:'all' });
+        }
       }
 
+      /* ── Contadores y validación ──────────────────────────────────────────── */
+      var COUNTERS = {
+        'f-mensaje':['cc-mensaje',140], 'f-titulo':['cc-titulo',70],
+        'f-cuerpo':['cc-cuerpo',300],   'f-desc':['cc-desc',180]
+      };
+      function updateCounters(){
+        Object.keys(COUNTERS).forEach(function(id){
+          var cc = $(COUNTERS[id][0]), max = COUNTERS[id][1];
+          if (!cc) return;
+          var n = ($(id).value || '').length;
+          cc.textContent = n + '/' + max;
+          cc.classList.toggle('over', n > max);
+          cc.classList.toggle('warn', n <= max && n > max * 0.9);
+        });
+      }
+
+      function setError(inputId, msg){
+        var input = $(inputId), box = $('err-' + inputId);
+        if (input) input.setAttribute('aria-invalid', 'true');
+        if (box){ box.innerHTML = ancIcon('warning') + '<span>' + esc(msg) + '</span>'; box.classList.add('on'); }
+      }
+      function clearError(inputId){
+        var input = $(inputId), box = $('err-' + inputId);
+        if (input) input.removeAttribute('aria-invalid');
+        if (box){ box.classList.remove('on'); box.innerHTML = ''; }
+      }
+      function limpiarErrores(){
+        Object.keys(COUNTERS).concat(['f-imagen','f-ctaTexto','f-cta2Texto','f-hasta','f-desde'])
+          .forEach(clearError);
+      }
+
+      /** Devuelve el id del primer campo inválido, o '' si todo está bien. */
+      function validar(){
+        limpiarErrores();
+        var f = state.formato, malo = '';
+        function falla(id, msg){ if (!malo) malo = id; setError(id, msg); }
+
+        if (f === 'banner' && !$('f-mensaje').value.trim()) falla('f-mensaje', 'Escribe el mensaje del banner.');
+        if (f !== 'banner' && !$('f-titulo').value.trim())  falla('f-titulo', 'El título es obligatorio.');
+
+        // Los contadores ahora BLOQUEAN: antes solo se pintaban de rojo y el texto
+        // se publicaba igual, rompiendo la maqueta del portal.
+        Object.keys(COUNTERS).forEach(function(id){
+          var grp = $(id).closest('.anc-field');
+          if (grp && grp.classList.contains('anc-hidden')) return;
+          var max = COUNTERS[id][1], n = ($(id).value || '').length;
+          if (n > max) falla(id, 'Te pasaste por ' + (n - max) + ' caracteres (máx. ' + max + ').');
+        });
+
+        // Un botón a medias se descartaba en silencio: ahora se dice. Solo un mensaje
+        // por botón — si se encadenan, el segundo pisa al primero en la misma caja.
+        [['f-ctaTexto','f-ctaUrl','principal'], ['f-cta2Texto','f-cta2Url','secundario']].forEach(function(p){
+          if ($('grp-cta').classList.contains('anc-hidden')) return;
+          var t = $(p[0]).value.trim(), u = safeUrl($(p[1]).value), uRaw = $(p[1]).value.trim();
+          if (t && !u) falla(p[0], 'El botón ' + p[2] + ' necesita un enlace que empiece por https://');
+          else if (!t && uRaw) falla(p[0], 'El botón ' + p[2] + ' necesita un texto, o se ignora el enlace.');
+        });
+
+        var imgRaw = $('f-imagen').value.trim();
+        if (imgRaw && !safeUrl(imgRaw) && !$('grp-imagen').classList.contains('anc-hidden'))
+          falla('f-imagen', 'La URL debe empezar por http:// o https://');
+
+        var d = parseISO($('f-desde').value), h = parseISO($('f-hasta').value);
+        if (d && h && h < d) falla('f-hasta', 'La expiración es anterior a la publicación: no se vería nunca.');
+
+        return malo;
+      }
+
+      /* ── Construcción del payload (contrato con Portal.gs, sin cambios) ───── */
       function buildDatos(){
         var f = state.formato, d = {};
         if (f === 'banner'){ d.tono = state.tono; d.mensaje = $('f-mensaje').value.trim(); }
@@ -408,115 +805,88 @@
         return d;
       }
 
-      var COUNTERS = { 'f-mensaje':['cc-mensaje',140], 'f-titulo':['cc-titulo',70], 'f-cuerpo':['cc-cuerpo',300], 'f-desc':['cc-desc',180] };
-      function updateCounters(){
-        Object.keys(COUNTERS).forEach(function(id){
-          var cc = $(COUNTERS[id][0]), max = COUNTERS[id][1];
-          if (!cc) return;
-          var n = ($(id).value || '').length;
-          cc.textContent = n + '/' + max;
-          cc.classList.toggle('over', n > max);
-        });
-      }
-
-      function validar(d, f){
-        if (f === 'banner' && !d.mensaje) return 'Escribe el mensaje del banner.';
-        if (f !== 'banner' && !d.titulo) return 'El título es obligatorio.';
-        return '';
-      }
-
-      function showMsg(text, ok){
-        var m = $('msg'); m.className = 'msg ' + (ok ? 'ok' : 'err'); m.textContent = text;
-        if (ok) setTimeout(function(){ m.className = 'msg'; }, 4000);
-      }
-
       function publicar(){
-        var f = state.formato, datos = buildDatos();
-        var err = validar(datos, f);
-        if (err){ showMsg(err, false); return; }
+        var malo = validar();
+        if (malo){
+          var el = $(malo);
+          el.focus();
+          if (window.AppMotion) AppMotion.shake(el.closest('.anc-field') || el);
+          return;
+        }
+        var editando = !!$('f-id').value;
         var payload = {
           id: $('f-id').value || '',
-          formato: f,
+          formato: state.formato,
           activo: $('f-activo').checked,
           orden: Number($('f-orden').value) || 0,
           desde: $('f-desde').value || '',
           hasta: $('f-hasta').value || '',
-          datos: datos,
+          datos: buildDatos(),
           asesor: ADV_EMAIL
         };
-        var btn = $('btnPublicar'); btn.disabled = true; btn.innerHTML = miniSpinner() + ' Publicando…';
+        var btn = $('btnPublicar'), etiqueta = btn.textContent;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="v-spinner"></span> Publicando…';
+
         google.script.run
           .withSuccessHandler(function(res){
-            btn.disabled = false; btn.textContent = 'Publicar anuncio';
-            if (res && res.status === 'ok'){ showMsg('✓ Publicado correctamente.', true); resetForm(); cargarLista(); }
-            else showMsg('Error: ' + ((res && res.error) || 'desconocido'), false);
+            btn.disabled = false; btn.textContent = etiqueta;
+            if (res && res.status === 'ok'){
+              if (window.AppMotion) AppMotion.toast(editando ? 'Cambios guardados.' : 'Anuncio publicado.', 'ok');
+              resetForm();
+              cargarLista(res.id);
+            } else {
+              if (window.AppMotion) AppMotion.toast('No se pudo publicar: ' + ((res && res.error) || 'error desconocido'), 'error');
+            }
           })
           .withFailureHandler(function(e){
-            btn.disabled = false; btn.textContent = 'Publicar anuncio';
-            showMsg('Error: ' + e.message, false);
+            btn.disabled = false; btn.textContent = etiqueta;
+            if (window.AppMotion) AppMotion.toast('No se pudo publicar: ' + e.message, 'error');
           })
           .publicarAnuncio(payload);
       }
 
+      /* ── Formulario ───────────────────────────────────────────────────────── */
       function resetForm(){
-        $('f-id').value = ''; $('f-mensaje').value = ''; $('f-titulo').value = '';
-        $('f-cuerpo').value = ''; $('f-desc').value = ''; $('f-imagen').value = '';
-        $('f-vigencia').value = ''; $('f-ctaTexto').value = ''; $('f-ctaUrl').value = '';
-        $('f-cta2Texto').value = ''; $('f-cta2Url').value = ''; $('f-icono').value = 'megaphone';
-        $('f-orden').value = '0'; $('f-desde').value = ''; $('f-hasta').value = ''; $('f-activo').checked = true;
-        $('f-imagenFile').value = '';
-        $('imgHint').textContent = 'Súbela a Drive (carpeta «Portal Ventel») o pega una URL pública abajo.';
-        $('btnCancelar').classList.add('hidden');
+        ['f-id','f-mensaje','f-titulo','f-cuerpo','f-desc','f-imagen','f-vigencia',
+         'f-ctaTexto','f-ctaUrl','f-cta2Texto','f-cta2Url','f-desde','f-hasta','f-imagenFile']
+          .forEach(function(id){ $(id).value = ''; });
+        $('f-icono').value = 'megaphone';
+        $('f-orden').value = '0';
+        $('f-activo').checked = true;
+        resetImagenUI();
+        $('btnCancelar').classList.add('anc-hidden');
         $('btnPublicar').textContent = 'Publicar anuncio';
-        applyFormato('banner'); applyTono('info');
+        state.dirty = false; state.editando = '';
+        applyFormato('banner', false); applyTono('info', false);
+        renderSched();
+        marcarEditando();
       }
 
-      function cargarLista(){
-        google.script.run.withSuccessHandler(renderLista)
-          .withFailureHandler(function(){ $('lista').innerHTML = '<div class="empty">No se pudo cargar.</div>'; })
-          .getAnunciosAdmin(ADV_EMAIL);
+      function resetImagenUI(){
+        $('imgThumb').classList.add('anc-hidden');
+        $('imgThumb').removeAttribute('src');
+        $('imgIcon').classList.remove('anc-hidden');
+        $('imgTitle').textContent = 'Arrastra una imagen o haz clic';
+        $('imgHint').textContent = 'Se sube a Drive (carpeta «Portal Ventel»). JPG o PNG, máx. 8 MB.';
       }
 
-      function tituloDe(a){ var d = a.datos || {}; return d.titulo || d.mensaje || '(sin título)'; }
-      var EST_LABEL = { activo:'Activo', programado:'Programado', expirado:'Expirado', inactivo:'Oculto' };
-
-      function renderLista(res){
-        var box = $('lista');
-        if (!res || res.status !== 'ok' || !res.anuncios.length){
-          box.innerHTML = '<div class="empty">' + ((res && res.error) ? esc(res.error) : 'Aún no hay publicaciones.') + '</div>'; return;
-        }
-        var n = res.anuncios.length;
-        box.innerHTML = res.anuncios.map(function(a, i){
-          var est = a.estado || (a.activo ? 'activo' : 'inactivo');
-          var fechas = [];
-          if (a.desde) fechas.push('Desde ' + esc(a.desde));
-          if (a.hasta) fechas.push('Expira ' + esc(a.hasta));
-          var id = esc(a.id);
-          var av = (est === 'activo') ? avisoExpira(a.hasta) : null;
-          return '<div class="item">'
-            + '<div class="hd"><span class="badge">'+esc(a.formato)+'</span>'
-            + '<span class="badge est '+est+'">'+(EST_LABEL[est]||est)+'</span>'
-            + '<span class="tt">'+esc(tituloDe(a))+'</span></div>'
-            + (fechas.length ? '<div class="hint">'+fechas.join(' · ')+'</div>' : '')
-            + (av ? '<div class="hint '+av.cls+'">'+av.txt+'</div>' : '')
-            + '<div class="ac">'
-            + '<button data-act="edit" data-id="'+id+'">Editar</button>'
-            + '<button data-act="dup" data-id="'+id+'">Duplicar</button>'
-            + '<button class="mini" data-act="up" data-id="'+id+'" title="Subir"'+(i===0?' disabled':'')+'>↑</button>'
-            + '<button class="mini" data-act="down" data-id="'+id+'" title="Bajar"'+(i===n-1?' disabled':'')+'>↓</button>'
-            + '<button data-act="toggle" data-id="'+id+'" data-on="'+(a.activo?'1':'0')+'">'+(a.activo?'Ocultar':'Activar')+'</button>'
-            + '<button class="del" data-act="del" data-id="'+id+'">Borrar</button>'
-            + '</div></div>';
-        }).join('');
-        window._anuncios = {};
-        res.anuncios.forEach(function(a){ window._anuncios[a.id] = a; });
+      /** Guardia de cambios sin guardar: antes el formulario se sobrescribía sin avisar. */
+      function pedirDescartar(cb){
+        if (!state.dirty) { cb(); return; }
+        abrirConfirm({
+          titulo: 'Tienes cambios sin guardar',
+          texto: 'Si continúas se perderá lo que escribiste en el formulario.',
+          ok: 'Descartar cambios',
+          okClase: 'v-btn-danger'
+        }, cb);
       }
 
       function cargarEnForm(a){
         var d = a.datos || {};
-        $('f-id').value = a.id;
-        applyFormato(a.formato);
-        if (d.tono) applyTono(d.tono);
+        $('f-id').value = a.id || '';
+        applyFormato(a.formato, false);
+        applyTono(d.tono || 'info', false);
         $('f-mensaje').value = d.mensaje || '';
         $('f-titulo').value = d.titulo || '';
         $('f-cuerpo').value = d.cuerpo || '';
@@ -532,28 +902,244 @@
         $('f-desde').value = a.desde || '';
         $('f-hasta').value = a.hasta || '';
         $('f-activo').checked = !!a.activo;
-        $('btnPublicar').textContent = 'Guardar cambios';
-        $('btnCancelar').classList.remove('hidden');
-        renderPreview(); renderSched();
-        window.scrollTo({ top:0, behavior:'smooth' });
+        resetImagenUI();
+        if (d.imagenUrl){
+          $('imgThumb').src = safeUrl(d.imagenUrl);
+          $('imgThumb').classList.remove('anc-hidden');
+          $('imgIcon').classList.add('anc-hidden');
+          $('imgTitle').textContent = 'Cambiar imagen';
+          $('imgHint').textContent = 'Se reemplazará la actual.';
+        }
+        $('btnCancelar').classList.remove('anc-hidden');
+        // La acción primaria dice lo que va a pasar: editando no se «publica», se guarda.
+        $('btnPublicar').textContent = a.id ? 'Guardar cambios' : 'Publicar anuncio';
+        state.dirty = false;
+        state.editando = a.id || '';
+        renderPreview(true); renderSched(); marcarEditando();
+        var form = $('ancForm');
+        form.scrollIntoView({ behavior: motionOK() ? 'smooth' : 'auto', block:'start' });
+        if (motionOK()) gsap.fromTo(form, { boxShadow:'0 0 0 0 rgba(225,0,152,.45)' },
+          { boxShadow:'0 0 0 0 rgba(225,0,152,0)', duration:.9, ease:'power2.out', clearProps:'boxShadow' });
+      }
+
+      function marcarEditando(){
+        var items = $('lista').querySelectorAll('.anc-item');
+        Array.prototype.forEach.call(items, function(el){
+          el.classList.toggle('is-editing', !!state.editando && el.dataset.id === state.editando);
+        });
       }
 
       function duplicar(id){
-        var a = window._anuncios && window._anuncios[id];
-        if (!a) return;
+        var a = anuncios[id]; if (!a) return;
         var copy = JSON.parse(JSON.stringify(a));
         copy.id = '';
         cargarEnForm(copy);
         $('f-id').value = '';
+        state.editando = ''; marcarEditando();
         $('btnPublicar').textContent = 'Publicar copia';
-        showMsg('Copia cargada — ajústala y publícala para crear una nueva.', true);
+        state.dirty = true;
+        if (window.AppMotion) AppMotion.toast(
+          'Copia cargada. Se publicará con un ID nuevo, así que también la verán quienes ya habían cerrado el original.', 'ok');
       }
 
+      /* ── Lista de publicaciones ───────────────────────────────────────────── */
+      var EST = {
+        activo:     { txt:'Activo',     cls:'v-badge-green' },
+        programado: { txt:'Programado', cls:'v-badge-blue' },
+        expirado:   { txt:'Expirado',   cls:'v-badge-yellow' },
+        inactivo:   { txt:'Oculto',     cls:'v-badge-red' }
+      };
+      var FILTROS = [
+        { k:'todos',      t:'Todos' },
+        { k:'activo',     t:'Activos' },
+        { k:'programado', t:'Programados' },
+        { k:'expirado',   t:'Expirados' },
+        { k:'inactivo',   t:'Ocultos' }
+      ];
+
+      function skeleton(){
+        return '<div class="anc-sk"><i></i><i></i><i></i></div>'.repeat(3);
+      }
+
+      function cargarLista(destacarId){
+        if (!listaActual.length) $('lista').innerHTML = skeleton();
+        google.script.run
+          .withSuccessHandler(function(res){ renderLista(res, destacarId); })
+          .withFailureHandler(function(){
+            $('lista').innerHTML = '<div class="anc-empty">' + ancIcon('warning')
+              + '<div class="anc-empty-t">No se pudo cargar la lista</div>'
+              + '<div class="anc-empty-s">Revisa tu conexión y vuelve a intentarlo.</div></div>';
+          })
+          .getAnunciosAdmin(ADV_EMAIL);
+      }
+
+      function tituloDe(a){ var d = a.datos || {}; return d.titulo || d.mensaje || '(sin título)'; }
+
+      function renderFiltros(){
+        var cuenta = { todos: listaActual.length };
+        listaActual.forEach(function(a){
+          var e = a.estado || (a.activo ? 'activo' : 'inactivo');
+          cuenta[e] = (cuenta[e] || 0) + 1;
+        });
+        $('filtros').innerHTML = FILTROS.filter(function(f){ return f.k === 'todos' || cuenta[f.k]; })
+          .map(function(f){
+            return '<button type="button" class="anc-filter" data-k="' + f.k + '" aria-pressed="'
+              + (state.filtro === f.k ? 'true' : 'false') + '">' + f.t + ' ' + (cuenta[f.k] || 0) + '</button>';
+          }).join('');
+      }
+
+      function itemHtml(a, i, n){
+        var est = a.estado || (a.activo ? 'activo' : 'inactivo');
+        var badge = EST[est] || EST.inactivo;   // un estado inesperado no debe romper la lista
+        var meta = [];
+        if (a.desde) meta.push('Desde ' + esc(a.desde));
+        if (a.hasta) meta.push('Expira ' + esc(a.hasta));
+        var av = (est === 'activo') ? avisoExpira(a.hasta) : null;
+        var id = esc(a.id);
+        return '<div class="anc-item" data-id="' + id + '">'
+          + '<div class="anc-item-hd">'
+          +   '<span class="v-badge v-badge-pink">' + esc(a.formato) + '</span>'
+          +   '<span class="v-badge ' + badge.cls + '">' + badge.txt + '</span>'
+          +   '<span class="anc-item-tt">' + esc(tituloDe(a)) + '</span>'
+          + '</div>'
+          + (meta.length || av
+              ? '<div class="anc-meta">' + (meta.length ? '<span>' + meta.join(' · ') + '</span>' : '')
+                + (av ? '<span class="' + av.cls + '">' + av.txt + '</span>' : '') + '</div>'
+              : '')
+          + '<div class="anc-item-ac">'
+          +   '<button type="button" data-act="edit" data-id="' + id + '">' + ancIcon('pencil') + 'Editar</button>'
+          +   '<button type="button" data-act="dup"  data-id="' + id + '">' + ancIcon('copy') + 'Duplicar</button>'
+          +   '<button type="button" data-act="toggle" data-id="' + id + '" data-on="' + (a.activo ? '1' : '0') + '">'
+          +     ancIcon(a.activo ? 'eyeoff' : 'eye') + (a.activo ? 'Ocultar' : 'Activar') + '</button>'
+          +   '<span class="sep"></span>'
+          +   '<button type="button" class="icon" data-act="up" data-id="' + id + '" title="Subir" aria-label="Subir"'
+          +     (i === 0 ? ' disabled' : '') + '>' + ancIcon('up') + '</button>'
+          +   '<button type="button" class="icon" data-act="down" data-id="' + id + '" title="Bajar" aria-label="Bajar"'
+          +     (i === n - 1 ? ' disabled' : '') + '>' + ancIcon('down') + '</button>'
+          +   '<button type="button" class="icon danger" data-act="del" data-id="' + id + '" title="Borrar" aria-label="Borrar">'
+          +     ancIcon('trash') + '</button>'
+          + '</div></div>';
+      }
+
+      /** `sinEntrada` desactiva la animación de entrada: la usa el reordenado, que
+          anima el SALTO de cada fila (FLIP) y no quiere dos tweens peleando por la Y. */
+      function pintarLista(destacarId, sinEntrada){
+        var box = $('lista');
+        var visibles = listaActual.filter(function(a){
+          if (state.filtro === 'todos') return true;
+          return (a.estado || (a.activo ? 'activo' : 'inactivo')) === state.filtro;
+        });
+        if (!visibles.length){
+          box.innerHTML = '<div class="anc-empty">' + ancIcon('inbox')
+            + '<div class="anc-empty-t">' + (listaActual.length ? 'Nada en este filtro' : 'Aún no hay publicaciones') + '</div>'
+            + '<div class="anc-empty-s">' + (listaActual.length
+                ? 'Prueba con «Todos» para ver el resto.'
+                : 'Elige un formato arriba, escribe el mensaje y pulsa «Publicar anuncio». Aparecerá aquí y en el inicio del portal.')
+            + '</div></div>';
+          return;
+        }
+        var n = listaActual.length;
+        box.innerHTML = visibles.map(function(a){
+          return itemHtml(a, listaActual.indexOf(a), n);
+        }).join('');
+        marcarEditando();
+        if (!sinEntrada && window.AppMotion) AppMotion.staggerRows(box.querySelectorAll('.anc-item'));
+        if (destacarId){
+          var el = box.querySelector('.anc-item[data-id="' + destacarId + '"]');
+          if (el && window.AppMotion) AppMotion.pop(el);
+        }
+      }
+
+      function renderLista(res, destacarId, sinEntrada){
+        if (!res || res.status !== 'ok'){
+          listaActual = [];
+          $('filtros').innerHTML = '';
+          $('lista').innerHTML = '<div class="anc-empty">' + ancIcon('warning')
+            + '<div class="anc-empty-t">No se pudo cargar la lista</div>'
+            + '<div class="anc-empty-s">' + esc((res && res.error) || 'Error desconocido.') + '</div></div>';
+          return;
+        }
+        listaActual = res.anuncios || [];
+        anuncios = {};
+        listaActual.forEach(function(a){ anuncios[a.id] = a; });
+        // Si hay más de un modal, solo se vería el primero (Index.html usa .find).
+        var modales = listaActual.filter(function(a){
+          return a.formato === 'modal' && (a.estado === 'activo' || a.estado === 'programado');
+        });
+        if (modales.length > 1 && window.AppMotion){
+          AppMotion.toast('Hay ' + modales.length + ' modales publicados, pero el portal solo muestra el de menor orden. Oculta los demás.', 'warn');
+        }
+        renderFiltros();
+        pintarLista(destacarId, sinEntrada);
+      }
+
+      /** Reordenar con animación: se mide antes, se repinta y se anima el salto (FLIP). */
       function mover(id, dir){
-        google.script.run.withSuccessHandler(cargarLista)
+        var box = $('lista');
+        var previos = {};
+        Array.prototype.forEach.call(box.querySelectorAll('.anc-item'), function(el){
+          previos[el.dataset.id] = el.getBoundingClientRect().top;
+        });
+        google.script.run
+          .withSuccessHandler(function(){
+            google.script.run.withSuccessHandler(function(res){
+              renderLista(res, null, true);
+              if (!motionOK()) return;
+              Array.prototype.forEach.call(box.querySelectorAll('.anc-item'), function(el){
+                var antes = previos[el.dataset.id];
+                if (antes == null) return;
+                var delta = antes - el.getBoundingClientRect().top;
+                if (Math.abs(delta) < 2) return;
+                gsap.fromTo(el, { y: delta },
+                  { y: 0, duration:.42, ease:'power3.out', clearProps:'transform' });
+              });
+            }).getAnunciosAdmin(ADV_EMAIL);
+          })
           .withFailureHandler(function(){ cargarLista(); })
           .moverAnuncio(id, dir, ADV_EMAIL);
       }
+
+      /* ── Modal de confirmación (sustituye a confirm()) ────────────────────── */
+      var confirmCb = null, confirmPrevFocus = null;
+      function abrirConfirm(opts, cb){
+        var ov = $('ancConfirm');
+        $('ancConfirmT').textContent = opts.titulo;
+        $('ancConfirmD').innerHTML = esc(opts.texto);
+        var si = $('ancConfirmYes');
+        si.textContent = opts.ok || 'Confirmar';
+        si.className = 'v-btn ' + (opts.okClase || 'v-btn-danger');
+        confirmCb = cb;
+        confirmPrevFocus = document.activeElement;
+        if (window.AppMotion) AppMotion.modalIn(ov, $('ancConfirmCard'));
+        else ov.classList.add('active');
+        si.focus();
+      }
+      /** Mantiene el tabulador DENTRO del diálogo mientras está abierto. */
+      function atraparFoco(e){
+        if (e.key !== 'Tab') return;
+        var ov = $('ancConfirm');
+        if (!ov.classList.contains('active')) return;
+        var f = ov.querySelectorAll('button:not([disabled])');
+        if (!f.length) return;
+        var primero = f[0], ultimo = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === primero){ e.preventDefault(); ultimo.focus(); }
+        else if (!e.shiftKey && document.activeElement === ultimo){ e.preventDefault(); primero.focus(); }
+        else if (!ov.contains(document.activeElement)){ e.preventDefault(); primero.focus(); }
+      }
+
+      function cerrarConfirm(ejecutar){
+        var ov = $('ancConfirm'), cb = confirmCb;
+        confirmCb = null;
+        var fin = function(){
+          if (confirmPrevFocus && confirmPrevFocus.focus) confirmPrevFocus.focus();
+          if (ejecutar && cb) cb();
+        };
+        if (window.AppMotion) AppMotion.modalOut(ov, $('ancConfirmCard'), fin);
+        else { ov.classList.remove('active'); fin(); }
+      }
+
+      /* ── Imagen ───────────────────────────────────────────────────────────── */
+      var MAX_SUBIDA = 8 * 1024 * 1024;   // el mismo tope que aplica Portal.gs
 
       function leerImagen(file, cb){
         var reader = new FileReader();
@@ -564,7 +1150,12 @@
             if (w > max){ h = Math.round(h * max / w); w = max; }
             try {
               var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-              cv.getContext('2d').drawImage(img, 0, 0, w, h);
+              var ctx = cv.getContext('2d');
+              // El JPEG no tiene transparencia: sin este relleno, las zonas
+              // transparentes de un PNG salían NEGRAS al convertir.
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillRect(0, 0, w, h);
+              ctx.drawImage(img, 0, 0, w, h);
               cb(cv.toDataURL('image/jpeg', 0.85));
             } catch(err){ cb(reader.result); }
           };
@@ -574,61 +1165,177 @@
         reader.readAsDataURL(file);
       }
 
-      function wireConstructor(){
-        $('f-imagenFile').addEventListener('change', function(e){
-          var file = e.target.files && e.target.files[0];
-          if (!file) return;
-          var hint = $('imgHint'); hint.innerHTML = miniSpinner() + 'Subiendo imagen…';
-          $('btnPublicar').disabled = true;
-          leerImagen(file, function(dataUrl){
-            google.script.run
-              .withSuccessHandler(function(res){
-                $('btnPublicar').disabled = false;
-                if (res && res.status === 'ok'){
-                  $('f-imagen').value = res.url;
-                  hint.textContent = '✓ Imagen subida a Drive.';
-                  renderPreview();
-                } else {
-                  hint.textContent = 'Error: ' + ((res && res.error) || 'no se pudo subir');
-                }
-              })
-              .withFailureHandler(function(err){
-                $('btnPublicar').disabled = false;
-                hint.textContent = 'Error: ' + err.message;
-              })
-              .subirImagenAnuncio({ dataUrl: dataUrl, nombre: file.name, asesor: ADV_EMAIL });
-          });
-        });
+      function subirArchivo(file){
+        if (!file) return;
+        if (file.type.indexOf('image/') !== 0){
+          if (window.AppMotion) AppMotion.toast('Ese archivo no es una imagen.', 'error');
+          return;
+        }
+        // Se avisa ANTES de leer el archivo: antes se subía, se esperaba y el
+        // servidor lo rechazaba al final por tamaño.
+        if (file.size > MAX_SUBIDA){
+          if (window.AppMotion){
+            AppMotion.toast('La imagen pesa ' + (file.size / 1048576).toFixed(1) + ' MB y el tope son 8 MB.', 'error');
+            AppMotion.shake($('imgDrop'));
+          }
+          return;
+        }
+        $('imgIcon').classList.add('anc-hidden');
+        $('imgThumb').classList.remove('anc-hidden');
+        // Previsualización inmediata; el objeto se libera en cuanto se pinta.
+        var objUrl = URL.createObjectURL(file);
+        $('imgThumb').onload = function(){ URL.revokeObjectURL(objUrl); this.onload = null; };
+        $('imgThumb').src = objUrl;
+        $('imgTitle').textContent = file.name;
+        $('imgHint').innerHTML = '<span class="v-spinner"></span> Subiendo a Drive…';
+        $('btnPublicar').disabled = true;
 
+        leerImagen(file, function(dataUrl){
+          google.script.run
+            .withSuccessHandler(function(res){
+              $('btnPublicar').disabled = false;
+              if (res && res.status === 'ok'){
+                $('f-imagen').value = res.url;
+                $('imgHint').textContent = 'Imagen subida correctamente.';
+                state.dirty = true;
+                renderPreview(true);
+              } else {
+                $('imgHint').textContent = 'No se pudo subir: ' + ((res && res.error) || 'error desconocido');
+                if (window.AppMotion) AppMotion.shake($('imgDrop'));
+              }
+            })
+            .withFailureHandler(function(err){
+              $('btnPublicar').disabled = false;
+              $('imgHint').textContent = 'No se pudo subir: ' + err.message;
+              if (window.AppMotion) AppMotion.shake($('imgDrop'));
+            })
+            .subirImagenAnuncio({ dataUrl: dataUrl, nombre: file.name, asesor: ADV_EMAIL });
+        });
+      }
+
+      /* ── Cableado ─────────────────────────────────────────────────────────── */
+      function wireConstructor(){
+        $('ancForm').addEventListener('submit', function(e){ e.preventDefault(); publicar(); });
+
+        // Elegir formato o tono TAMBIÉN es un cambio sin guardar: la marca se pone
+        // aquí y no dentro de applyFormato/applyTono, que también corren al cargar.
         $('formatos').addEventListener('click', function(e){
-          var b = e.target.closest('button'); if (b) applyFormato(b.dataset.f);
+          var b = e.target.closest('button');
+          if (b && b.dataset.f !== state.formato){ state.dirty = true; applyFormato(b.dataset.f); }
         });
         $('tones').addEventListener('click', function(e){
-          var t = e.target.closest('.tone'); if (t) applyTono(t.dataset.t);
+          var t = e.target.closest('.anc-tone');
+          if (t && t.dataset.t !== state.tono){ state.dirty = true; applyTono(t.dataset.t); }
         });
-        ['f-mensaje','f-titulo','f-cuerpo','f-desc','f-imagen','f-vigencia','f-ctaTexto','f-ctaUrl','f-cta2Texto','f-cta2Url']
-          .forEach(function(id){ $(id).addEventListener('input', renderPreview); });
-        $('f-icono').addEventListener('change', renderPreview);
-        ['f-desde','f-hasta'].forEach(function(id){ $(id).addEventListener('input', renderSched); $(id).addEventListener('change', renderSched); });
-        $('f-activo').addEventListener('change', renderSched);
+
+        // Texto: repinta la vista previa sin animar (animar en cada tecla marea).
+        ['f-mensaje','f-titulo','f-cuerpo','f-desc','f-vigencia',
+         'f-ctaTexto','f-ctaUrl','f-cta2Texto','f-cta2Url'].forEach(function(id){
+          $(id).addEventListener('input', function(){ state.dirty = true; renderPreview(false); });
+          // Validación en blur, no en cada tecla.
+          $(id).addEventListener('blur', function(){ if ($('err-' + id)) clearError(id); });
+        });
+        // La URL de la imagen se repinta con retardo: repintar en cada tecla lanzaba
+        // una petición por carácter a una URL a medio escribir (y animaba en cada una).
+        var tImg = null;
+        $('f-imagen').addEventListener('input', function(){
+          state.dirty = true;
+          clearTimeout(tImg);
+          tImg = setTimeout(function(){ renderPreview(true); }, 400);
+        });
+        $('f-icono').addEventListener('change', function(){ state.dirty = true; renderPreview(true); });
+        ['f-desde','f-hasta','f-orden'].forEach(function(id){
+          $(id).addEventListener('change', function(){ state.dirty = true; renderSched(); });
+        });
+        $('f-activo').addEventListener('change', function(){ state.dirty = true; renderSched(); });
+
+        // Imagen: clic, teclado y arrastrar-soltar.
+        $('f-imagenFile').addEventListener('change', function(e){
+          subirArchivo(e.target.files && e.target.files[0]);
+        });
+        ['dragenter','dragover'].forEach(function(ev){
+          $('imgDrop').addEventListener(ev, function(e){ e.preventDefault(); this.classList.add('is-over'); });
+        });
+        ['dragleave','drop'].forEach(function(ev){
+          $('imgDrop').addEventListener(ev, function(e){ e.preventDefault(); this.classList.remove('is-over'); });
+        });
+        $('imgDrop').addEventListener('drop', function(e){
+          subirArchivo(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]);
+        });
+
+        // Vista previa: ancho de dispositivo y tema real del portal.
+        $('pvDevice').addEventListener('click', function(){
+          var movil = $('preview').classList.toggle('is-mobile');
+          this.setAttribute('aria-pressed', movil ? 'true' : 'false');
+          this.textContent = movil ? 'Escritorio' : 'Móvil';
+        });
         $('pvTheme').addEventListener('click', function(){
-          var dark = $('preview').classList.toggle('dark');
-          this.textContent = dark ? '☀️ Claro' : '🌙 Oscuro';
+          var stage = $('preview');
+          var oscuro = stage.getAttribute('data-theme') !== 'carbon';
+          // Se aplica el MISMO data-theme del portal: los colores oscuros salen de
+          // app_theme, no de hex inventados aquí que se desincronizan.
+          if (oscuro) stage.setAttribute('data-theme', 'carbon');
+          else stage.removeAttribute('data-theme');
+          this.setAttribute('aria-pressed', oscuro ? 'true' : 'false');
+          this.textContent = oscuro ? 'Claro' : 'Oscuro';
         });
-        $('btnPublicar').addEventListener('click', publicar);
-        $('btnCancelar').addEventListener('click', resetForm);
+
+        $('btnCancelar').addEventListener('click', function(){ pedirDescartar(resetForm); });
+
+        $('filtros').addEventListener('click', function(e){
+          var b = e.target.closest('.anc-filter'); if (!b) return;
+          state.filtro = b.dataset.k;
+          renderFiltros();
+          pintarLista();
+        });
+
         $('lista').addEventListener('click', function(e){
           var b = e.target.closest('button'); if (!b || b.disabled) return;
           var id = b.dataset.id, act = b.dataset.act;
-          if (act === 'edit'){ var a = window._anuncios && window._anuncios[id]; if (a) cargarEnForm(a); }
-          else if (act === 'dup'){ duplicar(id); }
-          else if (act === 'up' || act === 'down'){ mover(id, act); }
-          else if (act === 'toggle'){
-            google.script.run.withSuccessHandler(cargarLista).toggleAnuncio(id, b.dataset.on !== '1', ADV_EMAIL);
+          if (act === 'edit'){
+            var a = anuncios[id];
+            if (a) pedirDescartar(function(){ cargarEnForm(a); });
+          } else if (act === 'dup'){
+            pedirDescartar(function(){ duplicar(id); });
+          } else if (act === 'up' || act === 'down'){
+            mover(id, act);
+          } else if (act === 'toggle'){
+            google.script.run
+              .withSuccessHandler(function(){ cargarLista(id); })
+              .withFailureHandler(function(){ cargarLista(); })
+              .toggleAnuncio(id, b.dataset.on !== '1', ADV_EMAIL);
           } else if (act === 'del'){
-            if (confirm('¿Borrar esta publicación?'))
-              google.script.run.withSuccessHandler(cargarLista).eliminarAnuncio(id, ADV_EMAIL);
+            var t = anuncios[id] ? tituloDe(anuncios[id]) : '';
+            abrirConfirm({
+              titulo: '¿Borrar «' + (t.length > 40 ? t.slice(0, 40) + '…' : t) + '»?',
+              texto: 'Se elimina de la hoja Anuncios y desaparece del portal. Esta acción no se puede deshacer.',
+              ok: 'Sí, borrar'
+            }, function(){
+              google.script.run
+                .withSuccessHandler(function(){
+                  if (state.editando === id) resetForm();
+                  cargarLista();
+                  if (window.AppMotion) AppMotion.toast('Publicación borrada.', 'ok');
+                })
+                .withFailureHandler(function(){ cargarLista(); })
+                .eliminarAnuncio(id, ADV_EMAIL);
+            });
           }
+        });
+
+        // Modal: botones, clic en el fondo y Esc.
+        $('ancConfirmNo').addEventListener('click', function(){ cerrarConfirm(false); });
+        $('ancConfirmYes').addEventListener('click', function(){ cerrarConfirm(true); });
+        $('ancConfirm').addEventListener('click', function(e){ if (e.target === this) cerrarConfirm(false); });
+        document.addEventListener('keydown', function(e){
+          if (e.key === 'Escape' && $('ancConfirm').classList.contains('active')) cerrarConfirm(false);
+          else atraparFoco(e);
+        });
+
+        // Aviso del navegador si se cierra la pestaña con cambios sin guardar.
+        window.addEventListener('beforeunload', function(e){
+          if (!state.dirty) return;
+          e.preventDefault(); e.returnValue = '';
         });
       }
 
@@ -645,8 +1352,12 @@
         AppShell.mount({ active: 'anuncios', title: 'Anuncios del Portal' });
         if (window.VentelLoader) VentelLoader.hide();
 
+        ancRenderIcons(document);
         wireConstructor();
-        applyFormato('banner'); applyTono('info'); renderPreview(); renderSched(); cargarLista();
+        applyFormato('banner', false); applyTono('info', false);
+        renderPreview(false); renderSched();
+        $('lista').innerHTML = skeleton();
+        cargarLista();
         if (window.Icons) Icons.render();
       });
     </script>

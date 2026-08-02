@@ -1,0 +1,2551 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revisión de Cotización - Sistema Ventel</title>
+    <?!= include('app_theme'); ?>
+    <style>
+        /*
+         * =========================================================================
+         * REVISIÓN DE COTIZACIÓN
+         * =========================================================================
+         * Para quién: un supervisor con prisa que tiene que decir sí o no a un
+         * documento que va a salir al cliente. La acción principal es UNA: cerrar
+         * la revisión. Todo lo demás existe para que pueda hacerlo con criterio.
+         *
+         * Qué gana visualmente: el estado de la revisión y el avance de la
+         * verificación. Los datos de la cotización acompañan; no compiten.
+         *
+         * Densidad ALTA: es una herramienta de trabajo, no una landing.
+         *
+         * Todo se apoya en los tokens de app_theme (hereda los 3 temas) y en los
+         * componentes .v-* ya existentes. Lo propio va prefijado .rev-* para no
+         * pisar nada. NO se usan utilidades nuevas de Tailwind: app_tailwind.html
+         * ya no compila, solo trae las clases que el proyecto ya usaba.
+         */
+
+        /* Escala propia de esta pantalla, derivada de la base de 4px del sistema.
+           Se declara TAMBIÉN en .rev-viewer: la capa del comparador cuelga del <body>,
+           fuera de .rev-wrap, así que allí estos tokens no existirían y todo su padding
+           se resolvería a 0 — que es exactamente como se veía antes de darse cuenta. */
+        .rev-wrap, .rev-viewer {
+            --rs1: .25rem; --rs2: .5rem; --rs3: .75rem; --rs4: 1rem;
+            --rs5: 1.5rem; --rs6: 2rem;
+        }
+        .rev-wrap {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--rs4);
+        }
+        @media (min-width: 720px) { .rev-wrap { padding: var(--rs5); } }
+
+        .rev-sr {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+        }
+
+        /* ── Encabezado ───────────────────────────────────────────────────────── */
+        .rev-head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--rs4); margin-bottom: var(--rs5); }
+        .rev-head-main { min-width: 0; flex: 1 1 20rem; }
+        .rev-eyebrow {
+            font-size: .75rem; font-weight: var(--fw-semibold); letter-spacing: .08em;
+            text-transform: uppercase; color: var(--ink-faint); margin: 0 0 var(--rs1);
+        }
+        .rev-title { font-size: 1.65rem; font-weight: var(--fw-bold); color: var(--ink); margin: 0; letter-spacing: -.02em; }
+        .rev-folio {
+            font-family: var(--f-mono); font-size: 1.05rem; font-weight: var(--fw-semibold);
+            color: var(--brand-deep); background: var(--brand-tint);
+            padding: .15rem .55rem; border-radius: var(--rad-sm); display: inline-block;
+        }
+        .rev-head-actions { display: flex; gap: var(--rs2); flex-wrap: wrap; align-items: center; }
+
+        /* ── Aviso de estado ya decidido ──────────────────────────────────────── */
+        .rev-banner {
+            display: flex; gap: var(--rs3); align-items: flex-start;
+            padding: var(--rs4); border-radius: var(--rad);
+            border: 1px solid var(--line); background: var(--surface);
+            border-left-width: 4px; margin-bottom: var(--rs5);
+        }
+        .rev-banner-ok  { border-left-color: var(--ok);    background: var(--ok-bg); }
+        .rev-banner-bad { border-left-color: var(--alert); background: var(--alert-bg); }
+        .rev-banner-ico { width: 1.5rem; height: 1.5rem; flex: none; margin-top: .1rem; }
+        .rev-banner-ok  .rev-banner-ico { color: var(--ok); }
+        .rev-banner-bad .rev-banner-ico { color: var(--alert); }
+        .rev-banner h2 { margin: 0 0 var(--rs1); font-size: 1rem; font-weight: var(--fw-semibold); color: var(--ink); }
+        .rev-banner p  { margin: 0; font-size: .875rem; line-height: 1.55; color: var(--ink-soft); }
+        .rev-banner-notas {
+            margin-top: var(--rs3); padding: var(--rs3); border-radius: var(--rad-sm);
+            background: var(--surface); border: 1px solid var(--line);
+            font-size: .875rem; line-height: 1.6; white-space: pre-wrap; color: var(--ink);
+        }
+
+        /* ── Rejilla principal ────────────────────────────────────────────────── */
+        .rev-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--rs5); align-items: start; }
+        @media (min-width: 1080px) {
+            .rev-grid { grid-template-columns: minmax(0, 1fr) 25rem; }
+            .rev-rail { position: sticky; top: var(--rs4); }
+        }
+        .rev-col { display: grid; gap: var(--rs4); min-width: 0; }
+        .rev-rail { display: grid; gap: var(--rs4); min-width: 0; }
+
+        /* ── Tarjetas / secciones ─────────────────────────────────────────────── */
+        .rev-card {
+            background: var(--surface); border: 1px solid var(--line);
+            border-radius: var(--rad-lg); box-shadow: var(--sh-sm); overflow: hidden;
+        }
+        .rev-card-head {
+            display: flex; align-items: center; gap: var(--rs2); flex-wrap: wrap;
+            padding: var(--rs4); border-bottom: 1px solid var(--line-soft);
+        }
+        .rev-card-head h2 { margin: 0; font-size: .95rem; font-weight: var(--fw-semibold); color: var(--ink); }
+        .rev-card-head .rev-count { margin-left: auto; font-size: .8rem; color: var(--ink-soft); }
+        .rev-card-body { padding: var(--rs4); }
+
+        /* Sección plegable (el Sheet incrustado es OPCIONAL: nace cerrado). */
+        .rev-toggle {
+            display: flex; align-items: center; gap: var(--rs2); width: 100%;
+            padding: var(--rs4); background: none; border: 0; cursor: pointer;
+            font: inherit; font-size: .95rem; font-weight: var(--fw-semibold);
+            color: var(--ink); text-align: left;
+        }
+        .rev-toggle:hover { background: var(--surface-2); }
+        .rev-toggle:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+        .rev-toggle .rev-chev { margin-left: auto; width: 1.1rem; height: 1.1rem; color: var(--ink-faint); transition: transform .2s ease; }
+        .rev-toggle[aria-expanded="true"] .rev-chev { transform: rotate(180deg); }
+        .rev-panel { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s cubic-bezier(.2,.8,.2,1); }
+        .rev-panel > div { overflow: hidden; }
+        .rev-panel.open { grid-template-rows: 1fr; }
+
+        .rev-frame-wrap { border-top: 1px solid var(--line-soft); background: var(--surface-2); }
+        .rev-frame {
+            display: block; width: 100%; height: 60vh; min-height: 22rem;
+            border: 0; background: var(--surface);
+        }
+        .rev-frame-bar {
+            display: flex; align-items: center; gap: var(--rs2); flex-wrap: wrap;
+            padding: var(--rs2) var(--rs4); font-size: .78rem; color: var(--ink-soft);
+            border-top: 1px solid var(--line-soft); background: var(--surface);
+        }
+
+        /* ── Datos de la cotización ───────────────────────────────────────────── */
+        .rev-dl { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--rs3); margin: 0; }
+        @media (min-width: 560px) { .rev-dl { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .rev-dl > div { min-width: 0; }
+        .rev-dt {
+            font-size: .7rem; font-weight: var(--fw-semibold); letter-spacing: .08em;
+            text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .15rem;
+        }
+        .rev-dd { margin: 0; font-size: .9rem; color: var(--ink); overflow-wrap: anywhere; }
+
+        .rev-tot { display: grid; gap: var(--rs2); margin-top: var(--rs4); padding-top: var(--rs4); border-top: 1px solid var(--line-soft); }
+        .rev-tot-row { display: flex; justify-content: space-between; gap: var(--rs3); font-size: .875rem; color: var(--ink-soft); }
+        .rev-tot-row strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+        .rev-tot-row.total { font-size: 1.05rem; color: var(--ink); font-weight: var(--fw-semibold); padding-top: var(--rs2); border-top: 1px solid var(--line-soft); }
+        .rev-tot-row.total strong { color: var(--brand-deep); }
+
+        /* ── Artículo ─────────────────────────────────────────────────────────── */
+        .rev-item {
+            display: grid; grid-template-columns: auto 5.5rem minmax(0, 1fr);
+            gap: var(--rs3); align-items: start;
+            padding: var(--rs4); border-bottom: 1px solid var(--line-soft);
+        }
+        .rev-item:last-child { border-bottom: 0; }
+        .rev-item.ok { background: var(--ok-bg); }
+
+        .rev-check { display: flex; align-items: center; justify-content: center; padding-top: .15rem; }
+        .rev-check input {
+            width: 1.35rem; height: 1.35rem; accent-color: var(--ok);
+            cursor: pointer; flex: none; margin: 0;
+        }
+        .rev-check input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+        .rev-thumb {
+            width: 5.5rem; height: 5.5rem; border-radius: var(--rad-sm);
+            border: 1px solid var(--line); background: #fff;
+            display: flex; align-items: center; justify-content: center; overflow: hidden; flex: none;
+        }
+        .rev-thumb img { width: 100%; height: 100%; object-fit: contain; }
+        .rev-thumb-empty { font-size: .65rem; color: var(--ink-faint); text-align: center; padding: .25rem; line-height: 1.3; }
+
+        .rev-item-main { min-width: 0; }
+        .rev-item-name { margin: 0 0 .2rem; font-size: .92rem; font-weight: var(--fw-semibold); color: var(--ink); line-height: 1.4; }
+        .rev-item-meta { display: flex; flex-wrap: wrap; gap: var(--rs2) var(--rs3); font-size: .78rem; color: var(--ink-soft); margin-bottom: var(--rs2); }
+        .rev-sku { font-family: var(--f-mono); font-size: .78rem; color: var(--ink-soft); }
+
+        .rev-precios { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--rs2) var(--rs3); margin-bottom: var(--rs2); }
+        .rev-precio-final { font-size: 1.05rem; font-weight: var(--fw-bold); color: var(--ink); font-variant-numeric: tabular-nums; }
+        .rev-precio-antes { font-size: .85rem; color: var(--ink-faint); text-decoration: line-through; font-variant-numeric: tabular-nums; }
+        .rev-precio-nota { font-size: .75rem; color: var(--ink-soft); }
+        /* El descuento no se comunica SOLO con color: lleva el rótulo "Promoción". */
+        .rev-promo {
+            display: inline-flex; align-items: center; gap: .3rem;
+            font-size: .72rem; font-weight: var(--fw-semibold);
+            background: var(--brand-tint); color: var(--brand-deep);
+            padding: .15rem .5rem; border-radius: 999px;
+        }
+        .rev-item-foot { display: flex; flex-wrap: wrap; gap: var(--rs2); align-items: center; }
+        .rev-sin-link { font-size: .75rem; color: var(--ink-faint); }
+        .rev-link-malo { font-size: .75rem; color: var(--warn); }
+
+        /* En pantallas estrechas se encoge la miniatura en vez de reacomodar la rejilla:
+           mover celdas a mano aquí desalineaba la casilla respecto al nombre. */
+        @media (max-width: 560px) {
+            .rev-item { grid-template-columns: auto 3.5rem minmax(0, 1fr); gap: var(--rs2); padding: var(--rs3); }
+            .rev-thumb { width: 3.5rem; height: 3.5rem; }
+        }
+
+        /*
+         * La FILA ENTERA marca. Apuntar a una casilla de 1,35 rem con el ratón, cincuenta
+         * veces seguidas, es lo que hacía lenta esta pantalla. El clic se ignora sobre los
+         * botones y sobre el texto que alguien quiera seleccionar para copiarlo.
+         */
+        .rev-item { cursor: pointer; transition: background-color .15s ease; }
+        .rev-item:hover:not(.rev-item-bloqueado) { background: var(--surface-2); }
+        .rev-item.ok:hover:not(.rev-item-bloqueado) { background: var(--ok-bg); }
+        .rev-item-bloqueado { cursor: default; }
+        .rev-item-foot button, .rev-item-foot a { cursor: pointer; }
+
+        /* ── Acciones en bloque ───────────────────────────────────────────────────
+           "Marcar todo" es un acelerador, no un atajo para no revisar: por eso vive
+           en la barra de la tarjeta —junto al contador de lo que falta— y no como
+           botón principal de la pantalla. */
+        .rev-bulk { display: flex; align-items: center; gap: var(--rs2); flex-wrap: wrap; margin-left: auto; }
+        .rev-bulk .rev-count { margin-left: 0; }
+        .rev-btn-bulk {
+            display: inline-flex; align-items: center; gap: .35rem;
+            padding: .3rem .65rem; border-radius: var(--rad-sm);
+            border: 1px solid var(--line); background: var(--surface);
+            font: inherit; font-size: .78rem; font-weight: var(--fw-medium);
+            color: var(--ink-soft); cursor: pointer; transition: var(--tr);
+        }
+        .rev-btn-bulk:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); border-color: var(--ink-faint); }
+        .rev-btn-bulk:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+        .rev-btn-bulk:disabled { opacity: .45; cursor: not-allowed; }
+        .rev-btn-bulk svg, .rev-btn-bulk [data-icon] { width: .9rem; height: .9rem; flex: none; }
+
+        /* Atajo de teclado anunciado en la propia interfaz: si no se ve, no existe. */
+        .rev-kbd {
+            font-family: var(--f-mono); font-size: .68rem; line-height: 1;
+            padding: .18rem .34rem; border-radius: 4px;
+            border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-soft);
+        }
+        .rev-atajos { display: flex; flex-wrap: wrap; gap: var(--rs2) var(--rs3); font-size: .72rem; color: var(--ink-faint); margin: var(--rs2) 0 0; align-items: center; }
+
+        /* ── Lista de verificación general ────────────────────────────────────── */
+        .rev-chk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--rs1); }
+        .rev-chk-item label {
+            display: flex; gap: var(--rs3); align-items: flex-start;
+            padding: var(--rs2) var(--rs3); border-radius: var(--rad-sm);
+            font-size: .85rem; line-height: 1.45; color: var(--ink); cursor: pointer;
+        }
+        .rev-chk-item label:hover { background: var(--surface-2); }
+        .rev-chk-item input { width: 1.15rem; height: 1.15rem; margin: .12rem 0 0; accent-color: var(--ok); flex: none; cursor: pointer; }
+        .rev-chk-item input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+        /* ── Avance ───────────────────────────────────────────────────────────── */
+        .rev-prog-top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--rs2); margin-bottom: var(--rs2); }
+        .rev-prog-num { font-size: 1.5rem; font-weight: var(--fw-bold); color: var(--ink); font-variant-numeric: tabular-nums; }
+        .rev-prog-lbl { font-size: .8rem; color: var(--ink-soft); }
+        .rev-prog-bar { height: .5rem; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+        .rev-prog-fill { height: 100%; width: 0%; border-radius: 999px; background: var(--brand); transition: width .35s cubic-bezier(.2,.8,.2,1); }
+        .rev-prog-fill.full { background: var(--ok); }
+
+        /* ── Panel de decisión ────────────────────────────────────────────────── */
+        .rev-decide { display: grid; gap: var(--rs3); }
+        .rev-decide-btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rs2); }
+        .rev-hint { font-size: .78rem; line-height: 1.5; color: var(--ink-soft); margin: 0; }
+        .rev-hint-bad { color: var(--alert); }
+        .rev-hint-ok  { color: var(--ok); }
+        .rev-count-chars { font-size: .72rem; color: var(--ink-faint); text-align: right; }
+
+        /* ── Visor del artículo (superposición) ───────────────────────────────── */
+        .rev-viewer {
+            position: fixed; inset: 0; z-index: 10040; display: none;
+            align-items: center; justify-content: center; padding: var(--rs4);
+            background: rgba(11, 14, 20, .62);
+        }
+        .rev-viewer.active { display: flex; }
+        .rev-viewer-card {
+            display: flex; flex-direction: column; width: min(1100px, 100%); height: min(90vh, 100%);
+            background: var(--surface); border: 1px solid var(--line);
+            border-radius: var(--rad-lg); box-shadow: var(--sh-lg); overflow: hidden;
+        }
+        .rev-viewer-head {
+            display: flex; align-items: center; gap: var(--rs3);
+            padding: var(--rs3) var(--rs4); border-bottom: 1px solid var(--line-soft); flex: none;
+        }
+        .rev-viewer-head-txt { min-width: 0; flex: 1 1 auto; }
+        .rev-viewer-head h2 { margin: 0; font-size: .95rem; font-weight: var(--fw-semibold); color: var(--ink);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .rev-viewer-url { display: block; font-size: .72rem; color: var(--ink-faint); font-family: var(--f-mono);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .rev-viewer-body { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; background: var(--surface-2); }
+        .rev-viewer-foot {
+            display: flex; align-items: center; gap: var(--rs2); flex-wrap: wrap;
+            padding: var(--rs3) var(--rs4); border-top: 1px solid var(--line-soft); flex: none;
+            font-size: .75rem; color: var(--ink-faint);
+        }
+        .rev-viewer-foot .rev-foot-txt { flex: 1 1 14rem; min-width: 0; }
+
+        /*
+         * ── COMPARACIÓN LADO A LADO ─────────────────────────────────────────────
+         * Sustituye al iframe, que NUNCA pudo funcionar: liverpool.com.mx responde
+         * X-Frame-Options: SAMEORIGIN y CSP frame-ancestors, y eso lo aplica el
+         * navegador — ningún atributo del iframe lo levanta. El servidor sí puede
+         * leer la página (Revision.gs · revFichaArticulo) y aquí se enfrenta lo que
+         * dice la cotización con lo que dice Liverpool ahora mismo. Que es, además,
+         * exactamente la comparación que el supervisor iba a hacer a ojo.
+         */
+        .rev-cmp { padding: var(--rs4); display: grid; gap: var(--rs4); }
+        .rev-cmp-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--rs4); align-items: start; }
+        @media (min-width: 760px) { .rev-cmp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+        .rev-cmp-col {
+            background: var(--surface); border: 1px solid var(--line);
+            border-radius: var(--rad); padding: var(--rs4); min-width: 0;
+        }
+        .rev-cmp-col h3 {
+            display: flex; align-items: center; gap: var(--rs2);
+            margin: 0 0 var(--rs3); font-size: .72rem; font-weight: var(--fw-semibold);
+            letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint);
+        }
+        .rev-cmp-col h3 span[data-icon] { width: .95rem; height: .95rem; flex: none; }
+        .rev-cmp-cot h3 { color: var(--brand-deep); }
+        .rev-cmp-viva h3 { color: var(--info); }
+
+        .rev-cmp-foto {
+            margin: 0 0 var(--rs3); height: 11rem; border-radius: var(--rad-sm);
+            border: 1px solid var(--line); background: #fff;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+        }
+        .rev-cmp-foto img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .rev-cmp-foto .rev-thumb-empty { font-size: .72rem; }
+        .rev-cmp-nombre { margin: 0 0 var(--rs3); font-size: .95rem; font-weight: var(--fw-semibold); color: var(--ink); line-height: 1.4; }
+
+        .rev-cmp-dl { display: grid; gap: var(--rs2); margin: 0; }
+        .rev-cmp-row { display: flex; justify-content: space-between; gap: var(--rs3); font-size: .82rem; color: var(--ink-soft); }
+        .rev-cmp-row strong { color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; }
+        .rev-cmp-row.destacada { font-size: .95rem; padding-top: var(--rs2); border-top: 1px solid var(--line-soft); }
+        .rev-cmp-row.destacada strong { font-weight: var(--fw-bold); }
+        .rev-cmp-tachado { text-decoration: line-through; color: var(--ink-faint); }
+
+        /* Veredicto: la única línea que el supervisor con prisa va a leer. Nunca se
+           apoya solo en el color — lleva icono y frase completa. */
+        .rev-cmp-veredicto {
+            display: flex; gap: var(--rs3); align-items: flex-start;
+            padding: var(--rs3) var(--rs4); border-radius: var(--rad);
+            border: 1px solid var(--line); border-left-width: 4px; background: var(--surface);
+        }
+        .rev-cmp-veredicto span[data-icon], .rev-cmp-veredicto svg { width: 1.35rem; height: 1.35rem; flex: none; margin-top: .1rem; }
+        .rev-cmp-veredicto h4 { margin: 0 0 .15rem; font-size: .9rem; font-weight: var(--fw-semibold); color: var(--ink); }
+        .rev-cmp-veredicto p  { margin: 0; font-size: .8rem; line-height: 1.55; color: var(--ink-soft); }
+        .rev-cmp-ok   { border-left-color: var(--ok);    background: var(--ok-bg); }
+        .rev-cmp-ok   svg { color: var(--ok); }
+        .rev-cmp-mal  { border-left-color: var(--alert); background: var(--alert-bg); }
+        .rev-cmp-mal  svg { color: var(--alert); }
+        .rev-cmp-duda { border-left-color: var(--warn);  background: var(--warn-bg); }
+        .rev-cmp-duda svg { color: var(--warn); }
+
+        .rev-cmp-cargando {
+            display: flex; align-items: center; justify-content: center; gap: var(--rs3);
+            padding: var(--rs6) var(--rs4); font-size: .875rem; color: var(--ink-soft);
+        }
+        .rev-cmp-fuente { font-size: .7rem; color: var(--ink-faint); text-align: center; margin: 0; }
+
+        [data-theme="carbon"] .rev-cmp-viva h3 { color: #93B4FF; }
+        [data-theme="carbon"] .rev-cmp-ok  svg { color: #4ADE80; }
+        [data-theme="carbon"] .rev-cmp-mal svg { color: #FCA5A5; }
+        [data-theme="carbon"] .rev-cmp-duda svg { color: #F2B65A; }
+
+        /* ── Estados de carga / error / sin permiso ───────────────────────────── */
+        .rev-estado {
+            display: grid; gap: var(--rs3); justify-items: center; text-align: center;
+            padding: var(--rs6) var(--rs4); color: var(--ink-soft);
+        }
+        .rev-estado h2 { margin: 0; font-size: 1.1rem; font-weight: var(--fw-semibold); color: var(--ink); }
+        .rev-estado p { margin: 0; max-width: 34rem; font-size: .9rem; line-height: 1.6; }
+        .rev-estado-ico { width: 2.5rem; height: 2.5rem; color: var(--ink-faint); }
+
+        .rev-skel { border-radius: var(--rad-sm); background: var(--surface-2); animation: rev-pulse 1.4s ease-in-out infinite; }
+        @keyframes rev-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+
+        @media (prefers-reduced-motion: reduce) {
+            .rev-panel, .rev-prog-fill, .rev-toggle .rev-chev { transition: none; }
+            .rev-skel { animation: none; }
+        }
+
+        /*
+         * TEMA CARBÓN: los tokens de primer plano --brand-deep, --ok, --warn y --alert
+         * están elegidos para fondo CLARO y app_theme no los aclara en carbón. Sobre
+         * #1C2027 el folio, la etiqueta de promoción y los avisos caen a ~2,5–3,4:1.
+         * Se corrigen SOLO aquí (el token global también se usa como FONDO en hovers de
+         * otras pantallas; aclararlo allí las rompería).
+         */
+        [data-theme="carbon"] .rev-folio            { color: #FF7ACF; }
+        [data-theme="carbon"] .rev-promo            { background: rgba(225,0,152,.22); color: #FF7ACF; }
+        [data-theme="carbon"] .rev-tot-row.total strong { color: #FF7ACF; }
+        [data-theme="carbon"] .rev-link-malo        { color: #F2B65A; }
+        [data-theme="carbon"] .rev-hint-ok          { color: #4ADE80; }
+        [data-theme="carbon"] .rev-hint-bad         { color: #FCA5A5; }
+        [data-theme="carbon"] .rev-banner-ok  .rev-banner-ico { color: #4ADE80; }
+        [data-theme="carbon"] .rev-banner-bad .rev-banner-ico { color: #FCA5A5; }
+        [data-theme="carbon"] .rev-prog-fill.full   { background: #34D399; }
+        [data-theme="carbon"] .rev-btn-rechazar     { color: #FCA5A5; border-color: rgba(252,165,165,.45); }
+        [data-theme="carbon"] .rev-btn-rechazar:hover:not(:disabled) { background: rgba(200,30,60,.22); }
+
+        /*
+         * Una sola acción primaria: Aprobar. Rechazar es una decisión legítima, no un
+         * "cancelar", pero mientras la verificación está a medias el único botón sólido
+         * de la pantalla no puede ser el destructivo. Contorno + color + icono bastan
+         * para que se lea como acción de peso.
+         */
+        .rev-btn-rechazar {
+            background: var(--surface); color: var(--alert);
+            border-color: color-mix(in srgb, var(--alert) 40%, transparent);
+            box-shadow: none;
+        }
+        .rev-btn-rechazar:hover:not(:disabled) { background: var(--alert-bg); color: var(--alert); }
+        /* Navegadores sin color-mix: el borde cae al de siempre, que sigue siendo visible. */
+        @supports not (color: color-mix(in srgb, red 50%, transparent)) {
+            .rev-btn-rechazar { border-color: var(--alert); }
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           VERIFICACIÓN AUTOMÁTICA
+           ═══════════════════════════════════════════════════════════════════════
+           La pantalla cambió de idea: antes eran casillas que alguien palomeaba;
+           ahora el sistema DICTAMINA y la persona resuelve lo que el sistema no
+           puede. Eso obliga a que el estado de cada punto se lea de un vistazo y
+           sin depender del color: cada estado lleva icono, palabra y color.
+
+              ✔ Automática   · resuelta, no pide nada
+              ⏳ Comprobando  · el servidor está consultando el sitio
+              ○ Tu criterio  · no se puede automatizar; hay que confirmarla
+              ⚠ Revisa       · algo no encaja, puede ser legítimo
+              ✖ Falla        · la regla se rompió; aprobar exige justificar
+        */
+
+        .rev-chip {
+            display: inline-flex; align-items: center; gap: .3rem;
+            font-size: .68rem; font-weight: var(--fw-semibold);
+            letter-spacing: .02em; padding: .16rem .5rem; border-radius: 999px;
+            border: 1px solid transparent; white-space: nowrap; flex: none;
+        }
+        .rev-chip svg, .rev-chip [data-icon] { width: .82rem; height: .82rem; flex: none; }
+        .rev-chip-ok     { background: var(--ok-bg);    color: var(--ok);    border-color: color-mix(in srgb, var(--ok) 25%, transparent); }
+        .rev-chip-warn   { background: var(--warn-bg);  color: var(--warn);  border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+        .rev-chip-bad    { background: var(--alert-bg); color: var(--alert); border-color: color-mix(in srgb, var(--alert) 30%, transparent); }
+        .rev-chip-manual { background: var(--surface-2); color: var(--ink-soft); border-color: var(--line); }
+        .rev-chip-wait   { background: var(--surface-2); color: var(--ink-soft); border-color: var(--line); }
+        .rev-chip-wait svg { animation: rev-giro 1.1s linear infinite; }
+        @keyframes rev-giro { to { transform: rotate(360deg); } }
+
+        /* ── Índice de confianza ──────────────────────────────────────────────
+           Es un ORDENADOR DE ATENCIÓN, no una nota: por eso el número va
+           acompañado siempre de la frase que explica qué falta. Un 82 sin
+           contexto invita a aprobar sin mirar. */
+        .rev-score { display: flex; gap: var(--rs4); align-items: center; }
+        .rev-score-anillo { position: relative; width: 5.25rem; height: 5.25rem; flex: none; }
+        .rev-score-anillo svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .rev-score-pista { fill: none; stroke: var(--surface-2); stroke-width: 8; }
+        .rev-score-arco {
+            fill: none; stroke: var(--ok); stroke-width: 8; stroke-linecap: round;
+            stroke-dasharray: 264; stroke-dashoffset: 264;
+        }
+        .rev-score-arco.medio { stroke: var(--warn); }
+        .rev-score-arco.bajo  { stroke: var(--alert); }
+        .rev-score-num {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; font-weight: var(--fw-bold); color: var(--ink);
+            font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+        }
+        .rev-score-txt { min-width: 0; }
+        .rev-score-txt h3 { margin: 0 0 .15rem; font-size: .82rem; font-weight: var(--fw-semibold); color: var(--ink); }
+        .rev-score-txt p  { margin: 0; font-size: .78rem; line-height: 1.5; color: var(--ink-soft); }
+
+        /* ── Punto de verificación ────────────────────────────────────────── */
+        .rev-chk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--rs2); }
+        .rev-chk-item {
+            border: 1px solid var(--line-soft); border-radius: var(--rad-sm);
+            background: var(--surface); overflow: hidden;
+        }
+        .rev-chk-item.auto { background: var(--ok-bg); border-color: color-mix(in srgb, var(--ok) 22%, var(--line-soft)); }
+        .rev-chk-item.mal  { border-color: color-mix(in srgb, var(--alert) 35%, var(--line-soft)); }
+        .rev-chk-head {
+            display: flex; gap: var(--rs2); align-items: flex-start;
+            padding: var(--rs3); font-size: .82rem; line-height: 1.45; color: var(--ink);
+        }
+        .rev-chk-head .rev-chk-titulo { flex: 1 1 auto; min-width: 0; font-weight: var(--fw-medium); }
+        .rev-chk-det {
+            padding: 0 var(--rs3) var(--rs3); margin: 0;
+            font-size: .76rem; line-height: 1.55; color: var(--ink-soft);
+        }
+        .rev-chk-ev {
+            margin: var(--rs2) 0 0; padding: var(--rs2) var(--rs3); list-style: none;
+            background: var(--surface-2); border-radius: var(--rad-sm);
+            font-size: .72rem; line-height: 1.5; color: var(--ink-soft); display: grid; gap: .15rem;
+        }
+        .rev-chk-ev span { color: var(--ink); font-weight: var(--fw-medium); overflow-wrap: anywhere; }
+        /* La corrección propuesta se puede COPIAR: sin eso, "María López" hay que
+           volver a teclearlo en la cotización y nadie lo hace. */
+        .rev-sug {
+            display: flex; align-items: center; gap: var(--rs2); flex-wrap: wrap;
+            margin: var(--rs2) var(--rs3) 0; padding: var(--rs2) var(--rs3);
+            background: var(--brand-tint); border-radius: var(--rad-sm);
+            font-size: .74rem; color: var(--brand-deep);
+        }
+        .rev-sug code {
+            font-family: var(--f-mono); font-size: .74rem; color: var(--ink);
+            background: var(--surface); padding: .1rem .35rem; border-radius: 4px;
+            border: 1px solid var(--line); overflow-wrap: anywhere;
+        }
+        .rev-sug button {
+            margin-left: auto; font: inherit; font-size: .7rem; font-weight: var(--fw-semibold);
+            background: none; border: 0; color: var(--brand-deep); cursor: pointer;
+            text-decoration: underline; padding: .1rem .2rem;
+        }
+        .rev-sug button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 3px; }
+        /* La confirmación humana solo aparece cuando hace falta: un punto que el
+           sistema ya resolvió no ofrece nada que pulsar. */
+        .rev-chk-conf {
+            display: flex; gap: var(--rs2); align-items: center;
+            padding: var(--rs2) var(--rs3); border-top: 1px dashed var(--line);
+            font-size: .76rem; color: var(--ink); cursor: pointer;
+        }
+        .rev-chk-conf:hover { background: var(--surface-2); }
+        .rev-chk-conf input { width: 1.1rem; height: 1.1rem; margin: 0; accent-color: var(--ok); flex: none; cursor: pointer; }
+        .rev-chk-conf input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+        /* Marcas en línea junto a los datos de la cotización. */
+        .rev-dd-flex { display: flex; align-items: center; gap: var(--rs2); flex-wrap: wrap; }
+
+        /* ── Pestañas (hoja y visor) ──────────────────────────────────────── */
+        .rev-tabs {
+            display: flex; gap: .15rem; padding: var(--rs2) var(--rs4) 0;
+            border-bottom: 1px solid var(--line-soft); flex-wrap: wrap;
+        }
+        .rev-tab {
+            display: inline-flex; align-items: center; gap: .35rem;
+            padding: .45rem .8rem; border: 0; background: none; cursor: pointer;
+            font: inherit; font-size: .8rem; font-weight: var(--fw-medium); color: var(--ink-soft);
+            border-bottom: 2px solid transparent; margin-bottom: -1px;
+        }
+        .rev-tab svg, .rev-tab [data-icon] { width: .95rem; height: .95rem; flex: none; }
+        .rev-tab:hover { color: var(--ink); }
+        .rev-tab[aria-selected="true"] { color: var(--brand-deep); border-bottom-color: var(--brand); }
+        .rev-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; border-radius: var(--rad-sm); }
+        .rev-tabpanel[hidden] { display: none; }
+
+        /* ── La hoja de cálculo pintada en el portal ──────────────────────── */
+        .rev-hoja-caja { overflow: auto; max-height: 60vh; background: var(--surface); }
+        .rev-hoja {
+            border-collapse: collapse; font-size: .78rem; color: var(--ink);
+            font-variant-numeric: tabular-nums; background: #fff; min-width: 100%;
+        }
+        .rev-hoja td {
+            border: 1px solid #d9dde3; padding: .25rem .45rem;
+            vertical-align: middle; white-space: pre-wrap; overflow-wrap: anywhere;
+            color: #1B2330; background: #fff;
+        }
+        .rev-hoja td.n { font-weight: 700; }
+        .rev-hoja td.der { text-align: right; }
+        .rev-hoja td.cen { text-align: center; }
+        .rev-hoja-num {
+            position: sticky; left: 0; z-index: 1;
+            background: #f1f3f6 !important; color: #6b7280 !important;
+            font-size: .65rem; text-align: center; font-weight: 600; min-width: 2rem;
+        }
+        /* La hoja es un DOCUMENTO: se pinta con sus colores reales aunque el
+           portal esté en tema oscuro. Cambiarle el fondo sería enseñar algo que
+           no es lo que el cliente va a recibir. */
+        .rev-hoja-pie {
+            display: flex; align-items: center; gap: var(--rs2); flex-wrap: wrap;
+            padding: var(--rs2) var(--rs4); font-size: .74rem; color: var(--ink-faint);
+            border-top: 1px solid var(--line-soft); background: var(--surface);
+        }
+        .rev-hoja-pie .rev-hoja-pie-txt { flex: 1 1 12rem; min-width: 0; }
+
+        /* ── La página de Liverpool incrustada ────────────────────────────── */
+        .rev-pag-marco {
+            display: block; width: 100%; height: min(62vh, 40rem);
+            border: 0; background: #fff;
+        }
+        .rev-pag-estado {
+            display: grid; gap: var(--rs3); justify-items: center; text-align: center;
+            padding: var(--rs6) var(--rs4); color: var(--ink-soft);
+        }
+        .rev-pag-estado p { margin: 0; max-width: 32rem; font-size: .85rem; line-height: 1.6; }
+
+        /* Distintivo de la fila del artículo con el resultado de la comparación. */
+        .rev-item-precio-estado { display: flex; align-items: center; gap: var(--rs2); flex-wrap: wrap; margin-bottom: var(--rs2); }
+
+        [data-theme="carbon"] .rev-chip-ok     { background: rgba(52,211,153,.16); color: #4ADE80; border-color: rgba(74,222,128,.35); }
+        [data-theme="carbon"] .rev-chip-warn   { background: rgba(242,182,90,.16);  color: #F2B65A; border-color: rgba(242,182,90,.35); }
+        [data-theme="carbon"] .rev-chip-bad    { background: rgba(252,165,165,.14); color: #FCA5A5; border-color: rgba(252,165,165,.35); }
+        [data-theme="carbon"] .rev-chk-item.auto { background: rgba(52,211,153,.08); }
+        [data-theme="carbon"] .rev-score-arco   { stroke: #34D399; }
+        [data-theme="carbon"] .rev-score-arco.medio { stroke: #F2B65A; }
+        [data-theme="carbon"] .rev-score-arco.bajo  { stroke: #FCA5A5; }
+        [data-theme="carbon"] .rev-sug          { background: rgba(225,0,152,.16); color: #FF7ACF; }
+        [data-theme="carbon"] .rev-sug button   { color: #FF7ACF; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .rev-chip-wait svg { animation: none; }
+            .rev-score-arco { transition: none; }
+        }
+
+        /* Esta pantalla no es un documento; si alguien la imprime, que no salgan
+           las capas flotantes encima del papel. */
+        @media print { .rev-viewer, .rev-head-actions, .rev-decide-btns { display: none !important; } }
+    </style>
+<!-- Utilidades Tailwind compiladas: va al final del head, igual que la hoja que el CDN inyectaba. -->
+<?!= include('app_tailwind'); ?>
+</head>
+<body class="h-full">
+    <div class="app-aurora"></div>
+
+    <main id="main-content">
+      <div class="rev-wrap">
+
+        <!-- Cargando -->
+        <section id="rev-cargando" class="rev-card" aria-live="polite">
+            <div class="rev-card-body">
+                <div class="rev-skel" style="height:1.6rem;width:14rem;margin-bottom:1rem"></div>
+                <div class="rev-skel" style="height:.9rem;width:22rem;margin-bottom:2rem"></div>
+                <div class="rev-skel" style="height:5rem;margin-bottom:.75rem"></div>
+                <div class="rev-skel" style="height:5rem;margin-bottom:.75rem"></div>
+                <div class="rev-skel" style="height:5rem"></div>
+                <p class="rev-sr">Cargando la cotización para revisarla…</p>
+            </div>
+        </section>
+
+        <!-- Sin permiso / error -->
+        <section id="rev-bloqueo" class="rev-card hidden">
+            <div class="rev-estado">
+                <span class="rev-estado-ico" data-icon="lock" aria-hidden="true"></span>
+                <h2 id="rev-bloqueo-titulo">No puedes abrir esta revisión</h2>
+                <p id="rev-bloqueo-texto"></p>
+                <button type="button" id="rev-bloqueo-volver" class="v-btn v-btn-ghost">
+                    <span data-icon="arrow-left" aria-hidden="true"></span><span>Volver al inicio</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Revisión -->
+        <div id="rev-contenido" class="hidden">
+
+            <header class="rev-head" data-animate>
+                <div class="rev-head-main">
+                    <p class="rev-eyebrow">Folio</p>
+                    <h1 class="rev-title">
+                        <span class="rev-sr">Revisión de la cotización</span>
+                        <span class="rev-folio" id="rev-folio">—</span>
+                    </h1>
+                    <p class="rev-prog-lbl" style="margin:.4rem 0 0" id="rev-subtitulo">
+                        Verifica cada artículo antes de aprobar o rechazar.
+                    </p>
+                </div>
+                <div class="rev-head-actions">
+                    <span class="v-badge" id="rev-estado-badge">En revisión</span>
+                    <button type="button" id="rev-btn-consulta" class="v-btn v-btn-ghost v-btn-sm" title="Ver el documento tal como lo recibirá el cliente">
+                        <span data-icon="document" aria-hidden="true"></span><span>Ver documento</span>
+                    </button>
+                    <button type="button" id="rev-btn-volver" class="v-btn v-btn-ghost v-btn-sm">
+                        <span data-icon="arrow-left" aria-hidden="true"></span><span>Volver</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Resultado de una revisión ya cerrada -->
+            <div id="rev-banner" class="rev-banner hidden" role="status">
+                <span class="rev-banner-ico" id="rev-banner-ico" aria-hidden="true"></span>
+                <div style="min-width:0">
+                    <h2 id="rev-banner-titulo"></h2>
+                    <p id="rev-banner-texto"></p>
+                    <div class="rev-banner-notas hidden" id="rev-banner-notas"></div>
+                </div>
+            </div>
+
+            <div class="rev-grid">
+
+                <!-- Columna principal -->
+                <div class="rev-col">
+
+                    <!-- Datos de la cotización -->
+                    <section class="rev-card" data-animate>
+                        <div class="rev-card-head">
+                            <span style="width:1.1rem;height:1.1rem;color:var(--brand)" data-icon="user" aria-hidden="true"></span>
+                            <h2>Datos de la cotización</h2>
+                        </div>
+                        <div class="rev-card-body">
+                            <!-- Cada dato que el sistema sabe comprobar lleva su veredicto AL LADO.
+                                 Enterarse de que el correo es dudoso en el riel, a tres tarjetas de
+                                 distancia del correo, es enterarse tarde. -->
+                            <dl class="rev-dl">
+                                <div><p class="rev-dt">Cliente</p>
+                                     <p class="rev-dd rev-dd-flex"><span id="rev-cliente">—</span><span id="rev-marca-cliente-nombre"></span></p></div>
+                                <div><p class="rev-dt">Correo del cliente</p>
+                                     <p class="rev-dd rev-dd-flex"><span id="rev-cliente-correo">—</span><span id="rev-marca-cliente-correo"></span></p></div>
+                                <div><p class="rev-dt">Teléfono</p>
+                                     <p class="rev-dd rev-dd-flex"><span id="rev-cliente-tel">—</span><span id="rev-marca-cliente-telefono"></span></p></div>
+                                <div><p class="rev-dt">Fecha de emisión</p>
+                                     <p class="rev-dd rev-dd-flex"><span id="rev-fecha">—</span><span id="rev-marca-vigencia"></span></p></div>
+                                <div><p class="rev-dt">Asesor</p>
+                                     <p class="rev-dd rev-dd-flex"><span id="rev-asesor">—</span><span id="rev-marca-asesor"></span></p></div>
+                                <div><p class="rev-dt">Extensión</p><p class="rev-dd" id="rev-asesor-ext">—</p></div>
+                                <div><p class="rev-dt">Formato</p><p class="rev-dd" id="rev-formato">—</p></div>
+                                <div><p class="rev-dt">Artículos</p><p class="rev-dd" id="rev-num-articulos">—</p></div>
+                            </dl>
+
+                            <div id="rev-obs-bloque" class="hidden" style="margin-top:1rem">
+                                <p class="rev-dt">Observaciones del asesor</p>
+                                <p class="rev-dd" id="rev-obs" style="white-space:pre-wrap"></p>
+                            </div>
+
+                            <div class="rev-tot">
+                                <div class="rev-tot-row"><span>Subtotal</span><strong id="rev-subtotal">$0.00</strong></div>
+                                <div class="rev-tot-row"><span>IVA (16%)</span><strong id="rev-iva">$0.00</strong></div>
+                                <div class="rev-tot-row total"><span>Total a pagar</span><strong id="rev-total">$0.00</strong></div>
+                                <div class="rev-tot-row" style="justify-content:flex-end">
+                                    <span id="rev-marca-totales"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!--
+                      DOCUMENTO EN GOOGLE SHEETS (solo cotizaciones CCL).
+                      Dos formas de verlo, y la que se ofrece primero es la que SIEMPRE funciona:
+                      el servidor lee la hoja —tiene acceso, es quien la creó— y el portal la
+                      pinta. La incrustación de Google queda en la segunda pestaña, para quien
+                      tenga sesión con acceso al archivo y quiera la hoja de verdad.
+                    -->
+                    <section class="rev-card hidden" id="rev-sheet-card" data-animate>
+                        <button type="button" class="rev-toggle" id="rev-sheet-toggle"
+                                aria-expanded="false" aria-controls="rev-sheet-panel">
+                            <span style="width:1.1rem;height:1.1rem;color:var(--ok)" data-icon="grid" aria-hidden="true"></span>
+                            <span>Documento en Google Sheets</span>
+                            <span class="rev-chip rev-chip-manual" style="margin-left:.5rem">Formato CCL</span>
+                            <span class="rev-chev" data-icon="chevron" aria-hidden="true"></span>
+                        </button>
+                        <div class="rev-panel" id="rev-sheet-panel">
+                            <div>
+                                <div class="rev-tabs" role="tablist" aria-label="Cómo ver el documento">
+                                    <button type="button" class="rev-tab" role="tab" id="rev-tab-hoja"
+                                            aria-selected="true" aria-controls="rev-panel-hoja" data-tab="hoja">
+                                        <span data-icon="grid" aria-hidden="true"></span><span>Vista en el portal</span>
+                                    </button>
+                                    <button type="button" class="rev-tab" role="tab" id="rev-tab-google"
+                                            aria-selected="false" aria-controls="rev-panel-google" data-tab="google">
+                                        <span data-icon="external" aria-hidden="true"></span><span>Hoja de Google</span>
+                                    </button>
+                                </div>
+
+                                <div id="rev-panel-hoja" class="rev-tabpanel" role="tabpanel" aria-labelledby="rev-tab-hoja">
+                                    <div id="rev-hoja-host">
+                                        <div class="rev-pag-estado">
+                                            <span class="v-spinner" aria-hidden="true"></span>
+                                            <p>Leyendo la hoja…</p>
+                                        </div>
+                                    </div>
+                                    <div class="rev-hoja-pie">
+                                        <span class="rev-hoja-pie-txt" id="rev-hoja-pie-txt"></span>
+                                        <button type="button" id="rev-hoja-recargar" class="rev-btn-bulk">
+                                            <span data-icon="refresh" aria-hidden="true"></span><span>Volver a leer</span>
+                                        </button>
+                                        <button type="button" id="rev-sheet-abrir" class="v-btn v-btn-ghost v-btn-sm">
+                                            <span data-icon="external" aria-hidden="true"></span><span>Abrir en Sheets</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="rev-panel-google" class="rev-tabpanel" role="tabpanel" aria-labelledby="rev-tab-google" hidden>
+                                    <div class="rev-frame-wrap">
+                                        <!-- El iframe se crea al abrir la pestaña: si se dejara aquí, la
+                                             hoja se cargaría siempre aunque nadie la mire. -->
+                                        <div id="rev-sheet-host"></div>
+                                        <div class="rev-frame-bar">
+                                            <span>Esta vista la sirve Google: si sale en blanco, tu cuenta del navegador no tiene acceso al archivo. Usa «Vista en el portal».</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Artículos -->
+                    <section class="rev-card" data-animate>
+                        <div class="rev-card-head">
+                            <span style="width:1.1rem;height:1.1rem;color:var(--brand)" data-icon="clipboard" aria-hidden="true"></span>
+                            <h2>Artículos por verificar</h2>
+                            <div class="rev-bulk">
+                                <span class="rev-count" id="rev-items-count"></span>
+                                <button type="button" id="rev-items-todos" class="rev-btn-bulk"
+                                        title="Marca o desmarca de golpe todos los artículos de la lista">
+                                    <span data-icon="check" aria-hidden="true"></span>
+                                    <span id="rev-items-todos-txt">Marcar todos</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="rev-items"></div>
+                        <p class="rev-atajos" style="padding:0 var(--rs4) var(--rs3)">
+                            <span>Clic en cualquier parte de la fila para marcarla.</span>
+                            <span><span class="rev-kbd">A</span> marca todo lo pendiente</span>
+                            <span><span class="rev-kbd">Esc</span> cierra el comparador</span>
+                        </p>
+                    </section>
+                </div>
+
+                <!-- Riel lateral -->
+                <aside class="rev-rail">
+
+                    <!-- Índice de confianza (lo calcula el servidor, no la pantalla) -->
+                    <section class="rev-card" id="rev-score-card" data-animate>
+                        <div class="rev-card-body">
+                            <div class="rev-score">
+                                <div class="rev-score-anillo">
+                                    <svg viewBox="0 0 100 100" aria-hidden="true">
+                                        <circle class="rev-score-pista" cx="50" cy="50" r="42"></circle>
+                                        <circle class="rev-score-arco" id="rev-score-arco" cx="50" cy="50" r="42"></circle>
+                                    </svg>
+                                    <span class="rev-score-num" id="rev-score-num">—</span>
+                                </div>
+                                <div class="rev-score-txt">
+                                    <h3>Índice de confianza</h3>
+                                    <p id="rev-score-txt" role="status">Analizando la cotización…</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Avance -->
+                    <section class="rev-card" data-animate>
+                        <div class="rev-card-body">
+                            <div class="rev-prog-top">
+                                <span class="rev-prog-num" id="rev-prog-num">0 / 0</span>
+                                <span class="rev-prog-lbl">verificado</span>
+                            </div>
+                            <div class="rev-prog-bar">
+                                <div class="rev-prog-fill" id="rev-prog-fill"></div>
+                            </div>
+                            <p class="rev-hint" id="rev-prog-txt" role="status" style="margin-top:.6rem"></p>
+                            <button type="button" id="rev-todo" class="rev-btn-bulk" style="margin-top:.7rem;width:100%;justify-content:center">
+                                <span data-icon="check-circle" aria-hidden="true"></span>
+                                <span id="rev-todo-txt">Marcar todo lo pendiente</span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <!--
+                      VERIFICACIÓN AUTOMÁTICA.
+                      Los puntos llegan resueltos por el servidor (AuditoriaCotizacion.gs). Los
+                      que el sistema pudo comprobar NO piden nada: ya cuentan como verificados.
+                      Solo aparece una casilla en los que necesitan criterio humano, y ese es
+                      justo el trabajo que queda para la persona.
+                    -->
+                    <section class="rev-card" data-animate>
+                        <div class="rev-card-head">
+                            <span style="width:1.1rem;height:1.1rem;color:var(--brand)" data-icon="sparkle" aria-hidden="true"></span>
+                            <h2>Verificación automática</h2>
+                            <div class="rev-bulk">
+                                <span class="rev-count" id="rev-gen-count"></span>
+                                <button type="button" id="rev-gen-todos" class="rev-btn-bulk"
+                                        title="Confirma de golpe los puntos que el sistema no puede resolver solo">
+                                    <span data-icon="check" aria-hidden="true"></span>
+                                    <span id="rev-gen-todos-txt">Confirmar pendientes</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="rev-card-body">
+                            <ul class="rev-chk-list" id="rev-chk-general"></ul>
+                        </div>
+                    </section>
+
+                    <!-- Decisión -->
+                    <section class="rev-card" data-animate>
+                        <div class="rev-card-head">
+                            <span style="width:1.1rem;height:1.1rem;color:var(--brand)" data-icon="shield" aria-hidden="true"></span>
+                            <h2>Cerrar la revisión</h2>
+                        </div>
+                        <div class="rev-card-body">
+                            <div class="rev-decide">
+                                <div>
+                                    <label class="v-label" for="rev-notas">Observaciones</label>
+                                    <textarea id="rev-notas" class="v-textarea" rows="4"
+                                              maxlength="4000"
+                                              placeholder="Qué revisaste, qué hay que corregir, con quién se validó…"></textarea>
+                                    <p class="rev-count-chars"><span id="rev-notas-num">0</span> / 4000</p>
+                                    <p class="rev-hint">Se le envían al asesor por correo junto con el resultado.</p>
+                                </div>
+
+                                <div class="rev-decide-btns">
+                                    <button type="button" id="rev-btn-rechazar" class="v-btn rev-btn-rechazar">
+                                        <span data-icon="x-circle" aria-hidden="true"></span><span>Rechazar</span>
+                                    </button>
+                                    <button type="button" id="rev-btn-aprobar" class="v-btn v-btn-success">
+                                        <span data-icon="check" aria-hidden="true"></span><span>Aprobar</span>
+                                    </button>
+                                </div>
+
+                                <p class="rev-hint" id="rev-decide-hint" role="status"></p>
+                            </div>
+                        </div>
+                    </section>
+                </aside>
+            </div>
+        </div>
+      </div>
+    </main>
+
+    <!--
+      VISOR DEL ARTÍCULO — dos pestañas.
+
+      1) COMPARACIÓN: el servidor lee la ficha (Revision.gs · revFichaArticulo) y aquí se
+         enfrentan el precio cotizado y el publicado, con la diferencia ya calculada.
+      2) PÁGINA DE LIVERPOOL: la página, dentro del portal, de verdad.
+
+      Un `<iframe src="https://www.liverpool.com.mx/...">` NO puede funcionar y no es un fallo
+      que se pueda arreglar desde aquí: su sitio responde X-Frame-Options y CSP frame-ancestors,
+      y eso lo hace cumplir el NAVEGADOR. Lo que sí funciona —y es lo que hay montado— es que el
+      servidor traiga la página (a él esas cabeceras no le aplican), la limpie de scripts y de
+      formularios, le incruste sus hojas de estilo (comprobado: pedidas desde otro origen, el
+      CDN de Liverpool las sirve pero el navegador NO aplica sus reglas) y la pantalla la pinte
+      con `srcdoc` en un iframe con `sandbox`, que no puede ejecutar nada.
+    -->
+    <div class="rev-viewer" id="rev-viewer" role="dialog" aria-modal="true" aria-labelledby="rev-viewer-titulo">
+        <div class="rev-viewer-card">
+            <div class="rev-viewer-head">
+                <span style="width:1.25rem;height:1.25rem;color:var(--brand);flex:none" data-icon="eye" aria-hidden="true"></span>
+                <div class="rev-viewer-head-txt">
+                    <h2 id="rev-viewer-titulo">Artículo</h2>
+                    <span class="rev-viewer-url" id="rev-viewer-url"></span>
+                </div>
+                <button type="button" id="rev-viewer-nueva" class="v-btn v-btn-ghost v-btn-sm">
+                    <span data-icon="external" aria-hidden="true"></span><span>Abrir en pestaña</span>
+                </button>
+                <button type="button" id="rev-viewer-cerrar" class="v-btn v-btn-ghost v-btn-sm" aria-label="Cerrar el comparador">
+                    <span data-icon="x-circle" aria-hidden="true"></span><span>Cerrar</span>
+                </button>
+            </div>
+
+            <div class="rev-tabs" role="tablist" aria-label="Cómo ver el artículo">
+                <button type="button" class="rev-tab" role="tab" id="rev-tab-cmp"
+                        aria-selected="true" aria-controls="rev-panel-cmp" data-vtab="cmp">
+                    <span data-icon="grid" aria-hidden="true"></span><span>Comparación de precios</span>
+                </button>
+                <button type="button" class="rev-tab" role="tab" id="rev-tab-pag"
+                        aria-selected="false" aria-controls="rev-panel-pag" data-vtab="pag">
+                    <span data-icon="globe" aria-hidden="true"></span><span>Página de Liverpool</span>
+                </button>
+            </div>
+
+            <div class="rev-viewer-body">
+                <div id="rev-panel-pag" class="rev-tabpanel" role="tabpanel" aria-labelledby="rev-tab-pag" hidden>
+                    <div id="rev-pag-host">
+                        <div class="rev-pag-estado">
+                            <span class="v-spinner" aria-hidden="true"></span>
+                            <p>Trayendo la página del artículo…</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="rev-panel-cmp" class="rev-tabpanel rev-cmp" role="tabpanel" aria-labelledby="rev-tab-cmp">
+                    <div class="rev-cmp-cargando" id="rev-cmp-cargando" role="status">
+                        <span class="v-spinner" aria-hidden="true"></span>
+                        <span>Consultando la ficha en liverpool.com.mx…</span>
+                    </div>
+
+                    <div class="rev-cmp-veredicto hidden" id="rev-cmp-veredicto" role="status">
+                        <span id="rev-cmp-veredicto-ico" aria-hidden="true"></span>
+                        <div style="min-width:0">
+                            <h4 id="rev-cmp-veredicto-titulo"></h4>
+                            <p id="rev-cmp-veredicto-txt"></p>
+                            <button type="button" id="rev-cmp-abrir" class="v-btn v-btn-primary v-btn-sm hidden" style="margin-top:.6rem">
+                                <span data-icon="external" aria-hidden="true"></span><span>Abrir el artículo en una pestaña</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="rev-cmp-grid hidden" id="rev-cmp-grid">
+                        <!-- Lo que dice la cotización -->
+                        <section class="rev-cmp-col rev-cmp-cot">
+                            <h3><span data-icon="document" aria-hidden="true"></span>En la cotización</h3>
+                            <figure class="rev-cmp-foto" id="rev-cmp-foto-cot"></figure>
+                            <p class="rev-cmp-nombre" id="rev-cmp-nom-cot">—</p>
+                            <dl class="rev-cmp-dl" id="rev-cmp-dl-cot"></dl>
+                        </section>
+
+                        <!-- Lo que dice Liverpool ahora mismo -->
+                        <section class="rev-cmp-col rev-cmp-viva">
+                            <h3><span data-icon="globe" aria-hidden="true"></span>En liverpool.com.mx ahora</h3>
+                            <figure class="rev-cmp-foto" id="rev-cmp-foto-viva"></figure>
+                            <p class="rev-cmp-nombre" id="rev-cmp-nom-viva">—</p>
+                            <dl class="rev-cmp-dl" id="rev-cmp-dl-viva"></dl>
+                        </section>
+                    </div>
+
+                    <p class="rev-cmp-fuente" id="rev-cmp-fuente"></p>
+                </div>
+            </div>
+
+            <div class="rev-viewer-foot">
+                <span class="rev-foot-txt" id="rev-viewer-foot-txt">Los datos y la página los trae el servidor desde liverpool.com.mx.</span>
+                <button type="button" id="rev-cmp-marcar" class="v-btn v-btn-success v-btn-sm">
+                    <span data-icon="check" aria-hidden="true"></span><span id="rev-cmp-marcar-txt">Marcar como verificado</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.__APP__ = { baseUrl: <?!= JSON.stringify(baseUrl) ?>, folio: <?!= JSON.stringify(folio) ?> };
+    </script>
+    <?!= include('app_core'); ?>
+    <?!= include('app_icons'); ?>
+    <?!= include('app_estatus'); ?>
+    <?!= include('app_motion'); ?>
+    <?!= include('app_shell'); ?>
+    <?!= include('LoaderPartial'); ?>
+    <script>
+    (function () {
+        'use strict';
+
+        const esc = window.escapeHtml || (s => String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
+
+        const money = window.formatMoney || function (n) {
+            return (parseFloat(n) || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+        };
+
+        /** Nombre en cristiano de cada formato, para no enseñar el id interno. */
+        const NOMBRE_FORMATO = { 'actual': 'Cotización estándar', 'ccl_liverpool': 'Formato CCL Liverpool' };
+
+        // Borrador de la revisión en curso. Vive en AppCache (namespace ventel-cache-),
+        // así que se borra solo al cerrar sesión — importante, porque lleva las
+        // observaciones que el supervisor escribió sobre el trabajo de otra persona.
+        // 24 h: pasado un día, los precios de la cotización ya no son los mismos y
+        // reanudar una verificación vieja daría una falsa sensación de haber revisado.
+        const BORRADOR_TTL = 24 * 60 * 60 * 1000;
+        const BORRADOR_MAX = 6;
+
+        const estado = {
+            folio: '',
+            datos: null,
+            articulos: [],      // { ok: bool, auto: bool, precio: {…} }
+            general: {},        // { id: bool }  ← confirmación HUMANA de un punto
+            puntos: [],         // dictamen del servidor, tal como llegó
+            score: null,
+            enviando: false,
+            cerrada: false,
+            verificaciones: null,
+            paginaPeticion: 0
+        };
+
+        /*
+         * ESTADOS DE UN PUNTO DE VERIFICACIÓN.
+         * `resuelto` decide si cuenta como hecho SIN que nadie lo toque: es la diferencia entre
+         * una lista que se palomea y una que de verdad verifica. Un punto en 'ok' lo resolvió
+         * una regla del servidor; los demás siguen necesitando a una persona.
+         */
+        const ESTADOS_PUNTO = {
+            ok:        { chip: 'ok',     icono: 'check-circle', etiqueta: 'Automática',  resuelto: true  },
+            pendiente: { chip: 'wait',   icono: 'refresh',      etiqueta: 'Comprobando', resuelto: false },
+            manual:    { chip: 'manual', icono: 'eye',          etiqueta: 'Tu criterio', resuelto: false },
+            atencion:  { chip: 'warn',   icono: 'warning',      etiqueta: 'Revisa',      resuelto: false },
+            mal:       { chip: 'bad',    icono: 'x-circle',     etiqueta: 'Falla',       resuelto: false }
+        };
+
+        function infoEstado(e) { return ESTADOS_PUNTO[e] || ESTADOS_PUNTO.manual; }
+
+        /** ¿Este punto ya cuenta como verificado? (lo resolvió el sistema o lo confirmó la persona) */
+        function puntoResuelto(p) {
+            return infoEstado(p.estado).resuelto || !!estado.general[p.id];
+        }
+
+        /** Distintivo de estado, con icono y palabra: nunca solo color. */
+        function chipHTML(clase, icono, texto, titulo) {
+            return '<span class="rev-chip rev-chip-' + clase + '"' +
+                   (titulo ? ' title="' + esc(titulo) + '"' : '') + '>' +
+                   Icons.svg(icono, '') + '<span>' + esc(texto) + '</span></span>';
+        }
+
+        // ───────────────────────────────────────────────────────────── utilidades
+
+        /**
+         * Solo se incrusta o se enlaza lo que sea https de Liverpool. El servidor ya
+         * filtró (revUrlArticuloSegura_), pero esta pantalla también pinta imágenes que
+         * vienen de la hoja y nunca conviene que el único filtro esté del otro lado.
+         */
+        function urlSegura(url, hostsPermitidos) {
+            const bruta = String(url == null ? '' : url).trim();
+            if (!bruta) return '';
+            let u;
+            try { u = new URL(bruta); } catch (e) { return ''; }
+            if (u.protocol !== 'https:') return '';
+            if (hostsPermitidos) {
+                const host = u.hostname.toLowerCase();
+                const ok = hostsPermitidos.some(function (h) {
+                    return host === h || host.endsWith('.' + h);
+                });
+                if (!ok) return '';
+            }
+            return u.href;
+        }
+
+        const HOSTS_LIVERPOOL = ['liverpool.com.mx'];
+
+        function claveBorrador() { return 'revision-' + estado.folio; }
+
+        function guardarBorrador() {
+            if (!estado.folio || estado.cerrada) return;
+            try {
+                AppCache.set(claveBorrador(), {
+                    articulos: estado.articulos.map(a => !!a.ok),
+                    general: estado.general,
+                    notas: document.getElementById('rev-notas').value
+                }, { ttl: BORRADOR_TTL });
+                AppCache.prune('revision-', BORRADOR_MAX, claveBorrador());
+            } catch (e) { /* sin espacio: la revisión sigue, solo no se recuerda */ }
+        }
+
+        function leerBorrador() {
+            try {
+                const hit = AppCache.get(claveBorrador());
+                return hit ? hit.data : null;
+            } catch (e) { return null; }
+        }
+
+        function olvidarBorrador() {
+            try { AppCache.remove(claveBorrador()); } catch (e) {}
+        }
+
+        /**
+         * Precio de una línea con su promoción. Es EXACTAMENTE el mismo cálculo que hace
+         * consulta_cotizacion.html para el documento: si aquí se calculara distinto, se
+         * estaría aprobando un número que el cliente nunca va a ver.
+         */
+        function calcularLinea(p) {
+            const unitPrice = parseFloat(p.unitPrice) || 0;
+            const quantity = parseInt(p.quantity) || 0;
+            const priceVolume = unitPrice * quantity;
+            const costPaymentUnique = parseFloat(p.costPaymentUnique) || 0;
+            const descPublico = parseFloat(p.discountPublicPercent) || 0;
+            const adicional = p.additionalDiscountApplied === 'Si';
+            const descAdicional = parseFloat(p.additionalDiscountPercent) || 0;
+
+            let total;
+            if (costPaymentUnique > 0 && quantity > 0 && unitPrice > 0) {
+                total = costPaymentUnique;
+            } else {
+                let base = Math.max(0, priceVolume * (1 - descPublico / 100));
+                total = adicional && descAdicional > 0 ? base * (1 - descAdicional / 100) : base;
+                total = Math.max(0, total);
+            }
+
+            const ahorro = priceVolume - total;
+            return {
+                cantidad: quantity,
+                unitario: unitPrice,
+                volumen: priceVolume,
+                total: total,
+                unitarioPromo: quantity > 0 ? total / quantity : total,
+                ahorro: ahorro,
+                porcentaje: priceVolume > 0 ? (ahorro / priceVolume) * 100 : 0,
+                hayPromo: ahorro > 0.001,
+                descPublico: descPublico,
+                descAdicional: adicional ? descAdicional : 0
+            };
+        }
+
+        // ───────────────────────────────────────────────────────────────── pintado
+
+        function pintarCabecera(d) {
+            document.getElementById('rev-folio').textContent = d.quote.folio || '—';
+            document.title = 'Revisión ' + (d.quote.folio || '') + ' - Sistema Ventel';
+
+            const set = (id, v) => { document.getElementById(id).textContent = (v === 0 || v) ? v : '—'; };
+            set('rev-cliente', d.quote.clientName);
+            set('rev-cliente-correo', d.quote.clientEmail);
+            set('rev-cliente-tel', d.quote.clientPhone);
+            set('rev-asesor', d.quote.advisorName || d.quote.advisorEmail);
+            set('rev-asesor-ext', d.quote.advisorExt);
+            set('rev-formato', NOMBRE_FORMATO[d.quote.format] || d.quote.format || '—');
+            set('rev-num-articulos', d.products.length);
+            set('rev-fecha', d.quote.timestamp
+                ? new Date(d.quote.timestamp).toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })
+                : '—');
+
+            document.getElementById('rev-subtotal').textContent = money(d.quote.summarySubtotal);
+            document.getElementById('rev-iva').textContent = money(d.quote.summaryVat);
+            document.getElementById('rev-total').textContent = money(d.quote.summaryTotal);
+
+            if (d.quote.observations) {
+                document.getElementById('rev-obs').textContent = d.quote.observations;
+                document.getElementById('rev-obs-bloque').classList.remove('hidden');
+            }
+
+            // La insignia sale del catálogo compartido (app_estatus): el mismo folio se ve
+            // igual aquí, en el panel del asesor y en el de supervisión.
+            const badge = document.getElementById('rev-estado-badge');
+            const r = d.revision || {};
+            badge.outerHTML = '<span id="rev-estado-badge">' +
+                AppEstatus.badge(r.estado || d.quote.status, r.estado) + '</span>';
+        }
+
+        function pintarBanner(r) {
+            if (!r || !r.estado) return;
+            estado.cerrada = true;
+            const aprobada = r.estado === 'Aprobada';
+            const banner = document.getElementById('rev-banner');
+            banner.className = 'rev-banner ' + (aprobada ? 'rev-banner-ok' : 'rev-banner-bad');
+            document.getElementById('rev-banner-ico').innerHTML =
+                Icons.svg(aprobada ? 'check-circle' : 'x-circle', 'h-full w-full');
+            document.getElementById('rev-banner-titulo').textContent =
+                aprobada ? 'Esta cotización ya fue aprobada' : 'Esta cotización fue rechazada';
+
+            const cuando = r.fecha ? new Date(r.fecha).toLocaleString('es-MX',
+                { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+            document.getElementById('rev-banner-texto').textContent =
+                'Revisó ' + (r.nombre || r.por || 'un usuario avanzado') +
+                (r.por && r.nombre ? ' (' + r.por + ')' : '') +
+                (cuando ? ' el ' + cuando + '.' : '.') +
+                (aprobada ? ' El envío por correo está desbloqueado.'
+                          : ' El asesor debe corregirla; al guardarla de nuevo volverá a esta cola.');
+
+            if (r.notas) {
+                const notas = document.getElementById('rev-banner-notas');
+                notas.textContent = r.notas;
+                notas.classList.remove('hidden');
+            }
+            banner.classList.remove('hidden');
+        }
+
+        function pintarArticulos(productos) {
+            const cont = document.getElementById('rev-items');
+            document.getElementById('rev-items-count').textContent =
+                productos.length + (productos.length === 1 ? ' artículo' : ' artículos');
+
+            if (!productos.length) {
+                cont.innerHTML = '<div class="rev-estado">' +
+                    '<span class="rev-estado-ico" data-icon="warning"></span>' +
+                    '<h2>Esta cotización no tiene artículos</h2>' +
+                    '<p>No hay nada que verificar. Revisa con el asesor antes de aprobarla: ' +
+                    'lo más probable es que se guardara incompleta.</p></div>';
+                Icons.render(cont);
+                return;
+            }
+
+            cont.innerHTML = productos.map(function (p, i) {
+                const c = calcularLinea(p);
+                const img = urlSegura(p.imageUrl);
+                const link = urlSegura(p.productUrl, HOSTS_LIVERPOOL);
+
+                const detalles = [];
+                if (c.descPublico > 0.001)   detalles.push('Público ' + c.descPublico.toFixed(2) + '%');
+                if (c.descAdicional > 0.001) detalles.push('Adicional ' + c.descAdicional.toFixed(2) + '%');
+
+                return '' +
+                '<article class="rev-item" data-idx="' + i + '">' +
+                    '<div class="rev-check">' +
+                        '<input type="checkbox" id="rev-art-' + i + '" data-art="' + i + '" ' +
+                               'aria-describedby="rev-art-nombre-' + i + '">' +
+                        '<label class="rev-sr" for="rev-art-' + i + '">Marcar como verificado</label>' +
+                    '</div>' +
+
+                    '<div class="rev-thumb">' +
+                        (img
+                            ? '<img src="' + esc(img) + '" alt="" loading="lazy" referrerpolicy="no-referrer">'
+                            : '<span class="rev-thumb-empty">Sin imagen</span>') +
+                    '</div>' +
+
+                    '<div class="rev-item-main">' +
+                        '<p class="rev-item-name" id="rev-art-nombre-' + i + '">' + esc(p.description || 'Sin descripción') + '</p>' +
+                        '<div class="rev-item-meta">' +
+                            '<span class="rev-sku">SKU ' + esc(p.sku || '—') + '</span>' +
+                            '<span>Cantidad: <strong>' + c.cantidad + '</strong></span>' +
+                        '</div>' +
+
+                        '<div class="rev-precios">' +
+                            '<span class="rev-precio-final">' + esc(money(c.unitarioPromo)) + '</span>' +
+                            (c.hayPromo ? '<span class="rev-precio-antes">' + esc(money(c.unitario)) + '</span>' : '') +
+                            (c.hayPromo
+                                ? '<span class="rev-promo">Promoción −' + c.porcentaje.toFixed(1) + '%</span>'
+                                : '<span class="rev-precio-nota">Sin promoción</span>') +
+                        '</div>' +
+                        '<p class="rev-precio-nota" style="margin:0 0 .5rem">' +
+                            (detalles.length ? esc(detalles.join(' + ')) + ' · ' : '') +
+                            'Total de la línea: <strong>' + esc(money(c.total)) + '</strong>' +
+                            (c.hayPromo ? ' · ahorro ' + esc(money(c.ahorro)) : '') +
+                        '</p>' +
+
+                        // Aquí aterriza el resultado de comparar este artículo con el sitio.
+                        '<div class="rev-item-precio-estado" id="rev-precio-estado-' + i + '"></div>' +
+
+                        '<div class="rev-item-foot">' +
+                            (link
+                                ? '<button type="button" class="v-btn v-btn-ghost v-btn-sm" data-ver="' + i + '" ' +
+                                      'title="Trae el precio actual del sitio y lo enfrenta con el cotizado">' +
+                                      Icons.svg('eye', '') + '<span>Comparar con el sitio</span></button>'
+                                : (p.urlDescartada
+                                    ? '<span class="rev-link-malo">El enlace guardado no es de liverpool.com.mx: no se abre desde aquí.</span>'
+                                    : '<span class="rev-sin-link">Sin enlace (se cotizó antes de la versión 1.2 de la extensión).</span>')) +
+                        '</div>' +
+                    '</div>' +
+                '</article>';
+            }).join('');
+
+            Icons.render(cont);
+            AppMotion.staggerRows(cont.querySelectorAll('.rev-item'));
+
+            cont.addEventListener('change', function (ev) {
+                const cb = ev.target.closest('input[data-art]');
+                if (!cb) return;
+                aplicarArticulo(parseInt(cb.getAttribute('data-art'), 10), cb.checked);
+                if (cb.checked) AppMotion.pop(cb);
+                actualizarAvance();
+                guardarBorrador();
+            });
+
+            cont.addEventListener('click', function (ev) {
+                const btn = ev.target.closest('[data-ver]');
+                if (btn) {
+                    const i = parseInt(btn.getAttribute('data-ver'), 10);
+                    abrirVisor(productos[i], i);
+                    return;
+                }
+
+                // Toda la fila marca. Se respeta el clic sobre la casilla (el navegador ya
+                // la conmuta y volver a hacerlo aquí la dejaría como estaba) y sobre un
+                // texto que alguien esté seleccionando para copiar un SKU.
+                const fila = ev.target.closest('.rev-item');
+                if (!fila || fila.classList.contains('rev-item-bloqueado')) return;
+                if (ev.target.closest('button, a, input, label')) return;
+                const sel = window.getSelection();
+                if (sel && String(sel).length > 0) return;
+
+                const i = parseInt(fila.getAttribute('data-idx'), 10);
+                const cb = document.getElementById('rev-art-' + i);
+                if (!cb || cb.disabled) return;
+                cb.checked = !cb.checked;
+                aplicarArticulo(i, cb.checked);
+                if (cb.checked) AppMotion.pop(cb);
+                actualizarAvance();
+                guardarBorrador();
+            });
+        }
+
+        /**
+         * Un único sitio donde el estado de un artículo pasa al modelo y a la fila.
+         * Al pasar por aquí la marca deja de ser "automática": si luego lo fue, quien la puso
+         * lo declara justo después. Así, en cuanto una persona toca la fila, la marca es suya.
+         */
+        function aplicarArticulo(i, ok) {
+            if (!estado.articulos[i]) return;
+            estado.articulos[i].ok = !!ok;
+            estado.articulos[i].auto = false;
+            const fila = document.querySelector('.rev-item[data-idx="' + i + '"]');
+            if (fila) fila.classList.toggle('ok', !!ok);
+        }
+
+        /**
+         * Pinta el dictamen. Cada punto muestra QUÉ se comprobó, CÓMO quedó y —cuando el
+         * sistema puede— la corrección propuesta. Solo los que no quedaron resueltos ofrecen
+         * una casilla: pedir que se palomee lo que ya se verificó solo es volver al problema
+         * que esta pantalla vino a resolver.
+         */
+        function pintarChecklistGeneral(items) {
+            const ul = document.getElementById('rev-chk-general');
+            estado.puntos = items || [];
+
+            ul.innerHTML = (items || []).map(function (it) {
+                const info = infoEstado(it.estado);
+                const resuelto = info.resuelto;
+
+                const evidencia = (it.evidencia || []).filter(function (e) { return e && (e.valor || e.etiqueta); });
+                const evHTML = evidencia.length
+                    ? '<ul class="rev-chk-ev">' + evidencia.slice(0, 6).map(function (e) {
+                        return '<li>' + (e.etiqueta ? esc(e.etiqueta) + ': ' : '') +
+                               '<span>' + esc(String(e.valor)) + '</span></li>';
+                      }).join('') + '</ul>'
+                    : '';
+
+                const sugHTML = it.sugerencia
+                    ? '<div class="rev-sug">' +
+                        '<span>Debería decir</span><code>' + esc(it.sugerencia) + '</code>' +
+                        '<button type="button" data-copiar="' + esc(it.sugerencia) + '">Copiar</button>' +
+                      '</div>'
+                    : '';
+
+                const confHTML = resuelto ? '' :
+                    '<label class="rev-chk-conf" for="rev-gen-' + esc(it.id) + '">' +
+                        '<input type="checkbox" id="rev-gen-' + esc(it.id) + '" data-gen="' + esc(it.id) + '">' +
+                        '<span>' + (it.estado === 'mal'
+                            ? 'Lo revisé y aun así puede salir'
+                            : 'Lo revisé y está correcto') + '</span>' +
+                    '</label>';
+
+                return '<li class="rev-chk-item' + (resuelto ? ' auto' : '') +
+                            (it.estado === 'mal' ? ' mal' : '') + '" data-punto="' + esc(it.id) + '">' +
+                    '<div class="rev-chk-head">' +
+                        '<span class="rev-chk-titulo">' + esc(it.texto) + '</span>' +
+                        chipHTML(info.chip, info.icono, info.etiqueta) +
+                    '</div>' +
+                    (it.detalle ? '<p class="rev-chk-det">' + esc(it.detalle) + '</p>' : '') +
+                    (evHTML ? '<div style="padding:0 var(--rs3) var(--rs3)">' + evHTML + '</div>' : '') +
+                    sugHTML +
+                    confHTML +
+                '</li>';
+            }).join('');
+
+            // Los oyentes se cuelgan de la lista UNA sola vez: esta función se vuelve a llamar
+            // cuando el servidor recalcula el dictamen, y registrarlos otra vez haría que cada
+            // clic contara doble.
+            if (ul.dataset.conOyentes !== '1') {
+                ul.dataset.conOyentes = '1';
+
+                ul.addEventListener('change', function (ev) {
+                    const cb = ev.target.closest('input[data-gen]');
+                    if (!cb) return;
+                    estado.general[cb.getAttribute('data-gen')] = cb.checked;
+                    if (cb.checked) AppMotion.pop(cb);
+                    actualizarAvance();
+                    guardarBorrador();
+                });
+
+                ul.addEventListener('click', function (ev) {
+                    const btn = ev.target.closest('[data-copiar]');
+                    if (!btn) return;
+                    const texto = btn.getAttribute('data-copiar');
+                    // El portapapeles puede estar bloqueado dentro del iframe de Apps Script;
+                    // si falla, el valor sigue a la vista para copiarlo a mano.
+                    try {
+                        navigator.clipboard.writeText(texto).then(function () {
+                            AppMotion.toast('Copiado: ' + texto, 'ok');
+                        }, function () {
+                            AppMotion.toast('No se pudo copiar; selecciónalo a mano.', 'warn');
+                        });
+                    } catch (e) {
+                        AppMotion.toast('No se pudo copiar; selecciónalo a mano.', 'warn');
+                    }
+                });
+            }
+
+            Icons.render(ul);
+            pintarMarcasEnLinea(items || []);
+        }
+
+        /**
+         * Repite el veredicto de cada punto JUNTO AL DATO al que se refiere. Es información
+         * duplicada a propósito: quien mira el correo del cliente tiene que ver ahí mismo que
+         * el dominio es sospechoso, sin cruzar la pantalla hasta el riel.
+         */
+        function pintarMarcasEnLinea(items) {
+            const donde = {
+                'cliente-nombre': 'rev-marca-cliente-nombre',
+                'cliente-correo': 'rev-marca-cliente-correo',
+                'cliente-telefono': 'rev-marca-cliente-telefono',
+                'asesor': 'rev-marca-asesor',
+                'vigencia': 'rev-marca-vigencia',
+                'totales': 'rev-marca-totales'
+            };
+            items.forEach(function (it) {
+                const el = document.getElementById(donde[it.id]);
+                if (!el) return;
+                const info = infoEstado(it.estado);
+                el.innerHTML = chipHTML(info.chip, info.icono, info.etiqueta, it.detalle || '');
+            });
+        }
+
+        /** Índice de confianza: número, color del arco y frase. El arco lo anima GSAP. */
+        function pintarScore(auditoria) {
+            if (!auditoria) return;
+            estado.score = auditoria.score;
+            const arco = document.getElementById('rev-score-arco');
+            const num = document.getElementById('rev-score-num');
+            const txt = document.getElementById('rev-score-txt');
+
+            if (auditoria.score == null) {
+                document.getElementById('rev-score-card').classList.add('hidden');
+                return;
+            }
+            const pct = Math.max(0, Math.min(100, auditoria.score));
+            arco.classList.toggle('medio', pct < 85 && pct >= 60);
+            arco.classList.toggle('bajo', pct < 60);
+            txt.textContent = auditoria.resumen || '';
+
+            const circunferencia = 2 * Math.PI * 42;   // r=42 en el viewBox de 100
+            const destino = circunferencia * (1 - pct / 100);
+
+            if (window.gsap && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                gsap.to(arco, { strokeDashoffset: destino, duration: .9, ease: 'power3.out' });
+                AppMotion.countUp(num, pct, function (v) { return Math.round(v); });
+            } else {
+                arco.style.strokeDashoffset = destino;
+                num.textContent = pct;
+            }
+        }
+
+        // ──────────────────────────────────────────────────── selección en bloque
+        /*
+         * "Marcar todo" acelera lo que ya se revisó; no sustituye la revisión. Por eso:
+         *   · vive en la barra de cada tarjeta, no como acción principal de la pantalla;
+         *   · el mismo botón desmarca cuando ya está todo, para poder deshacerlo de un clic;
+         *   · al usarlo se avisa por toast de cuántos puntos quedaron marcados de golpe,
+         *     que es el recordatorio de que la firma sigue siendo de quien lo pulsó.
+         * Lo que queda escrito en la hoja (RevisionChecklist) es idéntico se marque de una
+         * en una o de golpe: la traza no cambia.
+         */
+
+        function marcarArticulos(ok) {
+            let tocados = 0;
+            estado.articulos.forEach(function (a, i) {
+                const cb = document.getElementById('rev-art-' + i);
+                if (!cb || cb.disabled || cb.checked === ok) return;
+                cb.checked = ok;
+                aplicarArticulo(i, ok);
+                tocados++;
+            });
+            return tocados;
+        }
+
+        /** Solo toca los puntos que SIGUEN pidiendo criterio: los automáticos no tienen casilla. */
+        function marcarGenerales(ok) {
+            let tocados = 0;
+            (estado.datos.checklistGeneral || []).forEach(function (it) {
+                const cb = document.getElementById('rev-gen-' + it.id);
+                if (!cb || cb.disabled || cb.checked === ok) return;
+                cb.checked = ok;
+                estado.general[it.id] = ok;
+                tocados++;
+            });
+            return tocados;
+        }
+
+        /** Acción de un botón en bloque: aplica, avisa, recalcula y guarda el borrador. */
+        function enBloque(fn, ok, queCosa) {
+            if (estado.cerrada || estado.enviando) return;
+            const n = fn(ok);
+            actualizarAvance();
+            guardarBorrador();
+            if (!n) return;
+            AppMotion.toast(
+                ok ? ('Se marcaron ' + n + ' ' + queCosa + '. La revisión queda a tu nombre.')
+                   : ('Se desmarcaron ' + n + ' ' + queCosa + '.'),
+                ok ? 'ok' : 'warn');
+        }
+
+        /** Etiquetas y contadores de los botones en bloque. Los llama actualizarAvance(). */
+        function actualizarBulk() {
+            const c = conteo();
+            const bloqueado = estado.cerrada || estado.enviando;
+
+            const bArt = document.getElementById('rev-items-todos');
+            const bGen = document.getElementById('rev-gen-todos');
+            const bAll = document.getElementById('rev-todo');
+
+            const artTodos = c.arts > 0 && c.artsOk === c.arts;
+            const genTodos = c.gens > 0 && c.gensOk === c.gens;
+
+            document.getElementById('rev-items-todos-txt').textContent = artTodos ? 'Desmarcar todos' : 'Marcar todos';
+            document.getElementById('rev-gen-todos-txt').textContent   = genTodos ? 'Quitar confirmaciones' : 'Confirmar pendientes';
+            bArt.disabled = bloqueado || c.arts === 0;
+            // Si no queda nada que confirmar a mano, el botón no tiene sentido.
+            bGen.disabled = bloqueado || (c.genPendientes === 0 && !genTodos);
+
+            document.getElementById('rev-items-count').textContent =
+                c.arts ? (c.artsOk + ' de ' + c.arts + ' verificados') : '';
+            document.getElementById('rev-gen-count').textContent = c.gens
+                ? (c.genAuto + ' automáticos · ' + c.genPendientes + ' por confirmar')
+                : '';
+
+            // El botón grande del riel es un ATAJO, no un interruptor: cuando ya está todo
+            // marcado no ofrece "desmarcar todo" —vaciar la revisión entera sin querer es
+            // el error caro— sino que se apaga y lo dice.
+            const completo = c.total > 0 && c.ok === c.total;
+            bAll.disabled = bloqueado || completo || c.total === 0;
+            document.getElementById('rev-todo-txt').textContent = completo
+                ? 'Todo verificado'
+                : 'Marcar los ' + (c.total - c.ok) + ' puntos que faltan';
+        }
+
+        // ───────────────────────────────────────────────────────────────── avance
+
+        /*
+         * El avance cuenta lo VERIFICADO, no lo pulsado. Un punto que resolvió una regla del
+         * servidor ya está verificado —mejor y más rápido que a mano—, así que suma sin que
+         * nadie lo toque. Lo que la barra mide es cuánto falta para poder aprobar.
+         */
+        function conteo() {
+            const puntos = estado.datos.checklistGeneral || [];
+            const arts = estado.articulos.length;
+            const artsOk = estado.articulos.filter(a => a.ok).length;
+            const gens = puntos.length;
+            const gensOk = puntos.filter(puntoResuelto).length;
+            // Los que siguen esperando una decisión humana: es el número que se enseña.
+            const genPendientes = puntos.filter(function (p) { return !puntoResuelto(p); }).length;
+            const genAuto = puntos.filter(function (p) { return infoEstado(p.estado).resuelto; }).length;
+            const criticas = puntos.filter(function (p) { return p.estado === 'mal'; }).length;
+            return { arts, artsOk, gens, gensOk, genPendientes, genAuto, criticas,
+                     total: arts + gens, ok: artsOk + gensOk };
+        }
+
+        function actualizarAvance() {
+            const c = conteo();
+            const pct = c.total ? Math.round((c.ok / c.total) * 100) : 0;
+
+            document.getElementById('rev-prog-num').textContent = c.ok + ' / ' + c.total;
+            const fill = document.getElementById('rev-prog-fill');
+            fill.style.width = pct + '%';
+            fill.classList.toggle('full', c.ok === c.total && c.total > 0);
+
+            const faltan = [];
+            if (c.artsOk < c.arts) faltan.push((c.arts - c.artsOk) + ' artículo(s)');
+            if (c.genPendientes) faltan.push(c.genPendientes + ' punto(s) que necesitan tu criterio');
+            document.getElementById('rev-prog-txt').textContent = faltan.length
+                ? 'Falta ' + faltan.join(' y ') + '.'
+                : 'Todo verificado. Ya puedes aprobar la cotización.';
+
+            actualizarBulk();
+            actualizarBotones();
+        }
+
+        function actualizarBotones() {
+            const c = conteo();
+            const completo = c.total > 0 && c.ok === c.total;
+            const btnAprobar = document.getElementById('rev-btn-aprobar');
+            const hint = document.getElementById('rev-decide-hint');
+
+            btnAprobar.disabled = estado.enviando || !completo;
+            document.getElementById('rev-btn-rechazar').disabled = estado.enviando;
+
+            hint.className = 'rev-hint';
+            if (estado.enviando) {
+                hint.textContent = 'Guardando la revisión…';
+            } else if (completo && c.criticas) {
+                // Se puede aprobar con fallas, pero no en silencio: el servidor exige la
+                // justificación por escrito y aquí se avisa ANTES de pulsar, no después.
+                hint.classList.add('rev-hint-bad');
+                hint.textContent = 'La verificación automática marcó ' + c.criticas +
+                    ' falla(s). Si aun así hay que aprobarla, escribe en las observaciones por qué.';
+            } else if (completo) {
+                hint.classList.add('rev-hint-ok');
+                hint.textContent = 'Al aprobar se desbloquea el envío por correo y se avisa al asesor.';
+            } else {
+                // Se dice POR QUÉ está deshabilitado el botón. Un botón gris sin
+                // explicación es la forma más rápida de que alguien crea que la app falla.
+                const partes = [];
+                if (c.artsOk < c.arts) partes.push('verificar ' + (c.arts - c.artsOk) + ' artículo(s)');
+                if (c.genPendientes) partes.push('confirmar ' + c.genPendientes + ' punto(s)');
+                hint.textContent = 'Para aprobar falta ' + partes.join(' y ') +
+                    '. Rechazar se puede en cualquier momento, escribiendo qué hay que corregir.';
+            }
+        }
+
+        // ────────────────────────────────────────────── comparador del artículo
+        /*
+         * Aquí estaba el iframe. Se quitó porque no podía funcionar en ningún navegador:
+         * liverpool.com.mx responde `X-Frame-Options: SAMEORIGIN` y
+         * `Content-Security-Policy: frame-ancestors https://gcp-na-app.contentstack.com`,
+         * y esas cabeceras las hace cumplir el NAVEGADOR antes de pintar nada. Ni sandbox,
+         * ni referrerpolicy, ni allow, ni recargar: el recuadro se queda en blanco siempre
+         * mientras la app viva en script.google.com. Por eso "Abrir en pestaña" sí llevaba
+         * bien y el marco no.
+         *
+         * En su lugar, el servidor —que no es un navegador y a quien esas cabeceras no le
+         * aplican— lee la ficha y aquí se enfrentan los dos precios. Termina siendo mejor
+         * que el iframe original: la diferencia sale calculada en vez de buscarse a ojo.
+         */
+
+        let visorPrevio = null;   // elemento que abrió el comparador, para devolverle el foco
+        let visorArticulo = -1;   // índice del artículo que se está mirando
+        let visorPeticion = 0;    // descarta respuestas de un artículo ya cerrado
+
+        function abrirVisor(p, indice) {
+            const url = urlSegura(p.productUrl, HOSTS_LIVERPOOL);
+            if (!url) return;
+
+            visorPrevio = document.activeElement;
+            visorArticulo = (typeof indice === 'number') ? indice : -1;
+            const peticion = ++visorPeticion;
+            const visor = document.getElementById('rev-viewer');
+
+            document.getElementById('rev-viewer-titulo').textContent = p.description || 'Artículo';
+            document.getElementById('rev-viewer-url').textContent = url;
+
+            // Se abre SIEMPRE por la comparación: es la respuesta a "¿está bien el precio?",
+            // que es la pregunta que trae aquí. La página completa está a un clic para quien
+            // necesite mirar la ficha entera.
+            seleccionarPestanaVisor('cmp');
+            estado.paginaPeticion++;      // invalida cualquier página en vuelo del artículo anterior
+            document.getElementById('rev-pag-host').innerHTML =
+                '<div class="rev-pag-estado"><p>Abre esta pestaña para ver la página del artículo.</p></div>';
+            document.getElementById('rev-viewer-foot-txt').textContent =
+                'Los datos y la página los trae el servidor desde liverpool.com.mx.';
+
+            // Columna izquierda: lo que se está autorizando. Se pinta ya, sin esperar red.
+            pintarLadoCotizacion(p);
+
+            document.getElementById('rev-cmp-cargando').classList.remove('hidden');
+            document.getElementById('rev-cmp-grid').classList.add('hidden');
+            document.getElementById('rev-cmp-veredicto').classList.add('hidden');
+            document.getElementById('rev-cmp-fuente').textContent = '';
+
+            const abrirFuera = function () {
+                // noopener/noreferrer siempre: la pestaña nueva no debe poder tocar esta.
+                window.open(url, '_blank', 'noopener,noreferrer');
+            };
+            document.getElementById('rev-viewer-nueva').onclick = abrirFuera;
+            document.getElementById('rev-cmp-abrir').onclick = abrirFuera;
+
+            actualizarBotonMarcar();
+
+            visor.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            if (window.gsap && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                gsap.fromTo(visor, { opacity: 0 }, { opacity: 1, duration: .2, ease: 'power1.out' });
+                gsap.fromTo(visor.querySelector('.rev-viewer-card'),
+                    { opacity: 0, y: 20, scale: .98 },
+                    { opacity: 1, y: 0, scale: 1, duration: .3, ease: 'power3.out', clearProps: 'transform' });
+            }
+            document.getElementById('rev-viewer-cerrar').focus();
+            document.addEventListener('keydown', teclasVisor, true);
+
+            google.script.run
+                .withSuccessHandler(function (ficha) {
+                    // Si mientras tanto se cerró o se abrió otro artículo, esta respuesta
+                    // ya no describe lo que hay en pantalla y se tira.
+                    if (peticion !== visorPeticion) return;
+                    pintarLadoLiverpool(ficha || {}, p);
+                })
+                .withFailureHandler(function (err) {
+                    if (peticion !== visorPeticion) return;
+                    pintarLadoLiverpool({ ok: false, motivo: 'error',
+                        mensaje: 'No se pudo hablar con el servidor: ' + err.message }, p);
+                })
+                .revFichaArticulo(url, p.sku || '', AppSession.userEmail);
+        }
+
+        /** Columna izquierda: exactamente lo que dice la cotización que se va a autorizar. */
+        function pintarLadoCotizacion(p) {
+            const c = calcularLinea(p);
+            const img = urlSegura(p.imageUrl);
+
+            document.getElementById('rev-cmp-foto-cot').innerHTML = img
+                ? '<img src="' + esc(img) + '" alt="" referrerpolicy="no-referrer">'
+                : '<span class="rev-thumb-empty">La cotización no guardó imagen</span>';
+            document.getElementById('rev-cmp-nom-cot').textContent = p.description || 'Sin descripción';
+
+            const filas = [
+                ['SKU', esc(p.sku || '—')],
+                ['Cantidad', String(c.cantidad)],
+                ['Precio de lista', esc(money(c.unitario))]
+            ];
+            if (c.descPublico > 0.001)   filas.push(['Descuento público', c.descPublico.toFixed(2) + '%']);
+            if (c.descAdicional > 0.001) filas.push(['Descuento adicional', c.descAdicional.toFixed(2) + '%']);
+            filas.push(['Total de la línea', esc(money(c.total))]);
+
+            document.getElementById('rev-cmp-dl-cot').innerHTML =
+                filas.map(function (f) {
+                    return '<div class="rev-cmp-row"><span>' + f[0] + '</span><strong>' + f[1] + '</strong></div>';
+                }).join('') +
+                '<div class="rev-cmp-row destacada"><span>Precio unitario cotizado</span>' +
+                '<strong>' + esc(money(c.unitarioPromo)) + '</strong></div>';
+        }
+
+        /** Columna derecha + veredicto: lo que Liverpool publica en este momento. */
+        function pintarLadoLiverpool(ficha, p) {
+            const c = calcularLinea(p);
+            document.getElementById('rev-cmp-cargando').classList.add('hidden');
+            document.getElementById('rev-cmp-grid').classList.remove('hidden');
+
+            const foto = document.getElementById('rev-cmp-foto-viva');
+            const nom  = document.getElementById('rev-cmp-nom-viva');
+            const dl   = document.getElementById('rev-cmp-dl-viva');
+            const imagen = urlSegura(ficha.imagen || ficha.imagenRespaldo || '', HOSTS_LIVERPOOL);
+
+            foto.innerHTML = '<span class="rev-thumb-empty">Sin imagen disponible</span>';
+            if (imagen) {
+                // El respaldo por SKU adivina el subdominio de la imagen y a veces da 404:
+                // se monta el <img> desde JS para poder caer al texto sin dejar el icono
+                // de imagen rota, que parece un fallo de la app y no lo es.
+                const im = new Image();
+                im.referrerPolicy = 'no-referrer';
+                im.alt = '';
+                im.onload = function () { foto.innerHTML = ''; foto.appendChild(im); };
+                im.src = imagen;
+            }
+
+            if (!ficha.ok) {
+                nom.textContent = ficha.titulo || 'No se pudo leer la ficha';
+                dl.innerHTML = '<div class="rev-cmp-row"><span>Precio en el sitio</span><strong>—</strong></div>';
+                veredicto('duda', 'Compáralo tú en el sitio',
+                    (ficha.mensaje || 'No se pudo consultar la ficha automáticamente.') +
+                    ' La comparación de precios de esta ventana no está disponible para este artículo.',
+                    true);
+                document.getElementById('rev-cmp-fuente').textContent = '';
+                return;
+            }
+
+            nom.textContent = ficha.titulo || '—';
+            const filas = [];
+            if (ficha.hayPromo) {
+                filas.push(['Precio de lista', '<span class="rev-cmp-tachado">' + esc(money(ficha.precioLista)) + '</span>']);
+                const pct = ficha.precioLista > 0 ? ((1 - ficha.precio / ficha.precioLista) * 100) : 0;
+                filas.push(['Promoción vigente', '−' + pct.toFixed(1) + '%']);
+            } else {
+                filas.push(['Precio de lista', esc(money(ficha.precioLista))]);
+                filas.push(['Promoción vigente', 'Ninguna']);
+            }
+            dl.innerHTML = filas.map(function (f) {
+                return '<div class="rev-cmp-row"><span>' + f[0] + '</span><strong>' + f[1] + '</strong></div>';
+            }).join('') +
+            '<div class="rev-cmp-row destacada"><span>Precio unitario en el sitio</span>' +
+            '<strong>' + esc(money(ficha.precio)) + '</strong></div>';
+
+            // El veredicto compara el precio UNITARIO con promoción, que es el número que
+            // acaba multiplicándose por la cantidad en el documento del cliente.
+            const dif = c.unitarioPromo - ficha.precio;
+            const abs = Math.abs(dif);
+            // Un centavo de diferencia es redondeo, no un error de captura. Medio peso es
+            // el umbral con el que se trabaja en el piso de venta.
+            if (abs <= 0.5) {
+                veredicto('ok', 'El precio cuadra',
+                    'La cotización dice ' + money(c.unitarioPromo) + ' por pieza y Liverpool publica ' +
+                    money(ficha.precio) + '. Revisa que el nombre y la foto también correspondan.');
+            } else {
+                const caro = dif > 0;
+                veredicto('mal',
+                    caro ? 'La cotización está POR ARRIBA del sitio' : 'La cotización está POR DEBAJO del sitio',
+                    'Diferencia de ' + money(abs) + ' por pieza (' + money(abs * c.cantidad) +
+                    ' en esta línea de ' + c.cantidad + '). Cotizado ' + money(c.unitarioPromo) +
+                    ' · sitio ' + money(ficha.precio) + '. ' +
+                    (caro ? 'El cliente pagaría de más.' : 'La promoción pudo cambiar después de cotizar.') +
+                    ' Confírmalo en el sitio antes de aprobar.',
+                    true);
+            }
+
+            // toLocaleString ya cierra la hora con punto ("12:41 p.m."): añadir otro deja
+            // un ".." al final de la línea.
+            const cuando = ficha.capturada
+                ? new Date(ficha.capturada).toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit' })
+                : '';
+            document.getElementById('rev-cmp-fuente').textContent =
+                ('Ficha leída del sitio de Liverpool' + (cuando ? ' a las ' + cuando : '') +
+                 (ficha.deCache ? ' (dato guardado hasta 15 minutos)' : '') + '.').replace(/\.\.$/, '.');
+        }
+
+        function veredicto(tono, titulo, texto, ofrecerAbrir) {
+            const caja = document.getElementById('rev-cmp-veredicto');
+            caja.className = 'rev-cmp-veredicto rev-cmp-' + tono;
+            document.getElementById('rev-cmp-veredicto-ico').innerHTML = Icons.svg(
+                tono === 'ok' ? 'check-circle' : (tono === 'mal' ? 'x-circle' : 'warning'), '');
+            document.getElementById('rev-cmp-veredicto-titulo').textContent = titulo;
+            document.getElementById('rev-cmp-veredicto-txt').textContent = texto;
+            document.getElementById('rev-cmp-abrir').classList.toggle('hidden', !ofrecerAbrir);
+        }
+
+        /** El botón del pie refleja si ESTE artículo ya está marcado en la lista. */
+        function actualizarBotonMarcar() {
+            const btn = document.getElementById('rev-cmp-marcar');
+            const cb = document.getElementById('rev-art-' + visorArticulo);
+            const puede = !!cb && !cb.disabled;
+            btn.classList.toggle('hidden', visorArticulo < 0);
+            btn.disabled = !puede;
+            document.getElementById('rev-cmp-marcar-txt').textContent =
+                (cb && cb.checked) ? 'Quitar la marca de verificado' : 'Marcar como verificado';
+        }
+
+        function cerrarVisor() {
+            const visor = document.getElementById('rev-viewer');
+            if (!visor.classList.contains('active')) return;
+            visorPeticion++;            // invalida cualquier respuesta en vuelo
+            estado.paginaPeticion++;
+            // El iframe de la página se destruye al cerrar: media docena de artículos abiertos
+            // dejarían medio mega de documento cada uno colgando en memoria.
+            document.getElementById('rev-pag-host').innerHTML = '';
+            visor.classList.remove('active');
+            visorArticulo = -1;
+            document.body.style.overflow = '';
+            document.removeEventListener('keydown', teclasVisor, true);
+            if (visorPrevio && visorPrevio.focus) visorPrevio.focus();
+            visorPrevio = null;
+        }
+
+        /** Esc cierra y Tab no se escapa del visor mientras está abierto. */
+        function teclasVisor(ev) {
+            if (ev.key === 'Escape') { ev.preventDefault(); cerrarVisor(); return; }
+            if (ev.key !== 'Tab') return;
+            const card = document.querySelector('#rev-viewer .rev-viewer-card');
+            const foco = Array.prototype.filter.call(
+                card.querySelectorAll('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])'),
+                el => el.offsetParent !== null && !el.disabled);
+            if (!foco.length) return;
+            const primero = foco[0], ultimo = foco[foco.length - 1];
+            if (ev.shiftKey && document.activeElement === primero) { ev.preventDefault(); ultimo.focus(); }
+            else if (!ev.shiftKey && document.activeElement === ultimo) { ev.preventDefault(); primero.focus(); }
+        }
+
+        // ──────────────────────────────────── La página de Liverpool, incrustada
+        /*
+         * El iframe apuntando a liverpool.com.mx no puede cargar y no hay forma de arreglarlo
+         * desde el cliente (X-Frame-Options + CSP frame-ancestors, que aplica el navegador).
+         * Lo que sí funciona: el servidor trae la página, le quita los scripts y los formularios,
+         * le incrusta sus hojas de estilo —comprobado que pedidas desde otro origen no aplican— y
+         * aquí se pinta con `srcdoc`.
+         *
+         * El iframe va con `sandbox` SIN `allow-scripts` ni `allow-same-origin`: dentro no puede
+         * ejecutarse nada ni leerse nada de esta sesión. Acaba siendo más seguro que el iframe
+         * original que nunca llegó a funcionar.
+         */
+        function seleccionarPestanaVisor(cual) {
+            document.querySelectorAll('#rev-viewer [data-vtab]').forEach(function (bt) {
+                const activo = bt.getAttribute('data-vtab') === cual;
+                bt.setAttribute('aria-selected', String(activo));
+                const p = document.getElementById(bt.getAttribute('aria-controls'));
+                if (p) p.hidden = !activo;
+            });
+        }
+
+        function cargarPaginaArticulo(p) {
+            const host = document.getElementById('rev-pag-host');
+            const url = urlSegura(p.productUrl, HOSTS_LIVERPOOL);
+            if (!url) return;
+
+            const peticion = ++estado.paginaPeticion;
+            host.innerHTML = '<div class="rev-pag-estado"><span class="v-spinner" aria-hidden="true"></span>' +
+                '<p>Trayendo la página desde liverpool.com.mx…</p>' +
+                '<p style="font-size:.75rem">La primera vez tarda unos segundos: se descarga la página y sus estilos.</p></div>';
+
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    // Si mientras tanto se cerró el visor o se abrió otro artículo, esta
+                    // respuesta ya no describe lo que hay en pantalla.
+                    if (peticion !== estado.paginaPeticion) return;
+                    pintarPaginaArticulo(res || {}, url);
+                })
+                .withFailureHandler(function (err) {
+                    if (peticion !== estado.paginaPeticion) return;
+                    pintarPaginaArticulo({ ok: false,
+                        mensaje: 'No se pudo hablar con el servidor: ' + err.message }, url);
+                })
+                .revPaginaArticulo(url, p.sku || '', AppSession.userEmail);
+        }
+
+        function pintarPaginaArticulo(res, url) {
+            const host = document.getElementById('rev-pag-host');
+
+            if (!res.ok || !res.html) {
+                host.innerHTML = '<div class="rev-pag-estado">' +
+                    '<span class="rev-estado-ico" data-icon="warning" aria-hidden="true"></span>' +
+                    '<p>' + esc(res.mensaje || 'No se pudo traer la página del artículo.') + '</p>' +
+                    '<button type="button" class="v-btn v-btn-primary v-btn-sm" data-abrir-fuera>' +
+                        '<span data-icon="external" aria-hidden="true"></span>' +
+                        '<span>Abrir el artículo en una pestaña</span></button></div>';
+                Icons.render(host);
+                const bt = host.querySelector('[data-abrir-fuera]');
+                if (bt) bt.addEventListener('click', function () {
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                });
+                return;
+            }
+
+            const marco = document.createElement('iframe');
+            marco.className = 'rev-pag-marco';
+            marco.title = 'Copia de la página del artículo en liverpool.com.mx';
+            marco.setAttribute('sandbox', '');           // sin scripts y sin acceso a este origen
+            marco.setAttribute('referrerpolicy', 'no-referrer');
+            marco.srcdoc = res.html;
+
+            host.innerHTML = '';
+            host.appendChild(marco);
+
+            const cuando = res.capturada
+                ? new Date(res.capturada).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+                : '';
+            const pie = document.getElementById('rev-viewer-foot-txt');
+            if (pie) {
+                pie.textContent = 'Página traída por el servidor' + (cuando ? ' a las ' + cuando : '') +
+                    (res.deCache ? ' (copia guardada hasta 15 minutos)' : '') +
+                    ' · ' + Math.round((res.bytes || 0) / 1024) + ' KB.';
+            }
+        }
+
+        // ─────────────────────────────────────────────────── Sheet incrustado
+
+        /*
+         * LA HOJA, DENTRO DEL PORTAL.
+         *
+         * Antes solo había un iframe a Google y salía en blanco más veces de las que cargaba:
+         * la vista `/edit` no se puede incrustar (el navegador la bloquea) y, aunque se pudiera,
+         * exige que la cuenta de Google del navegador tenga acceso al archivo — y quien revisa
+         * entra al portal con la cuenta del sistema, que no es la misma.
+         *
+         * Ahora la pestaña por omisión la sirve el SERVIDOR: la app sí tiene acceso a la hoja,
+         * la lee tal como se ve (valores ya formateados, combinaciones, negritas y colores) y
+         * aquí se dibuja como una tabla del portal. Funciona siempre y carga en un parpadeo.
+         * El iframe de Google queda en la segunda pestaña para quien lo quiera y pueda.
+         */
+        function prepararSheet(d) {
+            const card = document.getElementById('rev-sheet-card');
+            const embed = urlSegura(d.sheetEmbedUrl, ['google.com']);
+            const directo = urlSegura(d.sheetUrl, ['google.com']);
+            if (!embed && !directo && !d.hojaIncrustable) return;   // solo las CCL tienen documento
+
+            card.classList.remove('hidden');
+
+            const toggle = document.getElementById('rev-sheet-toggle');
+            const panel = document.getElementById('rev-sheet-panel');
+            const host = document.getElementById('rev-sheet-host');
+            let hojaPedida = false;
+
+            toggle.addEventListener('click', function () {
+                const abierto = toggle.getAttribute('aria-expanded') === 'true';
+                toggle.setAttribute('aria-expanded', String(!abierto));
+                panel.classList.toggle('open', !abierto);
+                // Carga perezosa: la hoja solo se pide cuando alguien decide mirarla.
+                if (!abierto && !hojaPedida) { hojaPedida = true; cargarHoja(); }
+            });
+
+            // Pestañas. El iframe de Google se crea la primera vez que se pide su pestaña:
+            // crearlo antes cargaría un documento entero que quizá nadie mire.
+            document.querySelectorAll('.rev-tabs [data-tab]').forEach(function (bt) {
+                bt.addEventListener('click', function () {
+                    const cual = bt.getAttribute('data-tab');
+                    document.querySelectorAll('.rev-tabs [data-tab]').forEach(function (otro) {
+                        const activo = otro === bt;
+                        otro.setAttribute('aria-selected', String(activo));
+                        const p = document.getElementById(otro.getAttribute('aria-controls'));
+                        if (p) p.hidden = !activo;
+                    });
+                    if (cual === 'google' && embed && !host.firstChild) {
+                        const fr = document.createElement('iframe');
+                        fr.src = embed;
+                        fr.className = 'rev-frame';
+                        fr.title = 'Documento de la cotización en Google Sheets';
+                        fr.setAttribute('referrerpolicy', 'no-referrer');
+                        host.appendChild(fr);
+                    }
+                });
+            });
+
+            document.getElementById('rev-hoja-recargar').addEventListener('click', function () {
+                cargarHoja(true);
+            });
+
+            document.getElementById('rev-sheet-abrir').addEventListener('click', function () {
+                window.open(directo || embed, '_blank', 'noopener,noreferrer');
+            });
+        }
+
+        function cargarHoja(recarga) {
+            const host = document.getElementById('rev-hoja-host');
+            const pie = document.getElementById('rev-hoja-pie-txt');
+            host.innerHTML = '<div class="rev-pag-estado"><span class="v-spinner" aria-hidden="true"></span>' +
+                             '<p>' + (recarga ? 'Volviendo a leer la hoja…' : 'Leyendo la hoja…') + '</p></div>';
+            pie.textContent = '';
+
+            google.script.run
+                .withSuccessHandler(function (res) { pintarHoja(res || {}); })
+                .withFailureHandler(function (err) {
+                    pintarHoja({ ok: false, mensaje: 'No se pudo hablar con el servidor: ' + err.message });
+                })
+                .revHojaCotizacion(estado.folio, AppSession.userEmail);
+        }
+
+        function pintarHoja(res) {
+            const host = document.getElementById('rev-hoja-host');
+            const pie = document.getElementById('rev-hoja-pie-txt');
+
+            if (!res.ok) {
+                host.innerHTML = '<div class="rev-pag-estado">' +
+                    '<span class="rev-estado-ico" data-icon="warning" aria-hidden="true"></span>' +
+                    '<p>' + esc(res.mensaje || 'No se pudo leer la hoja.') + '</p>' +
+                    '<p>Puedes abrirla en Google Sheets con el botón de abajo.</p></div>';
+                Icons.render(host);
+                return;
+            }
+
+            const celdas = res.celdas || [];
+            if (!celdas.length) {
+                host.innerHTML = '<div class="rev-pag-estado"><p>La hoja está vacía.</p></div>';
+                return;
+            }
+
+            // Las celdas combinadas se convierten en rowspan/colspan y las que quedan tapadas
+            // se saltan: sin esto, el encabezado del formato —combinado a lo ancho— se
+            // repetiría en cada columna y la tabla saldría descuadrada.
+            const tapada = {};
+            const combinada = {};
+            (res.merges || []).forEach(function (m) {
+                combinada[m.fila + ':' + m.col] = m;
+                for (let f = m.fila; f < m.fila + m.filas; f++) {
+                    for (let c = m.col; c < m.col + m.cols; c++) {
+                        if (f === m.fila && c === m.col) continue;
+                        tapada[f + ':' + c] = true;
+                    }
+                }
+            });
+
+            let html = '<div class="rev-hoja-caja"><table class="rev-hoja">';
+            celdas.forEach(function (fila, f) {
+                html += '<tr><td class="rev-hoja-num">' + (f + 1) + '</td>';
+                fila.forEach(function (celda, c) {
+                    if (tapada[f + ':' + c]) return;
+                    const m = combinada[f + ':' + c];
+                    const clases = [];
+                    if (celda.n) clases.push('n');
+                    if (celda.a === 'right') clases.push('der');
+                    if (celda.a === 'center') clases.push('cen');
+                    const estilo = (celda.b ? 'background:' + esc(celda.b) + ';' : '') +
+                                   (celda.t ? 'color:' + esc(celda.t) + ';' : '');
+                    html += '<td' +
+                        (clases.length ? ' class="' + clases.join(' ') + '"' : '') +
+                        (estilo ? ' style="' + estilo + '"' : '') +
+                        (m && m.filas > 1 ? ' rowspan="' + m.filas + '"' : '') +
+                        (m && m.cols > 1 ? ' colspan="' + m.cols + '"' : '') +
+                        '>' + esc(celda.v || '') + '</td>';
+                });
+                html += '</tr>';
+            });
+            html += '</table></div>';
+            host.innerHTML = html;
+
+            const cuando = res.leida
+                ? new Date(res.leida).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+                : '';
+            pie.textContent = 'Hoja "' + (res.nombre || '') + '" · ' + celdas.length + ' filas leídas' +
+                (cuando ? ' a las ' + cuando : '') +
+                (res.truncada ? ' · se muestra solo el principio del documento' : '') + '.';
+        }
+
+        // ──────────────────────────────────── verificación de precios en lote
+        /*
+         * Esta es la automatización que más trabajo quita: en cuanto la pantalla termina de
+         * pintarse, el servidor consulta EN PARALELO la página de cada artículo que trae enlace
+         * y compara el precio unitario cotizado con el publicado. Los que cuadran se marcan
+         * solos —y se dice en la fila que fue automático, para que nadie crea que lo palomeó
+         * una persona—; los que no, se marcan en rojo y siguen pidiendo que alguien los mire.
+         *
+         * Va DESPUÉS del primer pintado a propósito: son nueve peticiones de red y la pantalla
+         * tiene que ser útil desde el primer segundo, no cuando Liverpool conteste.
+         */
+        function verificarPrecios() {
+            const conEnlace = (estado.datos.products || []).filter(function (p) {
+                return !!urlSegura(p.productUrl, HOSTS_LIVERPOOL);
+            });
+            if (!conEnlace.length) {
+                pintarEstadoPrecios([]);
+                return;
+            }
+
+            (estado.datos.products || []).forEach(function (p, i) {
+                if (!urlSegura(p.productUrl, HOSTS_LIVERPOOL)) return;
+                pintarChipPrecio(i, 'wait', 'refresh', 'Comparando…', '');
+            });
+
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    if (!res || !res.ok) {
+                        marcarPreciosNoDisponibles((res && res.mensaje) || 'No se pudo consultar el sitio.');
+                        return;
+                    }
+                    pintarEstadoPrecios(res.verificaciones || []);
+                    if (res.auditoria) aplicarAuditoria(res.auditoria);
+                })
+                .withFailureHandler(function (err) {
+                    marcarPreciosNoDisponibles('No se pudo hablar con el servidor: ' + err.message);
+                })
+                .revVerificarPreciosLote(estado.folio, AppSession.userEmail);
+        }
+
+        function marcarPreciosNoDisponibles(motivo) {
+            (estado.datos.products || []).forEach(function (p, i) {
+                if (!urlSegura(p.productUrl, HOSTS_LIVERPOOL)) return;
+                pintarChipPrecio(i, 'manual', 'eye', 'Compruébalo tú', motivo);
+            });
+            const punto = (estado.datos.checklistGeneral || []).filter(function (x) { return x.id === 'precios'; })[0];
+            if (punto && punto.estado === 'pendiente') {
+                punto.estado = 'manual';
+                punto.detalle = motivo + ' Revisa los precios en el sitio y confírmalo aquí.';
+                pintarChecklistGeneral(estado.datos.checklistGeneral);
+                actualizarAvance();
+            }
+        }
+
+        function pintarEstadoPrecios(verificaciones) {
+            estado.verificaciones = verificaciones;
+            let automarcados = 0, difieren = 0;
+
+            (estado.datos.products || []).forEach(function (p, i) {
+                if (!urlSegura(p.productUrl, HOSTS_LIVERPOOL)) {
+                    pintarChipPrecio(i, 'manual', 'eye', 'Capturado a mano',
+                        'Este artículo no trae enlace: el sistema no puede compararlo solo.');
+                }
+            });
+
+            (verificaciones || []).forEach(function (v) {
+                const i = v.indice;
+                if (v.estado === 'coincide') {
+                    pintarChipPrecio(i, 'ok', 'check-circle', 'Precio verificado', v.mensaje);
+                    // Se marca solo, pero NUNCA sobre una revisión ya cerrada ni si la persona
+                    // ya lo había desmarcado a conciencia.
+                    if (!estado.cerrada && estado.articulos[i] && !estado.articulos[i].ok) {
+                        const cb = document.getElementById('rev-art-' + i);
+                        if (cb && !cb.disabled) {
+                            cb.checked = true;
+                            aplicarArticulo(i, true);
+                            estado.articulos[i].auto = true;
+                            automarcados++;
+                        }
+                    }
+                } else if (v.estado === 'difiere') {
+                    difieren++;
+                    pintarChipPrecio(i, 'bad', 'x-circle', v.titulo || 'No coincide', v.mensaje);
+                    // Si estaba marcado automáticamente y ahora resulta que difiere, se quita:
+                    // la marca automática solo vale mientras el dato que la justificó valga.
+                    if (estado.articulos[i] && estado.articulos[i].auto) {
+                        const cb = document.getElementById('rev-art-' + i);
+                        if (cb) cb.checked = false;
+                        aplicarArticulo(i, false);
+                        estado.articulos[i].auto = false;
+                    }
+                } else {
+                    pintarChipPrecio(i, 'warn', 'warning', 'El sitio no contestó', v.mensaje);
+                }
+            });
+
+            actualizarAvance();
+            guardarBorrador();
+
+            if (automarcados) {
+                AppMotion.toast('Se verificaron ' + automarcados + ' artículo(s) automáticamente contra el sitio.', 'ok');
+            }
+            if (difieren) {
+                AppMotion.toast(difieren + ' artículo(s) NO coinciden con el precio publicado. Míralos antes de aprobar.', 'error');
+            }
+        }
+
+        /** Distintivo con el resultado de la comparación, dentro de la fila del artículo. */
+        function pintarChipPrecio(i, clase, icono, texto, titulo) {
+            const caja = document.getElementById('rev-precio-estado-' + i);
+            if (!caja) return;
+            caja.innerHTML = chipHTML(clase, icono, texto, titulo) +
+                (titulo ? '<span class="rev-precio-nota">' + esc(titulo) + '</span>' : '');
+        }
+
+        /** Aplica un dictamen recalculado por el servidor (llega con los precios ya comprobados). */
+        function aplicarAuditoria(auditoria) {
+            if (!auditoria || !auditoria.puntos) return;
+            // Se conservan las confirmaciones que la persona ya había hecho: recalcular no
+            // puede borrar trabajo humano.
+            estado.datos.checklistGeneral = auditoria.puntos;
+            estado.datos.auditoria = auditoria;
+            pintarChecklistGeneral(auditoria.puntos);
+            auditoria.puntos.forEach(function (p) {
+                const cb = document.getElementById('rev-gen-' + p.id);
+                if (cb && estado.general[p.id]) cb.checked = true;
+            });
+            pintarScore(auditoria);
+            actualizarAvance();
+        }
+
+        // ────────────────────────────────────────────────────────────── decisión
+
+        function cerrarRevision(decision) {
+            if (estado.enviando) return;
+
+            const notas = document.getElementById('rev-notas').value.trim();
+            const hint = document.getElementById('rev-decide-hint');
+
+            if (decision === 'rechazada' && notas.length < 10) {
+                hint.className = 'rev-hint rev-hint-bad';
+                hint.textContent = 'Escribe qué hay que corregir (al menos 10 caracteres): es lo único que le llega al asesor.';
+                AppMotion.shake(document.getElementById('rev-notas'));
+                document.getElementById('rev-notas').focus();
+                return;
+            }
+
+            estado.enviando = true;
+            actualizarBotones();
+
+            const carga = {
+                folio: estado.folio,
+                email: AppSession.userEmail,
+                decision: decision,
+                notas: notas,
+                checklist: {
+                    general: (estado.datos.checklistGeneral || []).map(it => ({
+                        id: it.id, texto: it.texto, estado: it.estado,
+                        // "ok" es lo que quedó verificado, sea por regla o por persona; se
+                        // distingue una cosa de la otra para que la hoja no mienta sobre quién
+                        // comprobó qué.
+                        ok: puntoResuelto(it),
+                        confirmadoPorPersona: !!estado.general[it.id]
+                    })),
+                    articulos: estado.datos.products.map((p, i) => ({
+                        sku: p.sku, description: p.description,
+                        ok: !!estado.articulos[i].ok,
+                        verificadoAutomaticamente: !!estado.articulos[i].auto
+                    }))
+                },
+                // El servidor rehace la auditoría por su cuenta; esto solo le ahorra volver a
+                // pedirle a Liverpool los precios que ya se consultaron hace un momento.
+                verificaciones: estado.verificaciones || null
+            };
+
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    estado.enviando = false;
+                    if (!res || !res.success) {
+                        actualizarBotones();
+                        const msg = (res && res.message) || 'No se pudo guardar la revisión.';
+                        AppMotion.toast(msg, 'error');
+                        hint.className = 'rev-hint rev-hint-bad';
+                        hint.textContent = msg;
+                        // El servidor puede rechazar la aprobación por falta de justificación
+                        // (la auditoría encontró fallas). El sitio donde hay que escribir es el
+                        // campo de observaciones: se lleva el foco ahí en vez de dejar el aviso
+                        // colgado en el riel.
+                        if (res && res.requiereJustificacion) {
+                            const notasEl = document.getElementById('rev-notas');
+                            AppMotion.shake(notasEl);
+                            notasEl.focus();
+                        }
+                        return;
+                    }
+                    // La decisión ya está en la hoja: el borrador local pierde sentido y
+                    // se borra (lleva observaciones sobre el trabajo de otra persona).
+                    olvidarBorrador();
+                    estado.cerrada = true;
+                    AppMotion.toast(res.message, decision === 'aprobada' ? 'ok' : 'warn');
+                    if (res.avisoCorreo) AppMotion.toast(res.avisoCorreo, 'warn');
+
+                    pintarBanner(res.revision);
+                    pintarCabecera(Object.assign({}, estado.datos, { revision: res.revision }));
+                    bloquearFormulario();
+                })
+                .withFailureHandler(function (err) {
+                    estado.enviando = false;
+                    actualizarBotones();
+                    AppMotion.toast('Error de comunicación: ' + err.message, 'error');
+                })
+                .guardarRevisionCotizacion(carga);
+        }
+
+        /** Tras decidir, la pantalla queda de solo lectura: no hay nada más que hacer aquí. */
+        function bloquearFormulario() {
+            document.getElementById('rev-btn-aprobar').disabled = true;
+            document.getElementById('rev-btn-rechazar').disabled = true;
+            document.getElementById('rev-notas').disabled = true;
+            const hint = document.getElementById('rev-decide-hint');
+            hint.className = 'rev-hint rev-hint-ok';
+            hint.textContent = 'Revisión cerrada. Para cambiarla, el asesor debe volver a guardar la cotización.';
+            document.querySelectorAll('#rev-items input[data-art], #rev-chk-general input[data-gen]')
+                .forEach(el => { el.disabled = true; });
+            // Las filas dejan de responder al clic y los botones en bloque se apagan:
+            // una revisión cerrada no se toca desde aquí.
+            document.querySelectorAll('#rev-items .rev-item')
+                .forEach(el => { el.classList.add('rev-item-bloqueado'); });
+            actualizarBulk();
+            actualizarBotonMarcar();
+        }
+
+        // ─────────────────────────────────────────────────────────────── arranque
+
+        function mostrarBloqueo(titulo, texto, icono) {
+            document.getElementById('rev-cargando').classList.add('hidden');
+            document.getElementById('rev-bloqueo-titulo').textContent = titulo;
+            document.getElementById('rev-bloqueo-texto').textContent = texto;
+            const ico = document.querySelector('#rev-bloqueo .rev-estado-ico');
+            ico.innerHTML = Icons.svg(icono || 'lock', 'h-full w-full');
+            document.getElementById('rev-bloqueo').classList.remove('hidden');
+            if (window.VentelLoader) VentelLoader.hide();
+        }
+
+        function pintarTodo(d) {
+            estado.datos = d;
+            estado.articulos = d.products.map(() => ({ ok: false }));
+            (d.checklistGeneral || []).forEach(it => { estado.general[it.id] = false; });
+
+            pintarCabecera(d);
+            pintarArticulos(d.products);
+            pintarChecklistGeneral(d.checklistGeneral || []);
+            pintarScore(d.auditoria);
+            prepararSheet(d);
+
+            // Se restaura la verificación a medias ANTES de calcular el avance, para que
+            // el riel no parpadee de "0 / 12" al número real.
+            const borrador = leerBorrador();
+            if (borrador && !d.revision.estado) {
+                (borrador.articulos || []).forEach(function (ok, i) {
+                    if (!ok || !estado.articulos[i]) return;
+                    estado.articulos[i].ok = true;
+                    const cb = document.getElementById('rev-art-' + i);
+                    if (cb) { cb.checked = true; cb.closest('.rev-item').classList.add('ok'); }
+                });
+                Object.keys(borrador.general || {}).forEach(function (id) {
+                    if (!borrador.general[id]) return;
+                    estado.general[id] = true;
+                    const cb = document.getElementById('rev-gen-' + id);
+                    if (cb) cb.checked = true;
+                });
+                if (borrador.notas) document.getElementById('rev-notas').value = borrador.notas;
+                if (conteo().ok > 0) {
+                    AppMotion.toast('Se recuperó la verificación que dejaste a medias.', 'ok');
+                }
+            }
+
+            document.getElementById('rev-cargando').classList.add('hidden');
+            document.getElementById('rev-contenido').classList.remove('hidden');
+
+            actualizarAvance();
+            // El bloqueo va DESPUÉS de actualizarAvance: si no, esta última volvería a
+            // habilitar el botón de aprobar sobre una revisión ya cerrada.
+            if (d.revision && d.revision.estado) {
+                pintarBanner(d.revision);
+                bloquearFormulario();
+            }
+
+            AppMotion.enter(document.getElementById('rev-contenido'));
+            if (window.VentelLoader) VentelLoader.hide();
+
+            /*
+             * La comparación con el sitio arranca DESPUÉS de que la pantalla ya es usable.
+             * Son varias peticiones de red y tardan segundos; bloquear el primer pintado por
+             * ellas convertiría una pantalla instantánea en una espera. En una revisión ya
+             * cerrada no se consulta nada: no hay nada que marcar y sería gastar por gastar.
+             */
+            if (!estado.cerrada) {
+                requestAnimationFrame(function () { setTimeout(verificarPrecios, 60); });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!requireSession()) return;
+
+            AppShell.mount({ active: 'revision_cotizacion', title: 'Revisión de cotización' });
+
+            estado.folio = AppUrl.param('folio') || AppSession.selectedFolio || '';
+
+            document.getElementById('rev-btn-volver').addEventListener('click', function () {
+                AppUrl.goHome();
+            });
+            document.getElementById('rev-bloqueo-volver').addEventListener('click', function () {
+                AppUrl.goHome();
+            });
+            document.getElementById('rev-btn-consulta').addEventListener('click', function () {
+                AppUrl.go('consulta_cotizacion', { folio: estado.folio });
+            });
+            document.getElementById('rev-viewer-cerrar').addEventListener('click', cerrarVisor);
+            document.getElementById('rev-viewer').addEventListener('click', function (ev) {
+                if (ev.target === this) cerrarVisor();
+            });
+
+            // Pestañas del visor. La página se pide la PRIMERA vez que alguien entra a su
+            // pestaña: media docena de artículos abiertos serían media docena de descargas
+            // de medio mega que nadie llegó a mirar.
+            document.querySelectorAll('#rev-viewer [data-vtab]').forEach(function (bt) {
+                bt.addEventListener('click', function () {
+                    const cual = bt.getAttribute('data-vtab');
+                    seleccionarPestanaVisor(cual);
+                    if (cual !== 'pag') return;
+                    const host = document.getElementById('rev-pag-host');
+                    if (host.querySelector('iframe')) return;   // ya está traída
+                    const p = (estado.datos && estado.datos.products) ? estado.datos.products[visorArticulo] : null;
+                    if (p) cargarPaginaArticulo(p);
+                });
+            });
+
+            // Marcar el artículo sin salir del comparador: es el gesto natural justo
+            // después de ver que el precio cuadra.
+            document.getElementById('rev-cmp-marcar').addEventListener('click', function () {
+                const cb = document.getElementById('rev-art-' + visorArticulo);
+                if (!cb || cb.disabled) return;
+                cb.checked = !cb.checked;
+                aplicarArticulo(visorArticulo, cb.checked);
+                if (cb.checked) AppMotion.pop(cb);
+                actualizarAvance();
+                guardarBorrador();
+                actualizarBotonMarcar();
+            });
+
+            // --- Selección en bloque ---
+            document.getElementById('rev-items-todos').addEventListener('click', function () {
+                const c = conteo();
+                enBloque(marcarArticulos, !(c.arts > 0 && c.artsOk === c.arts), 'artículos');
+            });
+            document.getElementById('rev-gen-todos').addEventListener('click', function () {
+                const c = conteo();
+                enBloque(marcarGenerales, !(c.gens > 0 && c.gensOk === c.gens), 'puntos de la verificación general');
+            });
+            document.getElementById('rev-todo').addEventListener('click', function () {
+                if (estado.cerrada || estado.enviando) return;
+                const n = marcarArticulos(true) + marcarGenerales(true);
+                actualizarAvance();
+                guardarBorrador();
+                if (n) AppMotion.toast('Se marcaron los ' + n + ' puntos que faltaban. La revisión queda a tu nombre.', 'ok');
+            });
+
+            // Atajo: "A" marca todo lo pendiente. Se ignora mientras se escribe en un campo
+            // o con Ctrl/Cmd pulsado (ahí "A" es "seleccionar todo" del navegador).
+            document.addEventListener('keydown', function (ev) {
+                if (ev.key !== 'a' && ev.key !== 'A') return;
+                if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+                const t = ev.target;
+                if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+                if (document.getElementById('rev-viewer').classList.contains('active')) return;
+                if (estado.cerrada || estado.enviando || !estado.datos) return;
+                ev.preventDefault();
+                document.getElementById('rev-todo').click();
+            });
+
+            const notas = document.getElementById('rev-notas');
+            notas.addEventListener('input', function () {
+                document.getElementById('rev-notas-num').textContent = notas.value.length;
+            });
+            // El borrador se escribe al SALIR del campo, no en cada tecla: escribir en
+            // localStorage es síncrono y toca disco.
+            notas.addEventListener('blur', guardarBorrador);
+            window.addEventListener('pagehide', guardarBorrador);
+
+            document.getElementById('rev-btn-aprobar').addEventListener('click', function () { cerrarRevision('aprobada'); });
+            document.getElementById('rev-btn-rechazar').addEventListener('click', function () { cerrarRevision('rechazada'); });
+
+            // El rol se comprueba aquí para dar un mensaje inmediato, pero el permiso REAL
+            // lo aplica el servidor en getRevisionCotizacion: isAdvanced vive en el
+            // navegador y cualquiera puede ponerlo a mano.
+            if (!AppSession.isAdvanced) {
+                mostrarBloqueo('Esta pantalla es para usuarios avanzados',
+                    'La revisión de cotizaciones la hacen las cuentas con permisos de supervisión. ' +
+                    'Si necesitas revisar folios, pídele a tu coordinación que habilite tu cuenta.', 'lock');
+                return;
+            }
+            if (!estado.folio) {
+                mostrarBloqueo('Falta el folio',
+                    'Abre la revisión desde el aviso del chat o desde el botón "Revisar" de la consulta de cotización.', 'warning');
+                return;
+            }
+
+            google.script.run
+                .withSuccessHandler(function (res) {
+                    if (!res || !res.success) {
+                        mostrarBloqueo(
+                            res && res.sinPermiso ? 'No tienes permiso para revisar' : 'No se pudo abrir la revisión',
+                            (res && res.message) || 'Inténtalo de nuevo en un momento.',
+                            res && res.sinPermiso ? 'lock' : 'warning');
+                        return;
+                    }
+                    pintarTodo(res);
+                })
+                .withFailureHandler(function (err) {
+                    mostrarBloqueo('No se pudo abrir la revisión',
+                        'Error de comunicación con el servidor: ' + err.message, 'warning');
+                })
+                .getRevisionCotizacion(estado.folio, AppSession.userEmail);
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -294,8 +294,40 @@
                         loadEmailFormats(urlFormat || loadedQuoteData.format);
 
                         emailFields.disabled = false;
-                        sendButton.disabled = false;
                         viewQuoteButton.disabled = false;
+
+                        // GATE DE REVISIÓN: una cotización sin aprobar no sale al cliente.
+                        // El servidor la rechazaría de todos modos (Revision.gs); esto lo
+                        // dice ANTES de que el asesor redacte el correo, y explica quién
+                        // tiene que aprobarla en vez de dejar un botón gris sin motivo.
+                        const rev = loadedQuoteData.revision || { aprobada: true };
+                        sendButton.disabled = !rev.aprobada;
+                        if (!rev.aprobada) {
+                            const rechazada = rev.estado === 'Rechazada';
+                            const quien = rev.nombre ? ' La revisó ' + rev.nombre + '.' : '';
+                            const detalle = rechazada
+                                ? 'Esta cotización fue RECHAZADA en la revisión.' + quien +
+                                  ' Corrígela y guárdala de nuevo para que vuelva a la cola.'
+                                : 'Esta cotización sigue EN REVISIÓN. Un usuario avanzado debe aprobarla antes de que se pueda enviar al cliente.';
+
+                            // El aviso se queda FIJO bajo el buscador, no solo en un toast:
+                            // el toast se va a los siete segundos y el botón deshabilitado
+                            // quedaría sin explicación a la vista.
+                            const esc = window.escapeHtml || (s => String(s == null ? '' : s));
+                            quoteDataStatus.innerHTML +=
+                                '<div style="margin-top:.6rem;padding:.7rem .9rem;border-radius:10px;' +
+                                'border:1px solid var(--line,#e2e8f0);border-left:4px solid ' +
+                                (rechazada ? 'var(--alert,#C81E3C)' : 'var(--warn,#B45309)') + ';' +
+                                'background:' + (rechazada ? 'var(--alert-bg,#FDE8EC)' : 'var(--warn-bg,#FDF1E0)') + ';">' +
+                                '<strong>Envío bloqueado.</strong> ' + esc(detalle) +
+                                (rev.notas ? '<div style="margin-top:.4rem;white-space:pre-wrap"><em>Observaciones:</em> ' + esc(rev.notas) + '</div>' : '') +
+                                '</div>';
+                            showAlert(detalle, "error");
+                            sendButton.title = 'Bloqueado hasta que la cotización esté aprobada.';
+                        } else {
+                            sendButton.title = '';
+                        }
+
                         AppMotion.enter(emailForm);
                     } else {
                         showAlert(response.message, "error");

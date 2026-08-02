@@ -278,6 +278,13 @@ function getQuoteDetailsForEmail(folio) {
       format: (formatColIdx > -1 && quoteRow[formatColIdx]) ? quoteRow[formatColIdx] : DEFAULT_FORMAT_ID
     };
 
+    // Estado de la revisión: la pantalla necesita saber si puede habilitar el envío.
+    // El bloqueo de verdad está en sendQuoteByEmail; esto es para poder explicarlo antes
+    // de que el asesor redacte un correo que no va a poder mandar.
+    details.revision = (typeof revEstadoDeFolio_ === 'function')
+      ? revEstadoDeFolio_(folio)
+      : { aprobada: true, estado: '', nombre: '', notas: '' };
+
     Logger.log(`Detalles para formulario de correo recuperados para folio ${folio}`);
     return { success: true, data: details };
 
@@ -303,6 +310,19 @@ function sendQuoteByEmail(emailData) {
     const asesorMet = metVerificarAsesor_(emailData.asesor);
     if (!asesorMet.ok) {
       return { success: false, message: asesorMet.error || 'Tu sesión no es válida o expiró. Inicia sesión de nuevo para poder enviar correos.' };
+    }
+
+    // Gate de REVISIÓN: una cotización no sale al cliente hasta que un usuario avanzado
+    // la aprueba (Revision.gs). Se comprueba EN EL SERVIDOR, no solo escondiendo el botón:
+    // el cliente puede llamar a esta función directamente desde la consola del navegador.
+    // Se lee de la hoja sin caché a propósito — aquí un dato de hace tres minutos podría
+    // dejar salir algo que acaban de rechazar.
+    if (typeof revPuedeEnviarse_ === 'function') {
+      const permiso = revPuedeEnviarse_(emailData.folio);
+      if (!permiso.ok) {
+        Logger.log('Envío bloqueado por revisión pendiente: ' + emailData.folio + ' — ' + permiso.message);
+        return { success: false, sinAprobar: true, message: permiso.message };
+      }
     }
 
     // Los destinatarios se validan antes de generar el PDF: si el correo está mal

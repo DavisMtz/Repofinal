@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar Contraseña - Sistema de Cotizaciones Ventel</title>
+    <!-- Mismo escenario, tokens y preferencias de vista que login y registro: cambiar la
+         contraseña no debe sentirse como salir de la aplicación. -->
+    <?!= include('ViewPrefsPartial'); ?>
+    <?!= include('app_theme'); ?>
+    <?!= include('app_auth'); ?>
+</head>
+<body>
+    <div class="auth">
+        <div class="auth-watermark" aria-hidden="true">
+            <div class="auth-watermark-inner" data-liv="stroke" data-liv-width="0.8"></div>
+        </div>
+
+        <main class="auth-stage">
+            <div class="auth-card">
+                <svg class="auth-edge" viewBox="0 0 400 3" preserveAspectRatio="none" aria-hidden="true">
+                    <path id="authEdge" d="M0 1.5 H400" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+
+                <div class="auth-lockup">
+                    <span class="auth-mark" data-liv="fill" aria-hidden="true"></span>
+                    <span class="auth-wordmark">Ventel<small>Sistema de cotizaciones</small></span>
+                </div>
+
+                <h1 class="auth-title" data-split>Recupera tu acceso</h1>
+                <p class="auth-sub" data-reveal>
+                    Te enviamos un código a tu correo para comprobar que la cuenta es tuya.
+                </p>
+
+                <div id="formContainer">
+                    <!-- El progreso se declara una vez y AuthStage.paso() lo mueve. -->
+                    <ol class="auth-steps" id="pasos" aria-label="Progreso de la recuperación">
+                        <li class="is-on" aria-current="step">
+                            <span class="auth-step-dot">1</span><span class="auth-step-tx">Correo</span>
+                        </li>
+                        <li>
+                            <span class="auth-step-dot">2</span><span class="auth-step-tx">Código</span>
+                        </li>
+                        <li>
+                            <span class="auth-step-dot">3</span><span class="auth-step-tx">Contraseña</span>
+                        </li>
+                    </ol>
+
+                    <div id="message-container" role="status" aria-live="polite"></div>
+
+                    <!-- ── Paso 1: a qué correo ── -->
+                    <form id="step1" class="auth-form">
+                        <div class="auth-row" data-reveal>
+                            <label for="email" class="v-label">Correo de tu cuenta</label>
+                            <div class="field">
+                                <span class="field-ic" data-icon="mail" aria-hidden="true"></span>
+                                <input id="email" name="email" type="email" autocomplete="email" required
+                                       placeholder="tu.usuario@liverpool.com.mx" class="v-input"
+                                       aria-describedby="emailError">
+                            </div>
+                            <p id="emailError" class="auth-error"></p>
+                        </div>
+
+                        <div data-reveal>
+                            <button type="submit" id="sendCodeBtn" class="v-btn v-btn-primary auth-submit">
+                                Enviarme el código
+                                <svg class="auth-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M4 12h15M13 6l6 6-6 6"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <p class="auth-meta" data-reveal>
+                            <span data-icon="shield" aria-hidden="true"></span>
+                            <span>El código llega solo a tu buzón y caduca en 10 minutos.</span>
+                        </p>
+                    </form>
+
+                    <!-- ── Paso 2: el código ── -->
+                    <form id="step2" class="auth-form hidden">
+                        <button type="button" class="auth-back" id="backToStep1">
+                            <span data-icon="arrow-left" aria-hidden="true"></span> Cambiar de correo
+                        </button>
+
+                        <p class="auth-hint">
+                            <span data-icon="mail" aria-hidden="true"></span>
+                            <span>Escribe el código de 6 dígitos que enviamos a <b id="maskedEmail">tu correo</b>.</span>
+                        </p>
+
+                        <div class="auth-row">
+                            <label class="v-label" for="otpFirst">Código de verificación</label>
+                            <div id="otpBox" aria-describedby="otpError"></div>
+                            <p id="otpError" class="auth-error"></p>
+                        </div>
+
+                        <div>
+                            <button type="submit" id="verifyBtn" class="v-btn v-btn-primary auth-submit">
+                                Verificar código
+                            </button>
+                        </div>
+
+                        <p class="auth-meta">
+                            <span data-icon="clock" aria-hidden="true"></span>
+                            <span>Caduca en <span class="auth-count" id="expiryCount">10:00</span></span>
+                            <span class="auth-meta-sep"></span>
+                            <button type="button" class="auth-link" id="resendBtn" disabled>Reenviar código</button>
+                        </p>
+                    </form>
+
+                    <!-- ── Paso 3: contraseña nueva ── -->
+                    <form id="step3" class="auth-form hidden">
+                        <p class="auth-hint">
+                            <span data-icon="check-circle" aria-hidden="true"></span>
+                            <span>Listo, verificamos <b id="verifiedEmail">tu correo</b>. Elige tu contraseña nueva.</span>
+                        </p>
+
+                        <div class="auth-row">
+                            <label for="newPassword" class="v-label">Contraseña nueva</label>
+                            <div class="field">
+                                <span class="field-ic" data-icon="lock" aria-hidden="true"></span>
+                                <input id="newPassword" type="password" autocomplete="new-password" required minlength="6"
+                                       placeholder="Mínimo 6 caracteres" class="v-input" data-has-toggle
+                                       aria-describedby="strengthLabel newPasswordError">
+                                <button type="button" id="togglePassword" class="field-toggle"
+                                        aria-label="Mostrar contraseña" aria-pressed="false">
+                                    <span id="toggleIcon" data-icon="eye"></span>
+                                </button>
+                            </div>
+                            <div class="auth-meter" aria-hidden="true">
+                                <i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i>
+                            </div>
+                            <p id="strengthLabel" class="auth-meter-label" aria-live="polite"></p>
+                            <p id="newPasswordError" class="auth-error">La contraseña debe tener al menos 6 caracteres.</p>
+                        </div>
+
+                        <div class="auth-row">
+                            <label for="confirmPassword" class="v-label">Confirmar contraseña</label>
+                            <div class="field">
+                                <span class="field-ic" data-icon="lock" aria-hidden="true"></span>
+                                <input id="confirmPassword" type="password" autocomplete="new-password" required
+                                       placeholder="Repite la contraseña" class="v-input"
+                                       aria-describedby="confirmPasswordError">
+                            </div>
+                            <p id="confirmPasswordError" class="auth-error">Las contraseñas no coinciden.</p>
+                        </div>
+
+                        <div>
+                            <button type="submit" id="saveBtn" class="v-btn v-btn-primary auth-submit">
+                                Guardar contraseña
+                            </button>
+                        </div>
+
+                        <p class="auth-meta">
+                            <span data-icon="clock" aria-hidden="true"></span>
+                            <span>Tienes <span class="auth-count" id="ticketCount">15:00</span> para terminar</span>
+                        </p>
+                    </form>
+
+                    <p class="auth-sub" data-reveal style="margin-top:var(--s5)">
+                        <button type="button" class="auth-link" id="backToLogin">Volver a iniciar sesión</button>
+                    </p>
+                </div>
+
+                <div id="loadingContainer" class="auth-loading hidden">
+                    <div class="auth-loader" id="loadingIcon" data-liv="stroke" data-liv-width="5" aria-hidden="true"></div>
+                    <h2 id="loadingText">Guardando tu contraseña…</h2>
+                    <p id="loadingSub">Un momento, por favor.</p>
+                </div>
+            </div>
+
+            <ul class="auth-notes">
+                <li><span data-icon="shield" aria-hidden="true"></span> Código de un solo uso</li>
+                <li><span data-icon="key" aria-hidden="true"></span> Nadie más puede verlo</li>
+            </ul>
+        </main>
+
+        <p class="auth-foot">Sistema de cotizaciones Ventel · Liverpool</p>
+    </div>
+
+    <script>
+        window.__APP__ = { baseUrl: <?!= JSON.stringify(baseUrl) ?> };
+    </script>
+    <?!= include('app_core'); ?>
+    <?!= include('app_icons'); ?>
+    <?!= include('app_motion'); ?>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/SplitText.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/DrawSVGPlugin.min.js"></script>
+    <script>
+        /**
+         * RECUPERACIÓN DE CONTRASEÑA — tres pasos en una sola tarjeta.
+         *
+         * El servidor (Cuentas.gs) es quien manda: el código, sus intentos, su caducidad
+         * y el vale de cambio viven allá. Aquí solo se guarda lo mínimo para el paso
+         * siguiente (correo y vale) y NUNCA la contraseña.
+         */
+        const step1 = document.getElementById('step1');
+        const step2 = document.getElementById('step2');
+        const step3 = document.getElementById('step3');
+        const formContainer = document.getElementById('formContainer');
+        const loadingContainer = document.getElementById('loadingContainer');
+        const loadingIcon = document.getElementById('loadingIcon');
+        const loadingText = document.getElementById('loadingText');
+        const loadingSub = document.getElementById('loadingSub');
+        const messageContainer = document.getElementById('message-container');
+
+        const emailInput = document.getElementById('email');
+        const emailError = document.getElementById('emailError');
+        const sendCodeBtn = document.getElementById('sendCodeBtn');
+
+        const otpBoxEl = document.getElementById('otpBox');
+        const otpError = document.getElementById('otpError');
+        const verifyBtn = document.getElementById('verifyBtn');
+        const resendBtn = document.getElementById('resendBtn');
+        const expiryCount = document.getElementById('expiryCount');
+        const maskedEmail = document.getElementById('maskedEmail');
+
+        const newPassword = document.getElementById('newPassword');
+        const confirmPassword = document.getElementById('confirmPassword');
+        const newPasswordError = document.getElementById('newPasswordError');
+        const confirmPasswordError = document.getElementById('confirmPasswordError');
+        const saveBtn = document.getElementById('saveBtn');
+        const ticketCount = document.getElementById('ticketCount');
+        const verifiedEmail = document.getElementById('verifiedEmail');
+        const togglePassword = document.getElementById('togglePassword');
+        const toggleIcon = document.getElementById('toggleIcon');
+        const meterFills = Array.from(document.querySelectorAll('.auth-meter i > b'));
+        const strengthLabel = document.getElementById('strengthLabel');
+
+        const estado = {
+            correo: '',
+            vale: '',
+            paso: 0,
+            relojCodigo: null,
+            relojReenvio: null,
+            relojVale: null
+        };
+        let otp = null;
+        let loaderTween = null;
+
+        // ── Utilidades de interfaz ────────────────────────────────────────────
+        const showMessage = (text, isError = true) => {
+            messageContainer.textContent = text || '';
+            messageContainer.classList.toggle('ok', !isError);
+            if (text && isError) AppMotion.shake(messageContainer);
+        };
+
+        const setError = (el, input, text) => {
+            if (text) {
+                el.textContent = text;
+                el.classList.add('show');
+                if (input) input.setAttribute('aria-invalid', 'true');
+            } else {
+                el.classList.remove('show');
+                if (input) input.removeAttribute('aria-invalid');
+            }
+        };
+
+        /** Botón ocupado: se conserva el contenido original para restaurarlo tal cual. */
+        const ocupado = (btn, on, texto) => {
+            if (on) {
+                if (!btn.__html) btn.__html = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="v-spinner" aria-hidden="true"></span> ' + (texto || 'Un momento…');
+            } else {
+                btn.disabled = false;
+                if (btn.__html) btn.innerHTML = btn.__html;
+            }
+        };
+
+        const pararRelojes = () => {
+            ['relojCodigo', 'relojReenvio', 'relojVale'].forEach(k => {
+                if (estado[k]) { estado[k].stop(); estado[k] = null; }
+            });
+        };
+
+        /** Cambia de paso: mueve el indicador, hace el cross-fade y coloca el foco. */
+        const irAPaso = (n) => {
+            const paneles = [step1, step2, step3];
+            // El panel de origen se lee del DOM, no del estado: si alguna vez se
+            // desincronizan (una respuesta que llega tarde, un doble clic), manda lo que
+            // el asesor tiene delante y la pantalla no se queda en blanco.
+            const desde = paneles.filter(p => !p.classList.contains('hidden'))[0] || paneles[estado.paso];
+            const hacia = paneles[n];
+            estado.paso = n;
+            AuthStage.paso('#pasos', n);
+            showMessage('');
+            if (desde === hacia) return;
+            AppMotion.swap(desde, hacia, () => {
+                if (n === 1 && otp) otp.focus();
+                if (n === 2) newPassword.focus();
+                if (n === 0) emailInput.focus();
+            });
+        };
+
+        // ── Paso 1: pedir el código ──────────────────────────────────────────
+        const pedirCodigo = (correo, btn, textoBoton) => {
+            ocupado(btn, true, textoBoton);
+            google.script.run
+                .withSuccessHandler(res => {
+                    ocupado(btn, false);
+                    if (!res || !res.success) {
+                        const msg = (res && res.message) || 'No se pudo enviar el código.';
+                        if (res && res.campo === 'email' && estado.paso === 0) {
+                            setError(emailError, emailInput, msg);
+                            AppMotion.shake(emailInput.parentElement);
+                            emailInput.focus();
+                        } else {
+                            showMessage(msg);
+                        }
+                        // Tope de reenvíos: el contador vuelve a correr con lo que falte.
+                        if (res && res.esperaSegundos) arrancarReenvio(res.esperaSegundos);
+                        return;
+                    }
+                    estado.correo = correo;
+                    maskedEmail.textContent = res.correoMascara || correo;
+                    verifiedEmail.textContent = correo;
+                    if (otp) { otp.clear(); otp.disable(false); }
+                    setError(otpError, null, '');
+                    arrancarCaducidad(res.expiraSegundos || 600);
+                    arrancarReenvio(res.reenvioSegundos || 60);
+                    if (estado.paso !== 1) irAPaso(1);
+                    else { showMessage(res.message, false); otp.focus(); }
+                })
+                .withFailureHandler(err => {
+                    ocupado(btn, false);
+                    showMessage('Error de comunicación: ' + err.message);
+                })
+                .solicitarCodigoRecuperacion(correo);
+        };
+
+        step1.addEventListener('submit', (e) => {
+            e.preventDefault();
+            setError(emailError, emailInput, '');
+            showMessage('');
+            const correo = emailInput.value.trim().toLowerCase();
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) {
+                setError(emailError, emailInput, 'Escribe un correo electrónico válido.');
+                AppMotion.shake(emailInput.parentElement);
+                return;
+            }
+            pedirCodigo(correo, sendCodeBtn, 'Enviando el código…');
+        });
+
+        // ── Paso 2: verificar ────────────────────────────────────────────────
+        const arrancarCaducidad = (segundos) => {
+            if (estado.relojCodigo) estado.relojCodigo.stop();
+            estado.relojCodigo = AuthStage.cuenta(expiryCount, segundos, {
+                onEnd: () => {
+                    if (otp) otp.disable(true);
+                    expiryCount.textContent = '0:00';
+                    setError(otpError, null, 'El código caducó. Pide uno nuevo.');
+                    resendBtn.disabled = false;
+                    resendBtn.textContent = 'Enviar un código nuevo';
+                }
+            });
+        };
+
+        const arrancarReenvio = (segundos) => {
+            if (estado.relojReenvio) estado.relojReenvio.stop();
+            resendBtn.disabled = true;
+            estado.relojReenvio = AuthStage.cuenta(resendBtn, segundos, {
+                prefijo: 'Reenviar en ',
+                onEnd: () => {
+                    resendBtn.disabled = false;
+                    resendBtn.textContent = 'Reenviar código';
+                }
+            });
+        };
+
+        const verificarCodigo = () => {
+            const codigo = otp.value();
+            setError(otpError, null, '');
+            showMessage('');
+            if (codigo.length !== 6) {
+                setError(otpError, null, 'Escribe los 6 dígitos del código.');
+                otp.error(true);
+                otp.focus();
+                return;
+            }
+            ocupado(verifyBtn, true, 'Verificando…');
+            google.script.run
+                .withSuccessHandler(res => {
+                    ocupado(verifyBtn, false);
+                    if (!res || !res.success) {
+                        setError(otpError, null, (res && res.message) || 'Código incorrecto.');
+                        otp.error(true);
+                        otp.clear();
+                        otp.focus();
+                        return;
+                    }
+                    estado.vale = res.vale;
+                    pararRelojes();
+                    estado.relojVale = AuthStage.cuenta(ticketCount, res.expiraSegundos || 900, {
+                        onEnd: () => showMessage('La verificación caducó. Pide un código nuevo.')
+                    });
+                    irAPaso(2);
+                })
+                .withFailureHandler(err => {
+                    ocupado(verifyBtn, false);
+                    showMessage('Error de comunicación: ' + err.message);
+                })
+                .confirmarCodigoRecuperacion(estado.correo, codigo);
+        };
+
+        step2.addEventListener('submit', (e) => { e.preventDefault(); verificarCodigo(); });
+
+        resendBtn.addEventListener('click', () => {
+            if (resendBtn.disabled) return;
+            pedirCodigo(estado.correo, verifyBtn, 'Enviando…');
+        });
+
+        document.getElementById('backToStep1').addEventListener('click', () => {
+            pararRelojes();
+            if (otp) otp.clear();
+            setError(otpError, null, '');
+            irAPaso(0);
+        });
+
+        // ── Paso 3: guardar la contraseña ────────────────────────────────────
+        const LEVELS = [
+            { t: '', c: 'var(--ink-faint)' },
+            { t: 'Débil', c: 'var(--alert)' },
+            { t: 'Regular', c: 'var(--warn)' },
+            { t: 'Buena', c: 'var(--ok)' },
+            { t: 'Excelente', c: 'var(--ok)' }
+        ];
+
+        newPassword.addEventListener('input', () => {
+            const v = newPassword.value;
+            let score = 0;
+            if (v.length >= 6) score++;
+            if (v.length >= 10) score++;
+            if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
+            if (/\d/.test(v) || /[^A-Za-z0-9]/.test(v)) score++;
+            if (!v) score = 0;
+            const lvl = LEVELS[score];
+            AuthStage.meter(meterFills, strengthLabel, score, lvl.t, lvl.c);
+            if (v.length >= 6) setError(newPasswordError, newPassword, '');
+        });
+
+        confirmPassword.addEventListener('input', () => setError(confirmPasswordError, confirmPassword, ''));
+
+        togglePassword.addEventListener('click', () => {
+            const willShow = newPassword.type === 'password';
+            newPassword.type = willShow ? 'text' : 'password';
+            toggleIcon.innerHTML = Icons.svg(willShow ? 'eye-off' : 'eye');
+            togglePassword.setAttribute('aria-pressed', String(willShow));
+            togglePassword.setAttribute('aria-label', willShow ? 'Ocultar contraseña' : 'Mostrar contraseña');
+            AppMotion.pop(togglePassword);
+        });
+
+        const mostrarCarga = (titulo, sub) => {
+            loadingText.textContent = titulo;
+            loadingSub.textContent = sub || 'Un momento, por favor.';
+            AppMotion.swap(formContainer, loadingContainer, () => {
+                loaderTween = AuthStage.startLoader(loadingIcon);
+            });
+        };
+
+        const ocultarCarga = () => {
+            AuthStage.stopLoader(loaderTween, loadingIcon);
+            loaderTween = null;
+            loadingIcon.__livDone = false;
+            loadingIcon.style.color = '';
+            AuthStage.paint();
+            AppMotion.swap(loadingContainer, formContainer);
+        };
+
+        step3.addEventListener('submit', (e) => {
+            e.preventDefault();
+            setError(newPasswordError, newPassword, '');
+            setError(confirmPasswordError, confirmPassword, '');
+            showMessage('');
+
+            let primerInvalido = null;
+            if (newPassword.value.length < 6) {
+                setError(newPasswordError, newPassword, 'La contraseña debe tener al menos 6 caracteres.');
+                AppMotion.shake(newPassword.parentElement);
+                primerInvalido = newPassword;
+            }
+            if (newPassword.value !== confirmPassword.value) {
+                setError(confirmPasswordError, confirmPassword, 'Las contraseñas no coinciden.');
+                AppMotion.shake(confirmPassword.parentElement);
+                primerInvalido = primerInvalido || confirmPassword;
+            }
+            if (primerInvalido) { primerInvalido.focus(); return; }
+
+            const nueva = newPassword.value;
+            mostrarCarga('Guardando tu contraseña…');
+
+            google.script.run
+                .withSuccessHandler(res => {
+                    if (!res || !res.success) {
+                        ocultarCarga();
+                        const msg = (res && res.message) || 'No se pudo actualizar la contraseña.';
+                        if (res && res.expirado) {
+                            // El vale murió: el paso 3 ya no sirve, se vuelve al principio.
+                            estado.vale = '';
+                            pararRelojes();
+                            if (otp) otp.clear();
+                            irAPaso(0);
+                            showMessage(msg);
+                            return;
+                        }
+                        if (res && res.campo === 'password') {
+                            setError(newPasswordError, newPassword, msg);
+                            AppMotion.shake(newPassword.parentElement);
+                            newPassword.focus();
+                        } else {
+                            showMessage(msg);
+                        }
+                        return;
+                    }
+
+                    // La contraseña cambió: cualquier sesión guardada de ESTA cuenta en este
+                    // navegador deja de ser de fiar (pudo quedarse abierta de antes).
+                    if (AppSession.isLoggedIn() && AppSession.userEmail === estado.correo) {
+                        AppSession.clear();
+                    }
+                    pararRelojes();
+                    AuthStage.stopLoader(loaderTween, loadingIcon);
+                    loaderTween = null;
+                    AuthStage.success(loadingIcon, '¡Contraseña actualizada!', loadingText);
+                    loadingSub.textContent = 'Te llevamos al inicio de sesión…';
+                    setTimeout(() => {
+                        if (!AppUrl.go('login')) {
+                            ocultarCarga();
+                            showMessage('Tu contraseña ya cambió, pero no pudimos abrir el inicio de sesión. Recarga la página.');
+                        }
+                    }, 1400);
+                })
+                .withFailureHandler(err => {
+                    ocultarCarga();
+                    showMessage('Error de comunicación: ' + err.message);
+                })
+                .restablecerContrasena(estado.correo, estado.vale, nueva);
+        });
+
+        document.getElementById('backToLogin').addEventListener('click', () => AppUrl.go('login'));
+
+        emailInput.addEventListener('input', () => setError(emailError, emailInput, ''));
+
+        (function () {
+            Icons.render();
+            AuthStage.paint();
+
+            otp = AuthOtp.mount(otpBoxEl, {
+                label: 'Código de verificación de 6 dígitos',
+                describedBy: 'otpError',
+                onComplete: () => verificarCodigo()   // completar los 6 dígitos ya verifica
+            });
+            // La etiqueta del paso 2 apunta a la primera casilla, que se crea en JS.
+            if (otp && otp.cells[0]) otp.cells[0].id = 'otpFirst';
+
+            // Precarga el correo: primero el que quedó escrito en el login (se pasa por
+            // sessionStorage porque el query string no sobrevive al iframe de Apps
+            // Script), y si no, el último con el que se inició sesión en este equipo.
+            let previo = '';
+            try { previo = sessionStorage.getItem('ventel-recuperar-email') || ''; } catch (e) {}
+            previo = previo || AppSession.lastEmail;
+            if (previo) emailInput.value = previo;
+
+            AuthStage.play({ title: '[data-split]' });
+        })();
+    </script>
+</body>
+</html>

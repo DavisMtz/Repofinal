@@ -91,6 +91,7 @@
     </script>
     <?!= include('app_core'); ?>
     <?!= include('app_icons'); ?>
+    <?!= include('app_estatus'); ?>
     <?!= include('app_motion'); ?>
     <?!= include('app_support'); ?>
     <?!= include('app_shell'); ?>
@@ -325,14 +326,15 @@
             displayQuotes(filtered, 'Sin coincidencias entre tus cotizaciones. Presiona Enter para buscar en todo el sistema.');
         };
 
-        const STATUS_CLASSES = {
-            'autorizada': 'v-badge-green',
-            'enviada-por-correo': 'v-badge-green',
-            'rechazada': 'v-badge-red',
-            'en-revision': 'v-badge-yellow',
-            'folio-generado': 'v-badge-yellow',
-            'default': 'v-badge-blue'
-        };
+        /*
+         * El catálogo de estatus vive en app_estatus.html, compartido con el panel de
+         * supervisión y con la pantalla de revisión. Antes este archivo tenía su propio mapa
+         * y pintaba "Aprobada" y "Enviada por Correo" del mismo verde: el asesor no podía
+         * distinguir lo que ya salió al cliente de lo que solo está autorizado. Ahora cada
+         * estado trae color, icono y palabra propios, y son idénticos en todas las pestañas.
+         */
+
+        const statusKey = AppEstatus.clave;
 
         // Los datos de una cotización los teclea un asesor y los ve cualquier otro desde
         // la búsqueda global: todo lo que entra a innerHTML pasa por escapeHtml, y lo que
@@ -352,17 +354,19 @@
             quotes.forEach(quote => {
                 const row = document.createElement('tr');
                 row.style.opacity = '0';
-                const estatusLower = String(quote.estatus || '').toLowerCase().replace(/\s+/g, '-');
+                const est = AppEstatus.info(quote.estatus, quote.revisionEstado);
                 const folioJs = escapeFolio(quote.folio);
+                // Filo de color en la primera celda: lo que sigue esperando revisión se
+                // localiza bajando por la columna del folio, sin llegar a la de estatus.
+                if (est.pendiente) row.className = 'v-fila-pendiente';
+                else if (est.clave === 'rechazada') row.className = 'v-fila-rechazada';
 
                 row.innerHTML = `
                     <td class="font-medium text-slate-900">${esc(quote.folio || 'N/A')}</td>
                     <td>${esc(quote.cliente || 'N/A')}</td>
                     <td>${esc(quote.fecha || 'N/A')}</td>
                     <td class="font-medium">${formatMoney(quote.total)}</td>
-                    <td>
-                        <span class="v-badge ${STATUS_CLASSES[estatusLower] || STATUS_CLASSES.default}">${esc(quote.estatus || 'Pendiente')}</span>
-                    </td>
+                    <td>${AppEstatus.badge(quote.estatus, quote.revisionEstado)}</td>
                     <td>
                         <div class="flex items-center justify-center gap-1 flex-wrap">
                             <button onclick="navigateToQuoteView.call(this, '${folioJs}')" title="Ver la cotización" class="v-row-action v-act-pink">

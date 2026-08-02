@@ -86,6 +86,93 @@
 
         /* Resumen de totales que "late" al recalcular */
         #summary-total-card { transition: box-shadow .3s ease; }
+
+        /* ════════════════════════════════════════════════════════════
+           AUTOGUARDADO DEL BORRADOR
+           ════════════════════════════════════════════════════════════
+           Todo se pinta con los tokens de app_theme (hereda los 3 temas)
+           y sin utilidades de Tailwind nuevas: app_tailwind ya no es un
+           compilador, así que una clase que no esté ahí no existe.
+        */
+        .bdr-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .3rem .65rem;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: var(--surface-2);
+            color: var(--ink-soft);
+            font-family: var(--f-ui);
+            font-size: .75rem;
+            font-weight: 600;
+            line-height: 1.2;
+            transition: color .2s ease, background-color .2s ease, border-color .2s ease;
+        }
+        .bdr-chip[hidden] { display: none; }
+        .bdr-chip .bdr-dot {
+            width: .45rem; height: .45rem;
+            border-radius: 999px;
+            background: currentColor;
+            flex: none;
+        }
+        .bdr-chip.is-saving { color: var(--info); background: var(--info-bg); border-color: transparent; }
+        .bdr-chip.is-saving .bdr-dot { animation: bdr-latido 1.1s ease-in-out infinite; }
+        .bdr-chip.is-saved  { color: var(--ok);   background: var(--ok-bg);   border-color: transparent; }
+        .bdr-chip.is-warn   { color: var(--warn); background: var(--warn-bg); border-color: transparent; }
+        @keyframes bdr-latido { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+
+        /* Modal de restauración */
+        .bdr-modal { max-width: 32rem; }
+        .bdr-head { display: flex; align-items: flex-start; gap: .9rem; margin-bottom: 1.1rem; }
+        .bdr-ico {
+            display: grid;
+            place-items: center;
+            width: 2.6rem; height: 2.6rem;
+            border-radius: 12px;
+            background: var(--brand-tint);
+            color: var(--brand);
+            flex: none;
+        }
+        .bdr-ico > span { display: block; width: 1.4rem; height: 1.4rem; }
+        .bdr-title { font-family: var(--f-ui); font-size: 1.15rem; font-weight: 700; line-height: 1.3; color: var(--ink); letter-spacing: -.018em; }
+        .bdr-sub { font-family: var(--f-ui); font-size: .85rem; line-height: 1.55; color: var(--ink-soft); margin-top: .25rem; max-width: 46ch; }
+        .bdr-resumen {
+            display: grid;
+            gap: .5rem;
+            margin: 0 0 1rem;
+            padding: .9rem 1rem;
+            border: 1px solid var(--line);
+            border-radius: var(--rad);
+            background: var(--surface-2);
+        }
+        .bdr-fila { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; font-family: var(--f-ui); font-size: .85rem; }
+        .bdr-fila dt { color: var(--ink-soft); flex: none; }
+        .bdr-fila dd { margin: 0; color: var(--ink); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+        .bdr-fila dd.bdr-num { font-variant-numeric: tabular-nums; }
+        .bdr-fila dd.bdr-folio { font-family: var(--f-mono); font-size: .8rem; }
+        /* --ink-soft, no --ink-faint: sobre la superficie clara el faint queda en
+           ~2.7:1 y esta nota explica qué se destruye al empezar de cero. */
+        .bdr-nota { font-family: var(--f-ui); font-size: .78rem; line-height: 1.5; color: var(--ink-soft); margin-bottom: .9rem; }
+        .bdr-acciones { display: flex; justify-content: flex-end; align-items: center; gap: .6rem; flex-wrap: wrap; }
+        .bdr-aviso {
+            font-family: var(--f-ui);
+            font-size: .78rem;
+            font-weight: 600;
+            line-height: 1.5;
+            color: var(--warn);
+            margin-bottom: .6rem;
+        }
+        .bdr-aviso[hidden] { display: none; }
+
+        /* En px, no en rem: en el iframe de Apps Script las media queries
+           en rem/em no evaluaron (mismo criterio que app_theme/app_shell). */
+        @media (max-width: 520px) {
+            .bdr-acciones { flex-direction: column-reverse; }
+            .bdr-acciones .v-btn { width: 100%; }
+            .bdr-fila { flex-direction: column; gap: .1rem; }
+            .bdr-fila dd { text-align: left; }
+        }
     </style>
 <!-- Utilidades Tailwind compiladas: va al final del head, igual que la hoja que el CDN inyectaba. -->
 <?!= include('app_tailwind'); ?>
@@ -96,6 +183,11 @@
     <div class="print-container max-w-full xl:max-w-7xl mx-auto bg-white p-6 md:p-10 rounded-2xl shadow-lg border border-gray-200">
         <div id="cancel-button-area-top" class="no-print mb-6 flex justify-between items-center flex-wrap gap-3" data-animate>
             <span id="edit-mode-badge" class="v-badge v-badge-blue hidden">Editando cotización existente</span>
+            <!-- Estado del autoguardado. Ambiental: no es una región "live" a
+                 propósito, porque se actualiza cada vez que se teclea y anunciarlo
+                 sería ruido constante en un lector de pantalla. Lo que sí se anuncia
+                 son las acciones (recuperar / descartar), vía toast. -->
+            <span id="draft-status" class="bdr-chip" hidden><span class="bdr-dot"></span><span id="draft-status-text"></span></span>
             <div class="ml-auto">
                 <button id="cancel-quote-button-top" class="v-btn v-btn-ghost v-btn-sm">
                     <span class="w-4 h-4 block" data-icon="arrow-left"></span>
@@ -242,6 +334,30 @@
             <div class="flex justify-end gap-3">
                 <button id="json-import-cancel" class="v-btn v-btn-ghost v-btn-sm">Cancelar</button>
                 <button id="json-import-confirm" class="v-btn v-btn-success v-btn-sm" onclick="importJsonProducts()">✅ Importar Productos</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Recuperación del borrador autoguardado -->
+    <div id="draft-restore-modal" class="v-modal-overlay no-print">
+        <div class="v-modal bdr-modal" role="dialog" aria-modal="true" aria-labelledby="draft-restore-title" aria-describedby="draft-restore-sub">
+            <div class="bdr-head">
+                <span class="bdr-ico"><span data-icon="clock"></span></span>
+                <div>
+                    <h3 class="bdr-title" id="draft-restore-title">Tienes un borrador sin terminar</h3>
+                    <p class="bdr-sub" id="draft-restore-sub"></p>
+                </div>
+            </div>
+            <dl class="bdr-resumen" id="draft-restore-resumen"></dl>
+            <p class="bdr-nota" id="draft-restore-note"></p>
+            <!-- Fuera de .bdr-acciones a propósito: dentro, al aparecer, empujaba los
+                 dos botones a líneas distintas. Se rellena por JS al insistir porque
+                 un role="status" solo se anuncia cuando cambia su CONTENIDO, no
+                 cuando se hace visible. -->
+            <p class="bdr-aviso" id="draft-restore-hint" role="status" hidden></p>
+            <div class="bdr-acciones">
+                <button type="button" id="draft-discard" class="v-btn v-btn-ghost">Empezar de cero</button>
+                <button type="button" id="draft-restore" class="v-btn v-btn-primary">Continuar con el borrador</button>
             </div>
         </div>
     </div>
@@ -446,6 +562,10 @@
                 AppMotion.pop(document.getElementById('summary-total'));
             }
             lastSummaryTotal = summaryTotal;
+
+            // Aquí pasan TODOS los cambios de la tabla, incluidos los que no emiten
+            // un evento de formulario: añadir fila, eliminarla e importar desde JSON.
+            Borrador.programar();
         }
 
         function createProductRowHtml() {
@@ -545,6 +665,7 @@
                         newRow.querySelector('.additional-discount-applied').value = product.additionalDiscountApplied || 'No';
                         newRow.querySelector('.additional-discount-percent').value = product.additionalDiscountPercent || 0;
                         newRow.setAttribute('data-image-url', product.imageUrl || '');
+                        newRow.setAttribute('data-product-url', product.productUrl || '');
                         productRowsContainer.appendChild(newRow);
                         addEventListenersToRow(newRow);
                     });
@@ -554,6 +675,50 @@
                  addRow(false);
             }
             calculateTotals();
+        }
+
+        /**
+         * Lee el formulario completo y devuelve la cotización con la forma que
+         * espera el servidor. Es la MISMA lectura para "Ir a Vista Previa" y para
+         * el autoguardado del borrador: si fueran dos funciones distintas, el
+         * borrador acabaría restaurando una cotización que no es la que se envía.
+         */
+        function collectQuoteData() {
+            const quoteData = {
+                folio: currentQuoteFolioInput.value || null,
+                advisorName: advisorNameInput.value.trim() || currentAdvisorName,
+                advisorExt: document.getElementById('advisor-ext').value.trim(),
+                advisorEmail: currentUserEmail,
+                clientName: document.getElementById('client-name').value.trim(),
+                clientEmail: document.getElementById('client-email').value.trim(),
+                clientPhone: document.getElementById('client-phone').value.trim(),
+                products: [],
+                observations: document.getElementById('observations').value.trim(),
+                summarySubtotal: parseCurrency(document.getElementById('summary-subtotal').textContent),
+                summaryVat: parseCurrency(document.getElementById('summary-vat').textContent),
+                summaryTotal: parseCurrency(document.getElementById('summary-total').textContent),
+                // Se lee el radio marcado en el momento de guardar, no una variable que
+                // pudo quedarse atrás si el catálogo cargó tarde.
+                format: (document.querySelector('input[name="quote-format"]:checked') || {}).value || selectedFormatId,
+                status: "Borrador Vista Previa"
+            };
+            productRowsContainer.querySelectorAll('.product-row').forEach(row => {
+                quoteData.products.push({
+                    sku: row.querySelector('.sku').value.trim(),
+                    imageUrl: row.getAttribute('data-image-url') || '',
+                    // Enlace a la ficha del artículo: viaja con la fila para que la
+                    // pantalla de revisión pueda abrir el producto sin buscarlo a mano.
+                    productUrl: row.getAttribute('data-product-url') || '',
+                    quantity: parseInt(row.querySelector('.quantity').value) || 0,
+                    description: row.querySelector('.description').value.trim(),
+                    unitPrice: parseFloat(row.querySelector('.unit-price').value) || 0,
+                    costPaymentUnique: parseFloat(row.querySelector('.cost-payment-unique').value) || 0,
+                    discountPublicPercent: parseFloat(row.querySelector('.discount-public-percent').value) || 0,
+                    additionalDiscountApplied: row.querySelector('.additional-discount-applied').value,
+                    additionalDiscountPercent: parseFloat(row.querySelector('.additional-discount-percent').value) || 0
+                });
+            });
+            return quoteData;
         }
 
         let selectedFormatId = null;
@@ -634,12 +799,16 @@
                         setSelectedFormat(response.quote.format);
                         document.getElementById('edit-mode-badge').classList.remove('hidden');
                         showGeneralMessage('Cotización cargada.', false);
+                        // Ya está en pantalla la versión del servidor: solo ahora se sabe
+                        // qué es "sin cambios" y si hay un borrador que ofrecer.
+                        Borrador.iniciar({ folio: folio, edicion: true });
                     } else {
                         showGeneralMessage(response.message || 'Error al cargar la cotización. Creando nueva.', true, false);
                         currentQuoteFolioInput.value = '';
                         quoteFolioDisplay.textContent = 'NUEVO';
                         if (productRowsContainer.children.length === 0) addRow(false);
                         else calculateTotals();
+                        Borrador.iniciar({});   // se degradó a cotización nueva
                     }
                 })
                 .withFailureHandler(function(error) {
@@ -647,9 +816,402 @@
                     showGeneralMessage('Error de comunicación al cargar cotización: ' + error.message, true, false);
                     if (productRowsContainer.children.length === 0) addRow(false);
                      else calculateTotals();
+                    Borrador.iniciar({});
                 })
                 .getQuoteDetails(folio);
         }
+
+        /**
+         * =====================================================================
+         * AUTOGUARDADO DEL BORRADOR
+         * =====================================================================
+         * Una cotización se teclea entera a mano —cliente, n productos con sus
+         * descuentos, observaciones— y hasta ahora nada de eso existía fuera del
+         * DOM: un F5, un cierre accidental de la pestaña o una recarga del iframe
+         * de Apps Script se llevaban el trabajo completo.
+         *
+         * QUÉ CAPA Y POR QUÉ
+         *  · AppCache (localStorage, namespace 'ventel-cache-'): el borrador tiene
+         *    que sobrevivir al cierre de la pestaña, así que sessionStorage no
+         *    sirve. Al vivir en AppCache hereda de una sola capa el TTL, el control
+         *    de cuota, el respaldo en memoria si el navegador bloquea el
+         *    almacenamiento y —lo más importante— el borrado en AppSession.clear():
+         *    el borrador trae nombre, correo y teléfono del cliente y no puede
+         *    quedarse en un equipo compartido después de cerrar sesión.
+         *  · TTL de 24 h: esta misma pantalla advierte que precios y promociones
+         *    cambian sin previo aviso. Ofrecer un borrador de hace tres días sería
+         *    ofrecer precios que ya no existen.
+         *  · NO sustituye a guardar. El sistema de verdad sigue siendo Sheets: si
+         *    se vacía el almacenamiento entero, la pantalla funciona igual.
+         *
+         * UNA CLAVE POR CONTEXTO ('borrador-cot-nuevo' o 'borrador-cot-<folio>'):
+         * el borrador de una cotización nueva no puede aparecer nunca dentro de la
+         * edición de otro folio. Y la entrada guarda el correo del asesor: si el
+         * borrador es de otra persona, se descarta sin enseñarlo.
+         */
+        const Borrador = (function () {
+            const TTL_MS = 24 * 60 * 60 * 1000;   // ver arriba: precios que caducan
+            const MAX_ENTRADAS = 6;               // nunca crece sin límite
+            const ESPERA_MS = 900;                // no se escribe en cada tecla
+            const REFRESCO_MS = 30000;            // "hace 5 minutos" se mantiene al día
+
+            const chip = document.getElementById('draft-status');
+            const chipTexto = document.getElementById('draft-status-text');
+            const overlay = document.getElementById('draft-restore-modal');
+            const tarjeta = overlay.querySelector('.v-modal');
+            const tituloEl = document.getElementById('draft-restore-title');
+            const subEl = document.getElementById('draft-restore-sub');
+            const resumenEl = document.getElementById('draft-restore-resumen');
+            const notaEl = document.getElementById('draft-restore-note');
+            const avisoEl = document.getElementById('draft-restore-hint');
+            const btnRestaurar = document.getElementById('draft-restore');
+            const btnDescartar = document.getElementById('draft-discard');
+
+            let clave = 'borrador-cot-nuevo';
+            let edicion = false;
+            let alResolver = null;     // se llama cuando la restauración queda resuelta
+            let activo = false;        // el autoguardado no corre hasta resolver la restauración
+            let temporizador = null;
+            let firmaBase = null;      // estado del formulario que NO se considera trabajo del asesor
+            let guardadoEn = 0;
+            let disparador = null;     // foco al que se vuelve al cerrar el modal
+            let ticker = null;
+
+            function hayAlmacen() { return !!window.AppCache; }
+            function firma(q) { try { return JSON.stringify(q); } catch (e) { return null; } }
+
+            /** ¿El formulario sigue igual que cuando arrancó (o quedó vacío)? */
+            function sinTrabajo(q) {
+                if (!q) return true;
+                if (firmaBase !== null && firma(q) === firmaBase) return true;
+                if (q.clientName || q.clientEmail || q.clientPhone || q.observations) return false;
+                return !(q.products || []).some(function (p) {
+                    return (p.sku || '').trim() || (p.description || '').trim() ||
+                           (parseFloat(p.unitPrice) || 0) > 0 || (parseFloat(p.costPaymentUnique) || 0) > 0;
+                });
+            }
+
+            // ── Indicador de estado ────────────────────────────────────────────
+            function pintarChip(estado) {
+                if (!chip) return;
+                chip.classList.remove('is-saving', 'is-saved', 'is-warn');
+                if (estado === 'oculto') { chip.hidden = true; return; }
+                chip.hidden = false;
+                if (estado === 'guardando') {
+                    chip.classList.add('is-saving');
+                    chipTexto.textContent = 'Guardando borrador…';
+                } else if (estado === 'lleno') {
+                    chip.classList.add('is-warn');
+                    chipTexto.textContent = 'El borrador solo vive en esta pestaña (sin espacio en el equipo)';
+                } else {
+                    chip.classList.add('is-saved');
+                    chipTexto.textContent = 'Borrador guardado ' + AppCache.ageLabel(guardadoEn);
+                }
+            }
+
+            function arrancarTicker() {
+                if (ticker) return;
+                ticker = setInterval(function () {
+                    if (chip && !chip.hidden && chip.classList.contains('is-saved')) pintarChip('guardado');
+                }, REFRESCO_MS);
+            }
+
+            // ── Escritura ──────────────────────────────────────────────────────
+            function guardarAhora() {
+                clearTimeout(temporizador);
+                temporizador = null;
+                if (!activo || !hayAlmacen()) return;
+
+                const q = collectQuoteData();
+                if (sinTrabajo(q)) {
+                    // Se borró lo que se había escrito: el borrador deja de existir,
+                    // para no resucitar un formulario que el asesor ya vació.
+                    AppCache.remove(clave);
+                    guardadoEn = 0;
+                    pintarChip('oculto');
+                    return;
+                }
+                AppCache.prune('borrador-cot-', MAX_ENTRADAS, clave);
+                const ok = AppCache.set(clave, {
+                    email: currentUserEmail || '',
+                    folio: q.folio || '',
+                    quote: q
+                }, { ttl: TTL_MS });
+                guardadoEn = Date.now();
+                pintarChip(ok ? 'guardado' : 'lleno');
+            }
+
+            function programar() {
+                if (!activo) return;
+                if (chip && !chip.classList.contains('is-warn')) pintarChip('guardando');
+                clearTimeout(temporizador);
+                temporizador = setTimeout(guardarAhora, ESPERA_MS);
+            }
+
+            /** Escribe ya lo que estuviera pendiente (salir de la pantalla, ocultar la pestaña). */
+            function volcar() { if (temporizador) guardarAhora(); }
+
+            // ── Lectura ────────────────────────────────────────────────────────
+            function leer() {
+                if (!hayAlmacen()) return null;
+                const e = AppCache.get(clave, TTL_MS);
+                if (!e || !e.data || !e.data.quote) return null;
+                const dueno = (e.data.email || '').toLowerCase();
+                const yo = (currentUserEmail || '').toLowerCase();
+                if (dueno && yo && dueno !== yo) { AppCache.remove(clave); return null; }
+                return { quote: e.data.quote, at: e.at };
+            }
+
+            // ── Modal de restauración ──────────────────────────────────────────
+            function resumenHTML(b) {
+                const q = b.quote;
+                const productos = (q.products || []).filter(function (p) {
+                    return (p.sku || '').trim() || (p.description || '').trim();
+                }).length;
+                const filas = [];
+                if (edicion && q.folio) {
+                    filas.push(['Folio', escapeHtml(q.folio), 'bdr-folio']);
+                }
+                filas.push(['Cliente', q.clientName ? escapeHtml(q.clientName) : 'Todavía sin nombre', '']);
+                filas.push(['Productos', productos === 1 ? '1 producto' : productos + ' productos', 'bdr-num']);
+                filas.push(['Total', formatCurrency(q.summaryTotal), 'bdr-num']);
+                filas.push(['Guardado', AppCache.ageLabel(b.at), '']);
+                return filas.map(function (f) {
+                    return '<div class="bdr-fila"><dt>' + f[0] + '</dt><dd class="' + f[2] + '">' + f[1] + '</dd></div>';
+                }).join('');
+            }
+
+            function abrir(b) {
+                tituloEl.textContent = edicion ? 'Tienes cambios sin guardar' : 'Tienes un borrador sin terminar';
+                subEl.textContent = edicion
+                    ? 'La última vez que editaste esta cotización quedaron cambios que nunca llegaron al sistema. Puedes recuperarlos o seguir con la versión que ya está guardada.'
+                    : 'Dejaste una cotización a medias en este equipo. Puedes continuar donde la dejaste o empezar de cero.';
+                btnRestaurar.textContent = edicion ? 'Recuperar mis cambios' : 'Continuar con el borrador';
+                btnDescartar.textContent = edicion ? 'Usar la versión guardada' : 'Empezar de cero';
+                notaEl.textContent = edicion
+                    ? 'Si usas la versión guardada, los cambios del borrador se eliminan de este equipo.'
+                    : 'Si empiezas de cero, el borrador se elimina de este equipo. Esto no afecta a ninguna cotización ya guardada.';
+                resumenEl.innerHTML = resumenHTML(b);
+                avisoEl.hidden = true;
+
+                disparador = document.activeElement;
+                document.body.style.overflow = 'hidden';
+                AppMotion.modalIn(overlay, tarjeta);
+                document.addEventListener('keydown', enTecla, true);
+                // El foco entra en la opción segura: continuar no pierde nada.
+                setTimeout(function () { btnRestaurar.focus(); }, 80);
+            }
+
+            function cerrar(despues) {
+                document.removeEventListener('keydown', enTecla, true);
+                document.body.style.overflow = '';
+                AppMotion.modalOut(overlay, tarjeta, function () {
+                    if (disparador && disparador.focus) { try { disparador.focus(); } catch (e) {} }
+                    disparador = null;
+                    if (despues) despues();
+                });
+            }
+
+            /**
+             * Es una decisión que bloquea: mientras no se resuelva, no se sabe qué
+             * formulario hay que autoguardar. Por eso Esc y el clic en el fondo no
+             * cierran (regla de "modal con datos sin guardar"): en vez de cerrarse,
+             * el modal señala que hay que elegir. Ninguna de las dos opciones está
+             * escondida y la primaria no destruye nada.
+             */
+            function insistir() {
+                avisoEl.hidden = false;
+                avisoEl.textContent = '';
+                avisoEl.textContent = 'Elige una de las dos opciones para continuar.';
+                AppMotion.shake(tarjeta);
+            }
+
+            function enTecla(e) {
+                if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); insistir(); return; }
+                if (e.key !== 'Tab') return;
+                // Foco atrapado: solo hay dos destinos posibles dentro del modal.
+                const foco = [btnDescartar, btnRestaurar];
+                const i = foco.indexOf(document.activeElement);
+                e.preventDefault();
+                const sig = e.shiftKey ? (i <= 0 ? foco.length - 1 : i - 1)
+                                       : (i === foco.length - 1 || i === -1 ? 0 : i + 1);
+                foco[sig].focus();
+            }
+
+            // ── Resoluciones ───────────────────────────────────────────────────
+            function activar() {
+                firmaBase = firma(collectQuoteData());
+                activo = true;
+                arrancarTicker();
+                // Ya se sabe qué formulario hay: quien esperaba esa decisión puede
+                // seguir. Lo usa el puente de la extensión, que no debe volcar la
+                // bolsa mientras el modal del borrador sigue preguntando qué hacer.
+                if (alResolver) { const seguir = alResolver; alResolver = null; seguir(); }
+            }
+
+            function restaurar(b) {
+                populateQuoteForm(b.quote);
+                if (b.quote.format) {
+                    pendingFormatFromQuote = b.quote.format;
+                    setSelectedFormat(b.quote.format);
+                }
+                if (edicion) document.getElementById('edit-mode-badge').classList.remove('hidden');
+                activar();
+                guardadoEn = b.at;
+                pintarChip('guardado');
+                AppMotion.toast(edicion
+                    ? 'Cambios recuperados. Sigues justo donde lo dejaste.'
+                    : 'Borrador recuperado. Sigues justo donde lo dejaste.');
+            }
+
+            function descartar() {
+                if (hayAlmacen()) AppCache.remove(clave);
+                guardadoEn = 0;
+                pintarChip('oculto');
+                activar();
+                AppMotion.toast(edicion
+                    ? 'Se conserva la versión guardada en el sistema.'
+                    : 'Borrador descartado. Empiezas de cero.', 'warn');
+            }
+
+            btnRestaurar.addEventListener('click', function () {
+                const b = leer();
+                cerrar(function () { if (b) restaurar(b); else activar(); });
+            });
+            btnDescartar.addEventListener('click', function () { cerrar(descartar); });
+            overlay.addEventListener('click', function (e) { if (e.target === overlay) insistir(); });
+
+            return {
+                /**
+                 * Arranca el ciclo para el contexto de esta pantalla. Se llama UNA vez,
+                 * cuando ya está decidido qué hay en el formulario: en una cotización
+                 * nueva al terminar de montarla, y en una edición cuando el servidor ya
+                 * devolvió (o falló) la cotización del folio. Si se llamara antes, el
+                 * autoguardado escribiría el formulario vacío encima del borrador.
+                 *
+                 * `opts.alResolver` es una función que se ejecuta cuando la decisión
+                 * ya está tomada (había borrador y se eligió, o no había ninguno).
+                 */
+                iniciar: function (opts) {
+                    opts = opts || {};
+                    edicion = !!opts.edicion;
+                    alResolver = typeof opts.alResolver === 'function' ? opts.alResolver : null;
+                    clave = 'borrador-cot-' + (opts.folio ? String(opts.folio) : 'nuevo');
+                    const b = leer();
+                    if (!b || sinTrabajo(b.quote)) {
+                        if (b) AppCache.remove(clave);
+                        activar();
+                        return;
+                    }
+                    abrir(b);
+                },
+                programar: programar,
+                volcar: volcar,
+                /** La cotización ya está en Sheets: el borrador local sobra. */
+                limpiar: function (folio) {
+                    activo = false;
+                    clearTimeout(temporizador);
+                    temporizador = null;
+                    if (!hayAlmacen()) return;
+                    AppCache.remove(clave);
+                    if (folio) AppCache.remove('borrador-cot-' + folio);
+                    guardadoEn = 0;
+                    pintarChip('oculto');
+                }
+            };
+        })();
+
+        /**
+         * =====================================================================
+         * PUENTE CON LA EXTENSIÓN "Ventel Extractor de Bolsa"
+         * =====================================================================
+         * Cuando el asesor pulsa "Cotizar" en la extensión, su bolsa queda
+         * esperando en el almacenamiento de la extensión y se abre esta pantalla.
+         * Aquí no se lee ese almacenamiento —una página web no puede—: se pregunta
+         * en voz alta y el puente de la extensión (bridge.js), que está inyectado
+         * en este mismo marco, responde con la bolsa.
+         *
+         * Por qué se pregunta SIEMPRE, y no solo con un ?bolsa=1 en la URL:
+         * entre el clic en la extensión y esta pantalla puede haberse cruzado el
+         * inicio de sesión, y un parámetro no sobrevive a ese rodeo con la certeza
+         * que hace falta. Preguntar es gratis: si no hay extensión, si no hay bolsa
+         * o si la que hay ya caducó, nadie contesta y la pantalla sigue como si
+         * nada. Una bolsa se entrega una sola vez y caduca a los 15 minutos, así
+         * que tampoco puede aparecer sola dos días después.
+         *
+         * La pregunta NO se lanza hasta que el borrador está resuelto: si no, los
+         * artículos entrarían en un formulario que el asesor todavía está a punto
+         * de reemplazar por su borrador.
+         */
+        const BolsaExtension = (function () {
+            // El marco de Apps Script tiene origen propio; si algún día fuera opaco
+            // ('null'), '*' sigue siendo seguro porque este mensaje no lleva datos:
+            // es solo "¿hay algo para mí?".
+            const ORIGEN = (location.origin && location.origin !== 'null') ? location.origin : '*';
+            const MAX_INTENTOS = 10;
+            const ESPERA_MS = 300;
+
+            let intentos = 0;
+            let temporizador = null;
+            let terminado = false;
+
+            function enviar(mensaje) {
+                try {
+                    window.postMessage(Object.assign({ source: 'ventel-cotizador' }, mensaje), ORIGEN);
+                } catch (e) { /* sin puente, no pasa nada */ }
+            }
+
+            function parar() {
+                terminado = true;
+                if (temporizador) { clearTimeout(temporizador); temporizador = null; }
+            }
+
+            /**
+             * Se insiste unas cuantas veces porque el puente puede tardar un
+             * instante en quedar escuchando. Tres segundos y se deja de preguntar:
+             * lo normal es que no haya extensión instalada.
+             */
+            function preguntar() {
+                if (terminado) return;
+                enviar({ type: 'VENTEL_BOLSA_PIDE' });
+                intentos++;
+                if (intentos >= MAX_INTENTOS) { parar(); return; }
+                temporizador = setTimeout(preguntar, ESPERA_MS);
+            }
+
+            function recibir(bolsa) {
+                parar();
+                if (!bolsa || !Array.isArray(bolsa.products) || bolsa.products.length === 0) return;
+
+                const resumen = importarProductos(bolsa);
+                // La bolsa ya está en el formulario: que la extensión la olvide, para
+                // que no reaparezca en la siguiente cotización.
+                enviar({ type: 'VENTEL_BOLSA_IMPORTADA' });
+                // Lo importado cuenta como trabajo: si el asesor se va ahora, el
+                // borrador ya tiene los artículos.
+                Borrador.programar();
+
+                showGeneralMessage(resumen + ' Solo falta el nombre, el correo y el teléfono del cliente.', false);
+
+                const cliente = document.getElementById('client-name');
+                if (cliente) {
+                    try { cliente.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+                    cliente.focus();
+                }
+            }
+
+            window.addEventListener('message', function (ev) {
+                // Solo se escucha a este mismo marco, y solo al puente.
+                if (ev.source !== window) return;
+                const d = ev.data;
+                if (!d || typeof d !== 'object' || d.source !== 'ventel-extension') return;
+
+                if (d.type === 'VENTEL_BOLSA_ENTREGA') recibir(d.payload);
+                else if (d.type === 'VENTEL_BOLSA_VACIA') parar();
+            }, false);
+
+            return { pedir: preguntar };
+        })();
 
         // --- Modal de importación ---
         function openImportModal() {
@@ -666,7 +1228,9 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            if (!requireSession()) return;
+            // Se dice el nombre de la pantalla para que el login devuelva aquí: quien
+            // llega desde la extensión con su bolsa no puede acabar en el panel.
+            if (!requireSession('cotizacion')) return;
 
             loadQuoteFormats();
 
@@ -683,7 +1247,22 @@
 
             if (addRowButton) addRowButton.addEventListener('click', () => addRow());
             // Volver a la pantalla de inicio que corresponde al rol del usuario.
-            if (cancelQuoteButtonTop) cancelQuoteButtonTop.addEventListener('click', () => AppUrl.goHome());
+            // Se vuelca antes de salir: cancelar NO tira el borrador, solo deja la
+            // pantalla. Al volver, el modal preguntará qué hacer con él.
+            if (cancelQuoteButtonTop) cancelQuoteButtonTop.addEventListener('click', () => { Borrador.volcar(); AppUrl.goHome(); });
+
+            // Autoguardado: un solo par de escuchas delegadas cubre también las filas
+            // que se crean después (el <tbody> se repuebla al importar y al restaurar).
+            const formContainer = document.getElementById('quote-form-container');
+            formContainer.addEventListener('input', Borrador.programar);
+            formContainer.addEventListener('change', Borrador.programar);
+
+            // Última oportunidad de escribir: cerrar la pestaña, navegar o pasar a
+            // segundo plano en móvil (donde 'pagehide' puede no llegar a dispararse).
+            window.addEventListener('pagehide', Borrador.volcar);
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'hidden') Borrador.volcar();
+            });
 
             document.getElementById('import-json-btn').addEventListener('click', openImportModal);
             document.getElementById('json-import-cancel').addEventListener('click', () => closeImportModal(true));
@@ -704,6 +1283,11 @@
                 }
                 // El loader de marca cubre el arranque; se retira con la pantalla lista.
                 if (window.VentelLoader) VentelLoader.hide();
+                // Con el formulario ya montado: ¿quedó un borrador de este asesor?
+                // Y en cuanto eso se resuelva, ¿viene alguien de la extensión con una
+                // bolsa? (Solo en cotizaciones nuevas: en una edición los artículos
+                // son los que ya están guardados en el sistema.)
+                Borrador.iniciar({ alResolver: BolsaExtension.pedir });
             }
         });
 
@@ -741,37 +1325,7 @@
 
                 setLoadingState(true, requestReviewButton, reviewButtonText, "Ir a Vista Previa", reviewSpinner);
 
-                const quoteData = {
-                    folio: currentQuoteFolioInput.value || null,
-                    advisorName: advisorNameInput.value.trim() || currentAdvisorName,
-                    advisorExt: document.getElementById('advisor-ext').value.trim(),
-                    advisorEmail: currentUserEmail,
-                    clientName: clientName,
-                    clientEmail: document.getElementById('client-email').value.trim(),
-                    clientPhone: document.getElementById('client-phone').value.trim(),
-                    products: [],
-                    observations: document.getElementById('observations').value.trim(),
-                    summarySubtotal: parseCurrency(document.getElementById('summary-subtotal').textContent),
-                    summaryVat: parseCurrency(document.getElementById('summary-vat').textContent),
-                    summaryTotal: parseCurrency(document.getElementById('summary-total').textContent),
-                    // Se lee el radio marcado en el momento de guardar, no una variable que
-                    // pudo quedarse atrás si el catálogo cargó tarde.
-                    format: (document.querySelector('input[name="quote-format"]:checked') || {}).value || selectedFormatId,
-                    status: "Borrador Vista Previa"
-                };
-                productRowsContainer.querySelectorAll('.product-row').forEach(row => {
-                    quoteData.products.push({
-                        sku: row.querySelector('.sku').value.trim(),
-                        imageUrl: row.getAttribute('data-image-url') || '',
-                        quantity: parseInt(row.querySelector('.quantity').value) || 0,
-                        description: row.querySelector('.description').value.trim(),
-                        unitPrice: parseFloat(row.querySelector('.unit-price').value) || 0,
-                        costPaymentUnique: parseFloat(row.querySelector('.cost-payment-unique').value) || 0,
-                        discountPublicPercent: parseFloat(row.querySelector('.discount-public-percent').value) || 0,
-                        additionalDiscountApplied: row.querySelector('.additional-discount-applied').value,
-                        additionalDiscountPercent: parseFloat(row.querySelector('.additional-discount-percent').value) || 0
-                    });
-                });
+                const quoteData = collectQuoteData();
 
                 google.script.run
                     .withSuccessHandler(function(response) {
@@ -793,6 +1347,11 @@
                             // bloqueaba la navegación y por eso "no redirigía" pese a que el
                             // folio ya se había guardado en Sheets.
                             stashPreviewData(response.folio, quoteData);
+
+                            // La cotización ya vive en Sheets: el borrador local dejó de
+                            // ser trabajo en riesgo. Si no se borrara aquí, la siguiente
+                            // cotización nueva arrancaría ofreciendo la anterior.
+                            Borrador.limpiar(response.folio);
 
                             navigateToPage('cotizado_preview', { folio: response.folio });
                         } else {
@@ -912,6 +1471,21 @@
                 return;
             }
 
+            const resumen = importarProductos(data);
+            closeImportModal(true);
+            showGeneralMessage(resumen, false);
+        }
+
+        /**
+         * Mete en la tabla los productos de un JSON de la extensión y devuelve el
+         * resumen en texto de lo que hizo.
+         *
+         * NO valida el JSON: de eso se encarga quien lo trae, porque cada camino
+         * reporta el error en su sitio —el modal en su propia línea roja y el puente
+         * de la extensión en la barra de mensajes—. Aquí solo se pinta la tabla, que
+         * es lo único que los dos comparten.
+         */
+        function importarProductos(data) {
             // Limpiar filas existentes vacías (sin SKU ni descripción)
             const existingRows = productRowsContainer.querySelectorAll('.product-row');
             existingRows.forEach(row => {
@@ -941,6 +1515,9 @@
                 newRow.querySelector('.description').value = product.description || '';
                 newRow.querySelector('.unit-price').value = product.unitPrice || 0;
                 newRow.setAttribute('data-image-url', product.imageUrl || '');
+                // La extensión manda 'productUrl' desde la v1.2; los JSON viejos no lo
+                // traen y la fila simplemente se queda sin enlace (no es un error).
+                newRow.setAttribute('data-product-url', product.productUrl || '');
 
                 if (product.costPaymentUnique && product.costPaymentUnique > 0) {
                     newRow.querySelector('.cost-payment-unique').value = product.costPaymentUnique;
@@ -963,8 +1540,6 @@
             calculateTotals();
             AppMotion.staggerRows(newRows);
 
-            closeImportModal(true);
-
             // Se reporta cómo se interpretó el vendedor: si el JSON no trae 'soldBy', la regla
             // del proveedor externo no puede aplicarse y hay que saberlo, no adivinarlo.
             let resumen = '✅ ' + data.products.length + ' producto(s) importados desde la extensión.';
@@ -974,7 +1549,7 @@
             if (sinVendedor > 0) {
                 resumen += ` ⚠️ ${sinVendedor} sin el campo "soldBy" en el JSON: no se pudo saber quién los vende y se respetó el descuento tal como venía.`;
             }
-            showGeneralMessage(resumen, false);
+            return resumen;
         }
     </script>
 

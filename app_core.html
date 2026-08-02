@@ -100,12 +100,15 @@
     'cotizado_preview':    'la vista previa',
     'cotizacion':          'la cotización',
     'consulta_cotizacion': 'la consulta',
+    'revision_cotizacion': 'la revisión de la cotización',
     'correoventel':        'el envío al cliente',
     'correo_cliente':      'los correos a clientes',
     'dashboard':           'el panel',
     'inicio_avanzado':     'el panel avanzado',
     'anuncios':            'el constructor de anuncios',
     'login':               'el inicio de sesión',
+    'registro':            'la creación de cuenta',
+    'recuperar':           'la recuperación de contraseña',
     'portal':              'el portal'
   };
 
@@ -125,6 +128,363 @@
     } catch (e) {}
     return true;
   }
+
+  /**
+   * ===========================================================================
+   * AVISO DE RECUPERACIÓN DE NAVEGACIÓN
+   * ===========================================================================
+   * Lo que ve el asesor cuando el navegador NO cambió de pantalla por su cuenta.
+   * No es un error del sistema: es un límite de Chrome (un iframe de otro origen
+   * solo puede navegar la ventana superior mientras dura la activación del clic),
+   * así que el aviso no se disculpa ni alarma — le da al asesor el único gesto
+   * que sí funciona: un enlace, cuyo clic es una activación nueva.
+   *
+   * Reglas de diseño:
+   *   · Se pinta con los MISMOS tokens del tema (--surface/--ink/--line/--brand),
+   *     así que hereda los 3 temas (aurora/slate/carbon) sin código extra.
+   *   · Es AUTÓNOMO: el Portal (Index/Promociones) incluye app_core pero no
+   *     app_icons, app_motion ni app_theme. Por eso los SVG van en línea, cada
+   *     token lleva respaldo y la animación degrada a CSS si no hay GSAP.
+   *   · Nunca sale impreso: los documentos de cotización se imprimen desde estas
+   *     mismas pantallas.
+   */
+  const NavAviso = (function () {
+    const ID = 'ventel-nav-fallback';
+    const ID_CSS = 'ventel-nav-fallback-estilos';
+
+    let anclaje = null;    // contenedor fijo que centra (no se anima)
+    let tarjeta = null;    // la superficie que sí se anima
+    let escalaTimer = null;
+    let alTeclado = null;
+    let estado = null;     // { url, page, variante }
+
+    function reducido() {
+      try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+      catch (e) { return false; }
+    }
+    function conGsap() { return typeof window.gsap !== 'undefined' && !reducido(); }
+
+    // Mismo lenguaje que app_icons: lienzo 24×24, sin relleno, trazo 1.6, currentColor.
+    function icono(d) {
+      return '<svg class="vnf-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+    }
+    const D_FLECHA  = '<path d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>';
+    const D_ALERTA  = '<path d="M12 9v3.75m0 3.375h.007M10.34 3.94 1.98 18a1.75 1.75 0 0 0 1.51 2.62h17.02A1.75 1.75 0 0 0 22.02 18L13.66 3.94a1.75 1.75 0 0 0-3.02 0Z"/>';
+    const D_RECARGA = '<path d="M16.02 9.35h5m-18.04 10.3v-5m0 0h5m-5 0 3.18 3.18a8.25 8.25 0 0 0 13.8-3.7M4.03 9.87a8.25 8.25 0 0 1 13.8-3.7l3.19 3.18m0-5v5"/>';
+    const D_ENLACE  = '<path d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"/>';
+    const D_CORREO  = '<path d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H4.5a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5H4.5A2.25 2.25 0 0 0 2.25 6.75m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>';
+    const D_CERRAR  = '<path d="M6 18 18 6M6 6l12 12"/>';
+    const D_CHECK   = '<path d="M4.5 12.75l6 6 9-13.5"/>';
+
+    function estilos() {
+      if (document.getElementById(ID_CSS)) return;
+      const s = document.createElement('style');
+      s.id = ID_CSS;
+      s.textContent =
+        '#' + ID + '{position:fixed;left:0;right:0;bottom:0;z-index:10050;display:flex;justify-content:center;' +
+        'padding:0 1rem calc(1rem + env(safe-area-inset-bottom,0px));pointer-events:none;}' +
+
+        /* El aviso también sale en el Portal (Index/Promociones), que no carga el
+           preflight de app_tailwind. Sin esto los botones heredan content-box y el
+           primario crece 20px más que el secundario: la fila queda despareja. */
+        '#' + ID + ',#' + ID + ' *,#' + ID + ' *::before,#' + ID + ' *::after{box-sizing:border-box;}' +
+
+        '#' + ID + ' .vnf-card{pointer-events:auto;width:min(37rem,100%);display:grid;' +
+        'grid-template-columns:auto minmax(0,1fr) auto;' +
+        'grid-template-areas:"chip texto cerrar" "acciones acciones acciones";' +
+        'gap:1rem;padding:1.15rem;background:var(--surface,#fff);color:var(--ink,#1B2330);' +
+        'border:1px solid var(--line,#E4E9F0);border-radius:16px;' +
+        'box-shadow:var(--sh-lg,0 30px 60px -24px rgba(27,35,48,.26));' +
+        "font-family:var(--f-ui,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif);}" +
+
+        /* Chip: el color es semántico (marca = solo falta abrir; ámbar = algo falló),
+           pero el icono y el texto dicen lo mismo sin depender del color. */
+        '#' + ID + ' .vnf-chip{grid-area:chip;width:2.5rem;height:2.5rem;border-radius:12px;flex:none;' +
+        'display:inline-flex;align-items:center;justify-content:center;}' +
+        '#' + ID + ' .vnf-chip-marca{background:var(--brand-tint,#FDE7F4);color:var(--brand,#E10098);}' +
+        '#' + ID + ' .vnf-chip-aviso{background:var(--warn-bg,#FDF1E0);color:var(--warn,#B45309);}' +
+        '#' + ID + ' .vnf-ico{width:1.25rem;height:1.25rem;flex:none;}' +
+
+        '#' + ID + ' .vnf-texto{grid-area:texto;min-width:0;}' +
+        '#' + ID + ' .vnf-titulo{margin:0;font-size:.95rem;font-weight:600;line-height:1.35;' +
+        'letter-spacing:-.01em;color:var(--ink,#1B2330);}' +
+        '#' + ID + ' .vnf-desc{margin:.2rem 0 0;font-size:.85rem;line-height:1.5;max-width:52ch;' +
+        'color:var(--ink-soft,#5C6B7E);}' +
+        '#' + ID + ' .vnf-pista{margin:.5rem 0 0;font-size:.8rem;line-height:1.45;max-width:52ch;' +
+        'color:var(--warn,#B45309);}' +
+        '#' + ID + ' .vnf-pista[hidden]{display:none;}' +
+
+        '#' + ID + ' .vnf-x{grid-area:cerrar;align-self:start;width:2rem;height:2rem;border-radius:8px;' +
+        'display:inline-flex;align-items:center;justify-content:center;flex:none;cursor:pointer;' +
+        'background:transparent;border:0;color:var(--ink-faint,#94A1B2);padding:0;' +
+        'transition:background .15s ease,color .15s ease;}' +
+        '#' + ID + ' .vnf-x:hover{background:var(--surface-2,#F4F7FA);color:var(--ink,#1B2330);}' +
+
+        '#' + ID + ' .vnf-acciones{grid-area:acciones;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;}' +
+
+        /* Botones: misma gramática que .v-btn del tema, pero sin depender de él. */
+        '#' + ID + ' .vnf-btn{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;' +
+        'min-height:2.5rem;padding:.55rem 1rem;border-radius:10px;border:1px solid transparent;' +
+        'font-size:.85rem;font-weight:600;line-height:1;text-decoration:none;cursor:pointer;' +
+        'font-family:inherit;transition:transform .15s cubic-bezier(.32,.72,0,1),box-shadow .15s ease,' +
+        'background .15s ease,color .15s ease,border-color .15s ease;}' +
+        '#' + ID + ' .vnf-btn:hover{transform:translateY(-1px);}' +
+        '#' + ID + ' .vnf-btn:active{transform:translateY(0) scale(.98);}' +
+        '#' + ID + ' .vnf-btn:focus-visible{outline:none;box-shadow:var(--ring,0 0 0 4px rgba(225,0,152,.16));}' +
+        '#' + ID + ' .vnf-btn-primario{background:var(--brand,#E10098);color:#fff;' +
+        'box-shadow:0 6px 14px -8px rgba(225,0,152,.55);}' +
+        '#' + ID + ' .vnf-btn-primario:hover{box-shadow:0 10px 24px -10px rgba(225,0,152,.45);}' +
+        '#' + ID + ' .vnf-btn-suave{background:var(--surface,#fff);color:var(--ink-soft,#5C6B7E);' +
+        'border-color:var(--line,#E4E9F0);}' +
+        '#' + ID + ' .vnf-btn-suave:hover{color:var(--ink,#1B2330);border-color:var(--brand-soft,#FBD0E9);}' +
+        '#' + ID + ' .vnf-btn-suave[data-hecho="1"]{color:var(--ok,#0E7A4F);border-color:var(--ok,#0E7A4F);}' +
+        '#' + ID + ' .vnf-btn-suave[data-hecho="0"]{color:var(--warn,#B45309);border-color:var(--warn,#B45309);}' +
+        '#' + ID + ' .vnf-pista-url{word-break:break-all;user-select:all;}' +
+        '#' + ID + ' .vnf-btn[hidden]{display:none;}' +
+
+        /* Sin GSAP la entrada/salida la hace CSS: mismas propiedades (transform+opacity). */
+        '#' + ID + ' .vnf-card{opacity:0;transform:translateY(18px);' +
+        'transition:opacity .28s ease,transform .28s cubic-bezier(.2,.8,.2,1);}' +
+        '#' + ID + '.vnf-visible .vnf-card{opacity:1;transform:none;}' +
+
+        /* En px, como el resto del proyecto: verificado en navegador, una condición
+           en rem/em no llega a evaluarse aquí y el layout angosto nunca entraba. */
+        '@media (max-width: 480px){' +
+        '#' + ID + ' .vnf-card{grid-template-columns:auto minmax(0,1fr);' +
+        'grid-template-areas:"chip texto" "acciones acciones";gap:.85rem;}' +
+        '#' + ID + ' .vnf-x{position:absolute;top:.55rem;right:.55rem;}' +
+        '#' + ID + ' .vnf-card{position:relative;}' +
+        '#' + ID + ' .vnf-acciones .vnf-btn{flex:1 1 auto;}}' +
+
+        '@media (prefers-reduced-motion:reduce){' +
+        '#' + ID + ' .vnf-card,#' + ID + ' .vnf-btn{transition-duration:.01ms;}' +
+        '#' + ID + ' .vnf-btn:hover{transform:none;}}' +
+
+        '@media print{#' + ID + '{display:none !important;}}';
+      document.head.appendChild(s);
+    }
+
+    /** Texto según a dónde íbamos y por qué no llegamos. */
+    function copia(page, variante) {
+      const destino = NOMBRES_PAGINA[page] || 'la siguiente pantalla';
+      if (variante === 'sin-url') {
+        return {
+          titulo: 'No pudimos ubicar la aplicación',
+          desc: 'El sistema no recibió su propia dirección, así que no puede cambiar de pantalla. ' +
+                'Recarga la página: casi siempre se resuelve con eso.',
+          accion: 'Recargar la página'
+        };
+      }
+      return {
+        // Solo la vista previa llega aquí SIEMPRE con la cotización ya escrita en
+        // Sheets. En el resto no se puede prometer nada sobre un guardado.
+        titulo: page === 'cotizado_preview' ? 'Tu cotización ya se guardó' : 'Falta un toque para continuar',
+        desc: 'El navegador no cambió de pantalla por su cuenta —pasa cuando la respuesta tarda unos ' +
+              'segundos—. Abre ' + destino + ' desde aquí y sigues donde te quedaste.',
+        accion: 'Abrir ' + destino
+      };
+    }
+
+    function construir() {
+      estilos();
+      anclaje = document.createElement('div');
+      anclaje.id = ID;
+      anclaje.className = 'no-print';
+      anclaje.innerHTML =
+        '<div class="vnf-card" role="alert" aria-labelledby="vnf-titulo" aria-describedby="vnf-desc">' +
+          '<span class="vnf-chip vnf-chip-marca" data-chip></span>' +
+          '<div class="vnf-texto">' +
+            '<p class="vnf-titulo" id="vnf-titulo" data-titulo></p>' +
+            '<p class="vnf-desc" id="vnf-desc" data-desc></p>' +
+            '<p class="vnf-pista" data-pista hidden></p>' +
+          '</div>' +
+          '<button type="button" class="vnf-x" data-cerrar aria-label="Cerrar aviso">' + icono(D_CERRAR) + '</button>' +
+          '<div class="vnf-acciones">' +
+            '<a class="vnf-btn vnf-btn-primario" data-ir target="_top" rel="noopener"></a>' +
+            '<button type="button" class="vnf-btn vnf-btn-suave" data-copiar>' + icono(D_ENLACE) + '<span>Copiar enlace</span></button>' +
+            '<button type="button" class="vnf-btn vnf-btn-suave" data-soporte hidden>' + icono(D_CORREO) + '<span>Escribir a soporte</span></button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(anclaje);
+      tarjeta = anclaje.querySelector('.vnf-card');
+
+      anclaje.querySelector('[data-cerrar]').addEventListener('click', ocultar);
+      anclaje.querySelector('[data-copiar]').addEventListener('click', copiar);
+      anclaje.querySelector('[data-soporte]').addEventListener('click', function () {
+        if (window.AppSupport && AppSupport.open) AppSupport.open();
+      });
+
+      // Si el enlace tampoco abre nada, en unos segundos escalamos la ayuda en vez
+      // de dejar al asesor mirando el mismo aviso sin saber qué más hacer.
+      anclaje.querySelector('[data-ir]').addEventListener('click', function () {
+        if (escalaTimer) clearTimeout(escalaTimer);
+        escalaTimer = setTimeout(escalar, 2600);
+      });
+
+      alTeclado = function (e) { if (e.key === 'Escape') ocultar(); };
+      document.addEventListener('keydown', alTeclado);
+    }
+
+    function copiar() {
+      const btn = anclaje.querySelector('[data-copiar]');
+      const rotulo = btn.querySelector('span');
+      // La respuesta la da el BOTÓN, no un toast: en el Portal no existe AppMotion y
+      // un fallo silencioso deja al asesor pegando un portapapeles vacío.
+      const listo = function (ok) {
+        btn.dataset.hecho = ok ? '1' : '0';
+        btn.querySelector('svg').outerHTML = icono(ok ? D_CHECK : D_ALERTA);
+        rotulo.textContent = ok ? 'Enlace copiado' : 'Cópialo a mano';
+        if (!ok) {
+          // Última salida: se deja el enlace seleccionado para copiarlo con Ctrl+C.
+          const pista = anclaje.querySelector('[data-pista]');
+          pista.textContent = 'No pudimos usar el portapapeles. Copia este enlace: ' + (estado && estado.url ? estado.url : '');
+          pista.classList.add('vnf-pista-url');
+          pista.hidden = false;
+          try {
+            const rango = document.createRange();
+            rango.selectNodeContents(pista);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(rango);
+          } catch (e) {}
+        }
+        if (ok && window.AppMotion && AppMotion.pop) AppMotion.pop(btn);
+        setTimeout(function () {
+          if (!btn.isConnected) return;
+          btn.removeAttribute('data-hecho');
+          btn.querySelector('svg').outerHTML = icono(D_ENLACE);
+          rotulo.textContent = 'Copiar enlace';
+        }, ok ? 2600 : 6000);
+      };
+      const url = estado && estado.url;
+      if (!url) return listo(false);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () { listo(true); }, function () { listo(copiaRespaldo(url)); });
+      } else {
+        listo(copiaRespaldo(url));
+      }
+    }
+
+    function copiaRespaldo(texto) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = texto; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return !!ok;
+      } catch (e) { return false; }
+    }
+
+    /** El enlace no bastó: se ofrece la salida manual y el contacto con soporte. */
+    function escalar() {
+      if (!anclaje) return;
+      const pista = anclaje.querySelector('[data-pista]');
+      // Si ya se está mostrando el enlace a mano (falló el portapapeles), ese texto
+      // es más útil que este: no se pisa.
+      if (!pista.classList.contains('vnf-pista-url')) {
+        pista.textContent = '¿Sigue sin abrir? Copia el enlace y pégalo en una pestaña nueva del navegador.';
+        pista.hidden = false;
+      }
+      if (window.AppSupport && AppSupport.open) anclaje.querySelector('[data-soporte]').hidden = false;
+      if (conGsap()) gsap.fromTo(tarjeta, { x: -6 }, { x: 0, duration: .5, ease: 'elastic.out(1,.3)', clearProps: 'x' });
+    }
+
+    function mostrar(opts) {
+      const url = opts.url || '';
+      const page = opts.page || '';
+      const variante = opts.variante || 'nav';
+      estado = { url: url, page: page, variante: variante };
+
+      // El loader tapa la pantalla: si el aviso aparece, la espera terminó.
+      try { if (window.VentelLoader) VentelLoader.hide(); } catch (e) {}
+
+      const yaEstaba = !!anclaje;
+      if (!yaEstaba) construir();
+
+      const txt = copia(page, variante);
+      const chip = anclaje.querySelector('[data-chip]');
+      chip.className = 'vnf-chip ' + (variante === 'sin-url' ? 'vnf-chip-aviso' : 'vnf-chip-marca');
+      chip.innerHTML = icono(variante === 'sin-url' ? D_ALERTA : D_FLECHA);
+      anclaje.querySelector('[data-titulo]').textContent = txt.titulo;
+      anclaje.querySelector('[data-desc]').textContent = txt.desc;
+
+      const ir = anclaje.querySelector('[data-ir]');
+      ir.innerHTML = icono(variante === 'sin-url' ? D_RECARGA : D_FLECHA) + '<span>' + txt.accion + '</span>';
+      if (variante === 'sin-url') {
+        ir.removeAttribute('href');
+        ir.setAttribute('role', 'button');
+        ir.setAttribute('tabindex', '0');
+        ir.onclick = function () { try { window.top.location.reload(); } catch (e) { location.reload(); } };
+      } else {
+        ir.setAttribute('href', url);
+        ir.removeAttribute('role');
+        ir.removeAttribute('tabindex');
+        ir.onclick = null;
+      }
+      anclaje.querySelector('[data-copiar]').hidden = (variante === 'sin-url');
+
+      if (yaEstaba) return;   // ya visible: solo se actualizó el contenido
+
+      if (conGsap()) {
+        anclaje.classList.add('vnf-visible');
+        gsap.set(tarjeta, { clearProps: 'opacity,transform' });
+        const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+        tl.fromTo(tarjeta, { opacity: 0, y: 26, scale: .97 },
+                           { opacity: 1, y: 0, scale: 1, duration: .45, clearProps: 'transform' })
+          .from(chip, { scale: .5, duration: .45, ease: 'back.out(2.2)', clearProps: 'transform' }, '-=.3')
+          .from(anclaje.querySelectorAll('.vnf-acciones .vnf-btn:not([hidden])'),
+                { opacity: 0, y: 8, duration: .3, stagger: .06, clearProps: 'transform' }, '-=.28');
+      } else {
+        // requestAnimationFrame para que la transición CSS tenga un estado inicial.
+        requestAnimationFrame(function () { if (anclaje) anclaje.classList.add('vnf-visible'); });
+      }
+
+      // El foco se mueve al final de la entrada: antes cortaría el anuncio del lector.
+      setTimeout(function () {
+        try { anclaje.querySelector('[data-ir]').focus({ preventScroll: true }); } catch (e) {}
+      }, conGsap() ? 460 : 300);
+    }
+
+    function ocultar() {
+      if (!anclaje) return;
+      const fuera = anclaje;
+      const card = tarjeta;
+      if (escalaTimer) { clearTimeout(escalaTimer); escalaTimer = null; }
+      if (alTeclado) { document.removeEventListener('keydown', alTeclado); alTeclado = null; }
+      anclaje = null; tarjeta = null; estado = null;
+
+      const quitar = function () { if (fuera.parentNode) fuera.parentNode.removeChild(fuera); };
+      if (conGsap()) {
+        gsap.to(card, { opacity: 0, y: 14, scale: .98, duration: .22, ease: 'power1.in', onComplete: quitar });
+      } else {
+        fuera.classList.remove('vnf-visible');
+        setTimeout(quitar, 300);
+      }
+    }
+
+    /**
+     * Programa el aviso, pero lo CANCELA si la página realmente se está yendo.
+     * Sin esto el temporizador dispara aunque la navegación sí haya ocurrido y el
+     * asesor ve un aviso de fallo un instante antes de que cargue la pantalla buena.
+     */
+    function programar(ms, fn) {
+      let t = setTimeout(function () { limpiar(); fn(); }, ms);
+      function limpiar() {
+        window.removeEventListener('pagehide', cancelar);
+        window.removeEventListener('beforeunload', cancelar);
+        document.removeEventListener('visibilitychange', alOcultarse);
+      }
+      function cancelar() { if (t) { clearTimeout(t); t = null; } limpiar(); }
+      function alOcultarse() { if (document.visibilityState === 'hidden') cancelar(); }
+      window.addEventListener('pagehide', cancelar);
+      window.addEventListener('beforeunload', cancelar);
+      document.addEventListener('visibilitychange', alOcultarse);
+    }
+
+    return { mostrar: mostrar, ocultar: ocultar, programar: programar, visible: function () { return !!anclaje; } };
+  })();
 
   const AppUrl = {
     base: cfg.baseUrl || '',
@@ -156,7 +516,10 @@
     go: function (page, params) {
       const url = this.build(page, params);
       if (!url) {
-        alert('No se pudo determinar la URL de la aplicación. Recarga la página e intenta de nuevo.');
+        // Antes esto era un alert() del navegador: bloquea el iframe, no explica
+        // nada y al cerrarlo no deja ninguna salida. El aviso sí ofrece la acción
+        // que resuelve (recargar) sin quitarle el control al asesor.
+        NavAviso.mostrar({ url: '', page: page, variante: 'sin-url' });
         return false;
       }
 
@@ -168,58 +531,33 @@
       // Continuidad visual: el loader de marca cubre la transición entre vistas
       // (solo si la pantalla incluye LoaderPartial; si no, navegación normal).
       try { if (window.VentelLoader) VentelLoader.show(); } catch (e) {}
-      try { window.top.location.href = url; } catch (e) {}
+      let fallo = null;
+      try { window.top.location.href = url; } catch (e) { fallo = e; }
+
+      // Si ni siquiera se pudo tocar window.top, no hay nada que esperar: el aviso
+      // sale ya, en vez de dejar el loader girando tres segundos para nada.
+      if (fallo) { this.mostrarEnlaceManual(url, page); return true; }
 
       // Red de seguridad para el caso límite: la activación estaba por vencer y el
-      // navegador la descartó de todos modos. Si la navegación sí ocurrió, esta
-      // página se descarga antes de que el temporizador dispare.
+      // navegador la descartó de todos modos. El temporizador se cancela solo si la
+      // navegación sí ocurrió (la página empieza a descargarse), así que ya no se
+      // asoma el aviso un instante antes de que cargue la pantalla correcta.
       const self = this;
-      setTimeout(function () { self.mostrarEnlaceManual(url, page); }, 3000);
+      NavAviso.programar(3000, function () { self.mostrarEnlaceManual(url, page); });
       return true;
     },
 
     /**
-     * Muestra un aviso fijo con el enlace directo a la pantalla destino. Se pinta
-     * con el DOM (no innerHTML) y se excluye de la impresión: nunca debe aparecer
-     * en un documento de cotización.
+     * Aviso de recuperación con el enlace directo a la pantalla destino.
+     * La construcción vive en NavAviso (arriba): aquí solo queda la puerta de
+     * entrada que ya usaban las pantallas.
      */
     mostrarEnlaceManual: function (url, page) {
-      if (document.getElementById('ventel-nav-fallback')) return;
-      try { if (window.VentelLoader) VentelLoader.hide(); } catch (e) {}
-
-      const caja = document.createElement('div');
-      caja.id = 'ventel-nav-fallback';
-      caja.className = 'no-print';
-      caja.setAttribute('role', 'alert');
-      caja.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);' +
-        'z-index:2147483000;max-width:min(560px,calc(100vw - 32px));display:flex;align-items:center;' +
-        'gap:16px;flex-wrap:wrap;justify-content:center;padding:16px 20px;border-radius:14px;' +
-        'background:#ffffff;border:1px solid #eadfe6;box-shadow:0 12px 32px rgba(61,43,54,.18);' +
-        'font-family:system-ui,Segoe UI,sans-serif;color:#3d2b36;line-height:1.45;font-size:14px;';
-
-      // El aviso se llama a esta función también sin que el asesor haya hecho clic
-      // (p. ej. la guardia de sesión al abrir la pantalla), así que el texto no
-      // puede prometer nada sobre un guardado. Solo la vista previa llega aquí
-      // siempre con la cotización ya escrita en Sheets, y ahí sí tranquiliza decirlo.
-      const texto = document.createElement('span');
-      texto.textContent = (page === 'cotizado_preview' ? 'Tu cotización ya se guardó. ' : '') +
-        'El navegador no cambió de pantalla por su cuenta: toca para abrir ' +
-        (NOMBRES_PAGINA[page] || 'la siguiente pantalla') + '.';
-      texto.style.cssText = 'flex:1 1 240px;min-width:200px;';
-
-      const enlace = document.createElement('a');
-      enlace.href = url;
-      enlace.target = '_top';
-      enlace.rel = 'noopener';
-      enlace.textContent = 'Abrir ' + (NOMBRES_PAGINA[page] || 'la pantalla');
-      enlace.style.cssText = 'flex:0 0 auto;background:#E10098;color:#fff;text-decoration:none;' +
-        'padding:10px 18px;border-radius:10px;font-weight:600;white-space:nowrap;';
-
-      caja.appendChild(texto);
-      caja.appendChild(enlace);
-      document.body.appendChild(caja);
-      try { enlace.focus({ preventScroll: true }); } catch (e) {}
+      NavAviso.mostrar({ url: url, page: page, variante: 'nav' });
     },
+
+    /** Cierra el aviso de navegación si está visible (útil al reintentar por otra vía). */
+    ocultarEnlaceManual: function () { NavAviso.ocultar(); },
 
     /**
      * Copia al portapapeles un enlace directo a una vista (deep-link) para
@@ -247,6 +585,32 @@
     goHome: function (params) { return this.go(this.homePage(), params); },
 
     /**
+     * Pantallas a las que el login puede devolver a alguien (?next=...).
+     *
+     * `next` NO es una URL: es la CLAVE de una pantalla, y solo vale si está en
+     * esta lista. Aceptar una URL —por más que se validara el dominio— convertiría
+     * el inicio de sesión en un redirector: bastaría repartir un enlace con
+     * ?next=<sitio que copia el login> para que un asesor acabe tecleando su
+     * contraseña en otra parte. Con una clave, el peor caso posible es abrir otra
+     * pantalla del propio sistema. Las de autenticación quedan fuera para que no
+     * se pueda encadenar login → login.
+     */
+    PAGINAS_TRAS_LOGIN: [
+      'cotizacion', 'cotizado_preview', 'consulta_cotizacion', 'revision_cotizacion',
+      'correoventel', 'correo_cliente', 'anuncios', 'dashboard', 'inicio_avanzado'
+    ],
+
+    /**
+     * Va a la pantalla que se pidió antes de que el login se interpusiera, o al
+     * panel del rol si no había ninguna (o si la que venía no está permitida).
+     */
+    goNextOrHome: function () {
+      const next = this.param('next');
+      if (next && this.PAGINAS_TRAS_LOGIN.indexOf(next) !== -1) return this.go(next);
+      return this.goHome();
+    },
+
+    /**
      * Lee un parámetro: primero el inyectado por el servidor al renderizar
      * (fuente más confiable dentro del sandbox), luego la URL del iframe.
      */
@@ -259,11 +623,17 @@
   /** Pantallas que exigieron sesión: solo esas se expulsan si otra pestaña cierra sesión. */
   let sesionExigida = false;
 
-  /** Redirige a login cuando no hay sesión. Devuelve true si se puede continuar. */
-  function requireSession() {
+  /**
+   * Redirige a login cuando no hay sesión. Devuelve true si se puede continuar.
+   *
+   * La pantalla puede decir cómo se llama —requireSession('cotizacion')— y
+   * entonces el login la devuelve ahí al terminar en vez de dejarla en el panel.
+   * Sin argumento se comporta igual que siempre.
+   */
+  function requireSession(paginaActual) {
     sesionExigida = true;
     if (AppSession.isLoggedIn()) return true;
-    AppUrl.go('login');
+    AppUrl.go('login', paginaActual ? { next: paginaActual } : null);
     return false;
   }
 

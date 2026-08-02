@@ -1,0 +1,225 @@
+<style>
+/**
+ * =====================================================================================
+ * ESTATUS DE REVISIÓN · fuente única de verdad visual
+ * =====================================================================================
+ * El mismo folio se ve en cinco pantallas (panel del asesor, panel de supervisión,
+ * consulta, revisión y envío de correo) y hasta ahora cada una lo pintaba con su propio
+ * mapa de colores. El problema no era la falta de color: era que "Aprobada" y "Enviada
+ * por Correo" salían las dos VERDES y "En Revisión" y "Folio Generado" las dos AMARILLAS,
+ * así que a simple vista no se distinguía lo que sí está autorizado de lo que todavía
+ * espera a alguien.
+ *
+ * Aquí cada estado tiene TRES señales independientes —color, icono y palabra— para que
+ * se lea de un vistazo, en cualquiera de los 3 temas y también si alguien no distingue
+ * el verde del rojo. El color por sí solo nunca comunica el estado.
+ *
+ * Uso:
+ *   celda.innerHTML = AppEstatus.badge(q.status);          // insignia completa
+ *   AppEstatus.info(q.status).pendiente                    // ¿espera revisión?
+ *   AppEstatus.clave('En Revisión') === 'en-revision'      // clave normalizada
+ *
+ * Los <svg> se incrustan ya resueltos (no [data-icon]) para que funcionen dentro de
+ * innerHTML de una tabla sin tener que llamar a Icons.render() después de cada pintado.
+ */
+
+.v-est {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .2rem .6rem .2rem .45rem;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: var(--fw-semibold, 600);
+  line-height: 1.4;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.v-est svg { width: .95rem; height: .95rem; flex: none; }
+.v-est::before { content: none; }   /* anula el punto de .v-badge si se combinan */
+
+/* Cada tono lleva ADEMÁS un borde propio: en pantallas con brillo alto los fondos
+   tenues se confunden entre sí, y el borde es lo que mantiene los estados separados. */
+.v-est-ok      { background: var(--ok-bg, #E5F5EE);    color: var(--ok, #0E7A4F);    border-color: color-mix(in srgb, var(--ok, #0E7A4F) 26%, transparent); }
+.v-est-warn    { background: var(--warn-bg, #FDF1E0);  color: var(--warn, #B45309);  border-color: color-mix(in srgb, var(--warn, #B45309) 30%, transparent); }
+.v-est-alert   { background: var(--alert-bg, #FDE8EC); color: var(--alert, #C81E3C); border-color: color-mix(in srgb, var(--alert, #C81E3C) 28%, transparent); }
+.v-est-info    { background: var(--info-bg, #EAF0FE);  color: var(--info, #1D4ED8);  border-color: color-mix(in srgb, var(--info, #1D4ED8) 24%, transparent); }
+.v-est-neutro  { background: var(--surface-2, #F4F7FA); color: var(--ink-soft, #5C6B7E); border-color: var(--line, #E4E9F0); }
+
+/* Navegadores sin color-mix: el borde cae al color pleno, que sigue siendo legible. */
+@supports not (color: color-mix(in srgb, red 50%, transparent)) {
+  .v-est-ok    { border-color: var(--ok, #0E7A4F); }
+  .v-est-warn  { border-color: var(--warn, #B45309); }
+  .v-est-alert { border-color: var(--alert, #C81E3C); }
+  .v-est-info  { border-color: var(--info, #1D4ED8); }
+}
+
+/* Lo que ESPERA a una persona late despacio: es la única insignia con movimiento, y
+   por eso se distingue antes de leerla. Se apaga si el sistema pide menos animación. */
+.v-est-pendiente { position: relative; }
+.v-est-pendiente svg { animation: v-est-latido 2.4s ease-in-out infinite; }
+@keyframes v-est-latido { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .v-est-pendiente svg { animation: none; } }
+
+/*
+ * TEMA CARBÓN: --ok, --warn, --alert e --info están elegidos para fondo CLARO y
+ * app_theme no los aclara. Sobre #1C2027 caen a ~2,5:1 y la insignia se vuelve ilegible.
+ * Se corrigen SOLO aquí; el token global se sigue usando como fondo en otras pantallas.
+ */
+[data-theme="carbon"] .v-est-ok     { color: #4ADE80; border-color: rgba(74,222,128,.34); }
+[data-theme="carbon"] .v-est-warn   { color: #F2B65A; border-color: rgba(242,182,90,.34); }
+[data-theme="carbon"] .v-est-alert  { color: #FCA5A5; border-color: rgba(252,165,165,.34); }
+[data-theme="carbon"] .v-est-info   { color: #93B4FF; border-color: rgba(147,180,255,.34); }
+[data-theme="carbon"] .v-est-neutro { color: #A7A2AC; }
+
+/* Fila de tabla que espera revisión: un filo de color al inicio para localizarla
+   recorriendo la columna del folio, sin tener que llegar a la de estatus. */
+.v-fila-pendiente > td:first-child { box-shadow: inset 3px 0 0 var(--warn, #B45309); }
+.v-fila-rechazada > td:first-child { box-shadow: inset 3px 0 0 var(--alert, #C81E3C); }
+</style>
+<script>
+(function () {
+  'use strict';
+
+  var I = {
+    reloj:  '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>',
+    check:  '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>',
+    equis:  '<path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>',
+    avion:  '<path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.126A59.77 59.77 0 0 1 21.485 12 59.77 59.77 0 0 1 3.27 20.876L5.999 12Zm0 0h7.5"/>',
+    hoja:   '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/>'
+  };
+
+  function svg(d) {
+    return '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" ' +
+           'stroke-width="1.8" stroke="currentColor" aria-hidden="true">' + d + '</svg>';
+  }
+
+  /**
+   * Catálogo de estados. `pendiente` es lo que decide si un folio aparece en la cola de
+   * supervisión: si nadie ha dicho ni sí ni no, sigue esperando a una persona.
+   */
+  var MAPA = {
+    'en-revision': {
+      etiqueta: 'En revisión', tono: 'warn', icono: I.reloj, pendiente: true,
+      ayuda: 'Espera a que un usuario avanzado la apruebe. No se puede enviar al cliente.'
+    },
+    'folio-generado': {
+      etiqueta: 'Sin revisar', tono: 'warn', icono: I.reloj, pendiente: true,
+      ayuda: 'Se generó el folio pero nadie ha cerrado la revisión todavía.'
+    },
+    'pendiente': {
+      etiqueta: 'Sin revisar', tono: 'warn', icono: I.reloj, pendiente: true,
+      ayuda: 'Se generó el folio pero nadie ha cerrado la revisión todavía.'
+    },
+    'aprobada': {
+      etiqueta: 'Aprobada', tono: 'ok', icono: I.check, pendiente: false,
+      ayuda: 'Revisada y autorizada. El envío por correo está desbloqueado.'
+    },
+    'autorizada': {
+      etiqueta: 'Aprobada', tono: 'ok', icono: I.check, pendiente: false,
+      ayuda: 'Revisada y autorizada. El envío por correo está desbloqueado.'
+    },
+    'rechazada': {
+      etiqueta: 'Rechazada', tono: 'alert', icono: I.equis, pendiente: false,
+      ayuda: 'La revisión la devolvió con observaciones. El asesor debe corregirla.'
+    },
+    'enviada-por-correo': {
+      etiqueta: 'Enviada', tono: 'info', icono: I.avion, pendiente: false,
+      ayuda: 'Ya salió al cliente por correo. La revisión quedó cerrada antes de enviarla.'
+    }
+  };
+
+  var DESCONOCIDO = {
+    etiqueta: '', tono: 'neutro', icono: I.hoja, pendiente: false,
+    ayuda: 'Estado no reconocido por el sistema.'
+  };
+
+  /** "En Revisión", "en revision" y "EN  REVISIÓN" son el mismo estado. */
+  function clave(s) {
+    return String(s == null ? '' : s)
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().trim().replace(/\s+/g, '-');
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  /**
+   * @param {string} estatus Valor de la columna "Estatus" de la hoja.
+   * @param {string} [revisionEstado] Valor de "RevisionEstado" si la pantalla lo tiene.
+   *        Manda sobre el estatus: "Estatus" se sobrescribe al enviar el correo y con él
+   *        se pierde el rastro de quién aprobó qué (ver Revision.gs).
+   */
+  function info(estatus, revisionEstado) {
+    var kRev = clave(revisionEstado);
+    var k = clave(estatus);
+    // Una cotización ENVIADA conserva su etiqueta de enviada: es el estado más avanzado
+    // del ciclo y decir "Aprobada" ahí escondería que el cliente ya la tiene.
+    var elegida = (k === 'enviada-por-correo') ? k : (MAPA[kRev] ? kRev : k);
+    var base = MAPA[elegida] || DESCONOCIDO;
+    return {
+      clave: elegida,
+      etiqueta: base.etiqueta || (String(estatus || '').trim() || 'Sin estatus'),
+      tono: base.tono,
+      icono: base.icono,
+      pendiente: base.pendiente,
+      ayuda: base.ayuda,
+      conocido: !!MAPA[elegida]
+    };
+  }
+
+  /**
+   * Insignia lista para innerHTML.
+   * @param {object} [opts] { titulo: mostrar la ayuda como tooltip (por defecto sí) }
+   */
+  function badge(estatus, revisionEstado, opts) {
+    var o = opts || {};
+    var d = info(estatus, revisionEstado);
+    var cls = 'v-est v-est-' + d.tono + (d.pendiente ? ' v-est-pendiente' : '');
+    var titulo = (o.titulo === false) ? '' : ' title="' + esc(d.ayuda) + '"';
+    return '<span class="' + cls + '"' + titulo + '>' + svg(d.icono) +
+           '<span>' + esc(d.etiqueta) + '</span></span>';
+  }
+
+  function esPendiente(estatus, revisionEstado) { return info(estatus, revisionEstado).pendiente; }
+  function esRechazada(estatus, revisionEstado) { return info(estatus, revisionEstado).clave === 'rechazada'; }
+
+  /** "hace 3 días" — para ordenar la cola por lo que lleva más tiempo esperando. */
+  function antiguedad(iso) {
+    if (!iso) return '';
+    var t = new Date(iso).getTime();
+    if (isNaN(t)) return '';
+    var min = Math.floor((Date.now() - t) / 60000);
+    if (min < 1)   return 'hace un momento';
+    if (min < 60)  return 'hace ' + min + ' min';
+    var h = Math.floor(min / 60);
+    if (h < 24)    return 'hace ' + h + (h === 1 ? ' hora' : ' horas');
+    var d = Math.floor(h / 24);
+    if (d < 30)    return 'hace ' + d + (d === 1 ? ' día' : ' días');
+    var m = Math.floor(d / 30);
+    return 'hace ' + m + (m === 1 ? ' mes' : ' meses');
+  }
+
+  /** Días completos esperando. Sirve para marcar lo que ya lleva demasiado. */
+  function diasEsperando(iso) {
+    if (!iso) return 0;
+    var t = new Date(iso).getTime();
+    if (isNaN(t)) return 0;
+    return Math.floor((Date.now() - t) / 86400000);
+  }
+
+  window.AppEstatus = {
+    clave: clave,
+    info: info,
+    badge: badge,
+    esPendiente: esPendiente,
+    esRechazada: esRechazada,
+    antiguedad: antiguedad,
+    diasEsperando: diasEsperando,
+    mapa: MAPA
+  };
+})();
+</script>

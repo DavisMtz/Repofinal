@@ -60,6 +60,8 @@ function secGuardarConfiguracion() {
   const props = PropertiesService.getScriptProperties();
   const actual = {
     AUTH_MODO:              secConfig_('AUTH_MODO', 'portal'),
+    // Dominio exigido en las altas nuevas (Cuentas.gs). 'ninguno' = sin restricción.
+    CUENTAS_DOMINIO:        secConfig_('CUENTAS_DOMINIO', typeof CUENTAS_DOMINIO_RESPALDO === 'string' ? CUENTAS_DOMINIO_RESPALDO : ''),
     WEBHOOK_URL:            secConfig_('WEBHOOK_URL', typeof WEBHOOK_URL === 'string' ? WEBHOOK_URL : ''),
     HASH_SALT:              secConfig_('HASH_SALT', typeof HASH_SALT === 'string' ? HASH_SALT : ''),
     PORTAL_SHEET_ID:        secConfig_('PORTAL_SHEET_ID', typeof PORTAL_SHEET_ID === 'string' ? PORTAL_SHEET_ID : ''),

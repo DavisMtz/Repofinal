@@ -963,6 +963,131 @@ a:focus-visible,button:focus-visible,input:focus-visible,[tabindex]:focus-visibl
 .gen-note strong{color:#9F1239 !important}
 .gen-badge{display:inline-flex;align-items:center;padding:.08rem .46rem;border-radius:100px;background:rgba(255,255,255,.28);color:#fff;font-size:.64rem;font-weight:800;letter-spacing:.04em;margin-left:.25rem}
 
+/* ════════════════════════════════════════════════════════════
+   TRAZABILIDAD · procesos servidos desde la hoja de Homologación
+   Las tarjetas siguen siendo .bt-block con sus seis variantes de color
+   (.sl-block, .slm-block, .mkp-block, .tda-block, .gen-block): aquí sólo
+   se añade el plegado, la barra de filtros y los estados de carga/error.
+════════════════════════════════════════════════════════════ */
+
+/* ── Barra de control: buscar dentro de la sección, filtrar por plataforma y plegar ── */
+.traz-bar{position:sticky;top:64px;z-index:31;display:flex;flex-direction:column;gap:.55rem;padding:.7rem .8rem;margin:-.4rem 0 1rem;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--content-bg) 93%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.traz-bar-row{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+.traz-find{position:relative;flex:1 1 230px;min-width:0}
+.traz-find input{width:100%;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:.52rem .8rem .52rem 2.15rem;font-size:.86rem;font-family:inherit}
+.traz-find input::placeholder{color:var(--ink-faint)}
+.traz-find input:focus-visible{outline:2px solid var(--brand);outline-offset:1px;border-color:var(--brand-soft)}
+.traz-find .ic{position:absolute;left:.7rem;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--ink-faint);pointer-events:none}
+.traz-count{font-size:.76rem;font-weight:700;color:var(--ink-soft);font-variant-numeric:tabular-nums;white-space:nowrap}
+.traz-btn{display:inline-flex;align-items:center;gap:.38rem;border:1.5px solid var(--line);background:var(--surface);color:var(--ink-soft);border-radius:10px;padding:.48rem .8rem;font-size:.79rem;font-weight:700;font-family:inherit;cursor:pointer;transition:var(--tr);white-space:nowrap}
+.traz-btn:hover{border-color:var(--brand-soft);color:var(--brand)}
+.traz-btn:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.traz-btn .ic{width:14px;height:14px}
+.traz-filters{display:flex;flex-wrap:wrap;gap:.32rem;align-items:center}
+.traz-flabel{font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-faint);margin-right:.1rem}
+.traz-fchip{border:1.5px solid var(--line);background:var(--surface);color:var(--ink-soft);border-radius:999px;padding:.2rem .66rem;font-size:.73rem;font-weight:700;font-family:inherit;cursor:pointer;transition:var(--tr)}
+.traz-fchip:hover{border-color:var(--brand-soft);color:var(--brand)}
+.traz-fchip:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.traz-fchip[aria-pressed="true"]{background:var(--grad-brand);border-color:transparent;color:#fff}
+
+/* El nav numerado deja de ser pegajoso: quien manda arriba es .traz-bar */
+.traz-nav{position:static;top:auto;z-index:auto;background:none;backdrop-filter:none;-webkit-backdrop-filter:none;margin:0 0 1.15rem}
+/* [hidden] no basta por sí solo: .fp-nav declara display:flex y gana a la hoja del navegador. */
+.traz-nav[hidden]{display:none}
+.traz-nav .fp-nav-chip[hidden]{display:none}
+
+/* ── Tarjeta plegable ── */
+.traz-card{padding:0;margin-bottom:.85rem}
+.traz-card[hidden]{display:none}
+.traz-toggle{display:block;width:100%;text-align:left;background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:1.15rem 3.1rem 1.15rem 1.4rem;border-radius:var(--rad);position:relative}
+.traz-toggle:focus-visible{outline:2px solid var(--brand);outline-offset:-3px}
+.traz-toggle:disabled{cursor:default;padding-right:1.4rem}
+.traz-toggle .bt-head{margin-bottom:0}
+.traz-titlewrap{min-width:0;flex:1 1 12rem}
+.traz-chev{position:absolute;right:1.2rem;top:1.4rem;width:18px;height:18px;color:var(--ink-faint);transition:transform .26s cubic-bezier(.2,.8,.2,1),color .2s}
+.traz-toggle:hover .traz-chev{color:var(--brand)}
+.traz-card.is-open .traz-chev{transform:rotate(180deg);color:var(--brand)}
+.traz-panel{overflow:hidden}
+.traz-panel-in{padding:0 1.4rem 1.3rem}
+.traz-panel-in > .bt-obs + .bt-obs{margin-top:.7rem}
+.traz-steps{margin:.5rem 0 .2rem 1rem}
+
+/* ── Estados: cargando, sin resultados, datos guardados y error ── */
+.traz-skel{background:var(--surface);border-radius:var(--rad);box-shadow:var(--sh-sm);border-left:4px solid var(--line);padding:1.25rem 1.5rem;margin-bottom:.85rem}
+.traz-skel i{display:block;height:11px;border-radius:6px;background:linear-gradient(90deg,var(--surface-2) 25%,var(--line-soft) 37%,var(--surface-2) 63%);background-size:400% 100%;animation:trazShimmer 1.4s ease-in-out infinite}
+.traz-skel i + i{margin-top:.62rem}
+@keyframes trazShimmer{0%{background-position:100% 0}100%{background-position:0 0}}
+.traz-state{display:flex;gap:.65rem;align-items:flex-start;border-radius:var(--rad-sm);padding:.75rem .95rem;font-size:.83rem;line-height:1.5;margin-bottom:1rem}
+.traz-state .ic{width:17px;height:17px;flex-shrink:0;margin-top:1px}
+.traz-state span{min-width:0;flex:1}
+.traz-state strong{font-weight:800}
+.traz-state.warn{background:var(--warn-bg);color:var(--warn);border:1px solid rgba(180,83,9,.2)}
+.traz-state.alert{background:var(--alert-bg);color:var(--alert);border:1px solid rgba(185,28,28,.22)}
+.traz-state .traz-btn{background:transparent;border-color:currentColor;color:inherit;padding:.34rem .68rem;font-size:.75rem}
+.traz-state .traz-btn:hover{background:var(--surface);color:inherit}
+.traz-empty{display:none;background:var(--surface);border:1.5px dashed var(--line);border-radius:var(--rad);padding:1.6rem;text-align:center;color:var(--ink-soft);font-size:.87rem}
+.traz-empty.show{display:block}
+.traz-empty strong{display:block;color:var(--ink);font-size:.95rem;font-weight:800;margin-bottom:.25rem}
+
+@media(max-width:640px){
+  .traz-bar{top:56px}
+  .traz-toggle{padding:1rem 2.6rem 1rem 1.1rem}
+  .traz-panel-in{padding:0 1.1rem 1.1rem}
+  .bt-times{margin-left:0;width:100%}
+}
+@media (prefers-reduced-motion: reduce){
+  .traz-skel i{animation:none}
+  .traz-chev{transition:none}
+}
+
+/* ── Tema carbón · contraste de los bloques de proceso ──────────────────────
+   Los colores de texto de estos componentes (--brand-deep y los tonos de las
+   seis variantes de sección) se eligieron para fondo claro y el tema carbón no
+   los aclara: sobre el panel oscuro se quedan en ~2,5:1 y las citas y los notas
+   dejan de leerse. Antes eran cuatro bloques escritos a mano; ahora aparecen en
+   los 69 procesos, así que aquí se suben a tonos legibles sobre oscuro.
+   Las variantes de sección usan !important, por eso estas reglas también.
+──────────────────────────────────────────────────────────────────────────── */
+[data-theme="carbon"] .bt-quote{background:rgba(225,0,152,.15);color:#FBA5D9;border-left-color:var(--brand-bright)}
+[data-theme="carbon"] .bt-plat{background:rgba(225,0,152,.16);color:#FBA5D9}
+[data-theme="carbon"] .bt-plat.info{background:rgba(59,130,246,.18);color:#93C5FD}
+[data-theme="carbon"] .bt-note{color:#FCD34D;border-color:rgba(251,191,36,.24)}
+[data-theme="carbon"] .bt-note strong{color:#FDE68A}
+[data-theme="carbon"] .bt-time-val.ok{color:#4ADE80}
+[data-theme="carbon"] .bt-time-val.warn{color:#FBBF24}
+[data-theme="carbon"] .bt-time-val.alert{color:#FCA5A5}
+[data-theme="carbon"] .bt-time-val.info{color:#93C5FD}
+[data-theme="carbon"] .bt-dev-item-time{color:#4ADE80}
+[data-theme="carbon"] .bt-sku-name{color:var(--ink)}
+/* El texto de los pasos heredaba el color del documento; se ata al token para
+   que no dependa de la herencia. */
+[data-theme="carbon"] .step-list li{color:var(--ink)}
+
+[data-theme="carbon"] .sl-block .bt-quote{background:rgba(232,130,42,.18);color:#FCD34D}
+[data-theme="carbon"] .sl-plat{background:rgba(232,130,42,.18) !important;color:#FCD34D !important}
+[data-theme="carbon"] .sl-note,[data-theme="carbon"] .sl-note strong{color:#FCD34D !important}
+[data-theme="carbon"] .sl-note{background:rgba(232,130,42,.12);border-color:rgba(232,130,42,.24) !important}
+
+[data-theme="carbon"] .slm-block .bt-quote{background:rgba(59,130,246,.18);color:#93C5FD}
+[data-theme="carbon"] .slm-plat{background:rgba(59,130,246,.18) !important;color:#93C5FD !important}
+[data-theme="carbon"] .slm-note,[data-theme="carbon"] .slm-note strong{color:#93C5FD !important}
+[data-theme="carbon"] .slm-note{background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.24) !important}
+
+[data-theme="carbon"] .mkp-block .bt-quote{background:rgba(124,58,237,.22);color:#C4B5FD}
+[data-theme="carbon"] .mkp-plat{background:rgba(124,58,237,.22) !important;color:#C4B5FD !important}
+[data-theme="carbon"] .mkp-note,[data-theme="carbon"] .mkp-note strong{color:#C4B5FD !important}
+[data-theme="carbon"] .mkp-note{background:rgba(124,58,237,.14);border-color:rgba(124,58,237,.26) !important}
+
+[data-theme="carbon"] .tda-block .bt-quote{background:rgba(5,150,105,.22);color:#6EE7B7}
+[data-theme="carbon"] .tda-plat{background:rgba(5,150,105,.22) !important;color:#6EE7B7 !important}
+[data-theme="carbon"] .tda-note,[data-theme="carbon"] .tda-note strong{color:#6EE7B7 !important}
+[data-theme="carbon"] .tda-note{background:rgba(5,150,105,.14);border-color:rgba(5,150,105,.26) !important}
+
+[data-theme="carbon"] .gen-block .bt-quote{background:rgba(225,29,72,.22);color:#FDA4AF}
+[data-theme="carbon"] .gen-plat{background:rgba(225,29,72,.22) !important;color:#FDA4AF !important}
+[data-theme="carbon"] .gen-note,[data-theme="carbon"] .gen-note strong{color:#FDA4AF !important}
+[data-theme="carbon"] .gen-note{background:rgba(225,29,72,.14);border-color:rgba(225,29,72,.26) !important}
+
 /* ── Devoluciones SAP · glosario de leyendas + matrices SL ── */
 .ds-badge{display:inline-flex;align-items:center;padding:.08rem .46rem;border-radius:100px;background:rgba(255,255,255,.28);color:#fff;font-size:.64rem;font-weight:800;letter-spacing:.04em;margin-left:.25rem}
 /* Aviso de autorización obligatoria */
@@ -1888,1580 +2013,66 @@ table.ds-matrix{width:100%;border-collapse:separate;border-spacing:0;min-width:5
     <div id="gr-plantillas" class="cards-grid"></div>
   </section>
 
+  <!-- ══════════════════════════════════════════════════════════════════════
+       TRAZABILIDAD · Homologación de Procesos 2026
+
+       Estas seis secciones ya NO llevan el detalle escrito a mano. Su contenido
+       lo sirve Trazabilidad.gs desde la hoja de Homologación y lo pinta
+       renderTrazSeccion() dentro de cada #traz-<id>: barra de filtros, chips de
+       salto y una tarjeta plegable por proceso.
+
+       Aquí sólo queda el encabezado editorial (título y descripción de la
+       sección), que no vive en la hoja.
+  ══════════════════════════════════════════════════════════════════════ -->
+
   <!-- ══ BIG TICKET ══ -->
   <section id="sec-bigticket" class="view-section">
     <div class="sec-head">
       <span class="sec-eyebrow"><span class="dot"></span>Guía de procesos</span>
       <h1 class="sec-title">Procesos <em>Big Ticket</em></h1>
-      <p class="sec-sub">Los 15 procesos BT con tiempos de reporte, avance, solución, plataformas y observaciones clave. Usa el buscador o los chips de navegación para ir directo al proceso que necesitas.</p>
+      <p class="sec-sub">Tiempos de reporte, avance y solución, plataformas y observaciones de cada proceso BT. Filtra por plataforma o busca dentro de la sección; abre una tarjeta para ver el detalle completo.</p>
     </div>
-
-    <nav class="fp-nav" aria-label="Procesos Big Ticket">
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-1')">1 · Fecha en tiempo</button>
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-2')">2 · Fecha vencida</button>
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-3')">3 · Asignar fecha PAO</button>
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-4')">4 · Armado</button>
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-5')">5 · OV Sin disponibilidad</button>
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-6')">6 · Recogidos</button>
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-7')">7 · Entrega no reconocida</button>
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-8')">8 · Devolución sí procede</button>
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-9')">9 · Dev. cambio estatus</button>
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-10')">10 · Dev. no procede</button>
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-11')">11 · Dev. Motos sí</button>
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-12')">12 · Dev. Motos no</button>
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-13')">13 · Resurtido BT</button>
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-14')">14 · Cambio domicilio</button>
-      <button class="fp-nav-chip" onclick="jumpToBt('bt-15')">15 · Error catalogación</button>
-    </nav>
-
-    <!-- 1 · Fecha en tiempo -->
-    <div class="bt-block" id="bt-1">
-      <div class="bt-head">
-        <span class="fp-num">1</span>
-        <div>
-          <h2 class="bt-title">Fecha en tiempo</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">Salesforce</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val ok">Inmediata (fecha PAO)</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 2 · Fecha vencida -->
-    <div class="bt-block" id="bt-2">
-      <div class="bt-head">
-        <span class="fp-num">2</span>
-        <div>
-          <h2 class="bt-title">Fecha vencida</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">Salesforce</span><span class="bt-plat info">bodega destino</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Avance (L-V)</span><span class="bt-time-val warn">3 días (escalación Salesforce)</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">5 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Se asigna caso a CR; es importante agregar <strong>referencias y teléfonos adicionales</strong>.</li>
-          <li>Si tiene más de <strong>48 horas</strong> en <em>"Pedido en camino"</em> sin cambio de estatus → solicitar a través del formulario de <strong>Cambios de estatus PAO</strong> (notifica al supervisor).</li>
-          <li>Si la mercancía se encuentra en locación de entrega y <strong>semáforo rojo</strong> → asignar caso a CR con el comentario: <span class="bt-quote">"Buen día CR solicitamos de su apoyo para programar una nueva fecha de entrega"</span></li>
-          <li>En estatus <strong>Entregado</strong> no es posible revertir el mismo; es necesario asignar caso a la bodega para confirmar nueva fecha de entrega.</li>
-          <li>Si la mercancía está en <strong>PLAN</strong> → escalar MDA categoría 49.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 3 · Asignar fecha PAO -->
-    <div class="bt-block" id="bt-3">
-      <div class="bt-head">
-        <span class="fp-num">3</span>
-        <div>
-          <h2 class="bt-title">Asignar fecha PAO</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">Salesforce</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val ok">Inmediata (fecha PAO)</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Validar que <strong>no se encuentre pausada</strong> por un tema de cancelación; revisar <strong>SAP ECC</strong> y comentarios en PAO.</li>
-          <li>Asignar fecha desde el <strong>calendario de PAO</strong> — se habilitarán solo las disponibles. Guardar cambios.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 4 · Armado -->
-    <div class="bt-block" id="bt-4">
-      <div class="bt-head">
-        <span class="fp-num">4</span>
-        <div>
-          <h2 class="bt-title">Armado</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">Salesforce</span><span class="bt-plat info">bodega destino</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val info">Fecha disponible MDA OMS</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Indicar al cliente las fechas disponibles en <strong>MDA</strong> para que seleccione <strong>DD/MM/AA</strong>.</li>
-          <li>Asignar el caso al CR destino con el <strong>folio de MDA</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 5 · OV Sin disponibilidad -->
-    <div class="bt-block" id="bt-5">
-      <div class="bt-head">
-        <span class="fp-num">5</span>
-        <div>
-          <h2 class="bt-title">OV Sin disponibilidad</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">Salesforce</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val info">Fecha de surtido PAO</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Revisar la <strong>fecha de surtido</strong> para notificar al cliente considerando:</li>
-        </ul>
-        <ol class="step-list" style="margin:.55rem 0 .65rem 1rem">
-          <li><span class="step-n">1</span>Periodicidad de entrega de cada zona.</li>
-          <li><span class="step-n">2</span>Código postal del cliente.</li>
-          <li><span class="step-n">3</span>Estatus del SKU.</li>
-        </ol>
-        <div class="bt-sku-grid">
-          <div class="bt-sku"><div class="bt-sku-name">🟢 Activo – Normal</div><div class="bt-sku-desc">Validar si hay pedido y, una vez con fechas tentativas de surtido, brindar la fecha de entrega mínima del pedido más lejano.</div></div>
-          <div class="bt-sku"><div class="bt-sku-name">🟡 Activo – Normal sin fecha de proveedor</div><div class="bt-sku-desc">Ofrecer sustituto desde la primera llamada.</div></div>
-          <div class="bt-sku"><div class="bt-sku-name">🟠 Activo – Escaso</div><div class="bt-sku-desc">Revisar en PAO que el pedido cuente con línea de transferencia activa y notificar la fecha de "cancelación" de surtido.</div></div>
-          <div class="bt-sku"><div class="bt-sku-name">🔴 Inactivo Escaso</div><div class="bt-sku-desc">Ofrecer sustituto desde la primera llamada.</div></div>
-        </div>
-        <div class="bt-note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg><span><strong>Nota:</strong> Si el cliente no desea esperar las fechas, puedes ofrecer un sustituto o la cancelación.</span></div>
-      </div>
-    </div>
-
-    <!-- 6 · Recogidos por satisfacción / mercancía dañada -->
-    <div class="bt-block" id="bt-6">
-      <div class="bt-head">
-        <span class="fp-num">6</span>
-        <div>
-          <h2 class="bt-title">Recogidos por satisfacción / mercancía dañada</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">Salesforce</span><span class="bt-plat info">bodega destino</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">1 año</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Avance (L-V)</span><span class="bt-time-val warn">3 días</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val info">Fecha calendario PAO</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>El recogido lo genera el <strong>asesor de 1er nivel</strong> en PAO; se asigna la fecha más cercana y al cliente se le brinda la fecha que arroja el sistema a partir del primer contacto.</li>
-          <li>El caso se escala con el equipo resolutor de <strong>PostVenta</strong>.</li>
-          <li><strong>2do contacto:</strong> sumar 72 h. a la fecha de llamada y seguir escalando en el mismo caso.</li>
-          <li><strong>3er contacto</strong> o si el recogido tiene <strong>15 días de vencimiento</strong> y la periodicidad es quincenal o mensual → solicitar devolución en formulario <strong>Incidencias Trazabilidad</strong>.</li>
-          <li>Fuera de los tiempos de <strong>7 días (SEPRO)</strong> o <strong>30 días (satisfacción)</strong> → solicitar autorización a través del formulario <strong>Incidencias Trazabilidad</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 7 · Entrega no reconocida -->
-    <div class="bt-block" id="bt-7">
-      <div class="bt-head">
-        <span class="fp-num">7</span>
-        <div>
-          <h2 class="bt-title">Entrega no reconocida</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">Salesforce</span><span class="bt-plat">SIMPLIROUTE</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">15 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Validar en <strong>Simpliroute</strong> la <strong>evidencia de entrega</strong>.</li>
-          <li>Verificar que no sea una <strong>entrega fallida</strong> y/o <strong>cruzada</strong>.</li>
-          <li>No olvides <strong>escalar el caso con el CR</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 8 · Devolución sí procede -->
-    <div class="bt-block" id="bt-8">
-      <div class="bt-head">
-        <span class="fp-num">8</span>
-        <div>
-          <h2 class="bt-title">Devolución sí procede</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">SAP ECC</span><span class="bt-plat">Salesforce</span><span class="bt-plat">CTE</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val ok">Según método de pago</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Tiempos por método de pago <span style="color:var(--warn);font-size:.68rem;font-weight:700;text-transform:none;letter-spacing:0">(fechas estimadas)</span></span>
-        <div class="bt-dev-grid">
-          <div class="bt-dev-item"><div class="bt-dev-item-name">Tarjeta Liverpool DILISA / LPC</div><div class="bt-dev-item-time">24 horas</div></div>
-          <div class="bt-dev-item"><div class="bt-dev-item-name">Crédito/débito externas 3DS (nacionales y extranjeras)</div><div class="bt-dev-item-time">72 hrs hábiles</div><div class="bt-dev-item-note">Débito → intenta a tarjeta; si no pasa → MED. Crédito → mismo método de pago.</div></div>
-          <div class="bt-dev-item"><div class="bt-dev-item-name">PayPal</div><div class="bt-dev-item-time">7 días hábiles</div></div>
-          <div class="bt-dev-item"><div class="bt-dev-item-name">OpenPay (SPEI / tiendas de conveniencia)</div><div class="bt-dev-item-time">3 días hábiles (con MED)</div><div class="bt-dev-item-note">Sin MED: acudir a Crédito/C&amp;C de la tienda en 5–10 días hábiles (partida).</div></div>
-        </div>
-        <span class="bt-obs-lbl" style="margin-top:.65rem">Validaciones por método</span>
-        <ul class="bt-obs-list">
-          <li><strong>OpenPay:</strong> Revisar partida en SAP ECC.</li>
-          <li><strong>Tarjetas internas/externas:</strong> Revisar SAP ECC y CTE.</li>
-          <li><strong>PayPal:</strong> Revisar espejo de aplicadas PayPal (en validación).</li>
-          <li><strong>MED:</strong> Revisar en SAP ECC que cuente con monedero y coincida con el del cliente en FMS.</li>
-        </ul>
-        <div class="bt-note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg><span><strong>Notas:</strong> Validación OTP (hasta 3 veces); si no funciona, realiza preguntas de validación. Solicitar devolución siempre que la OV esté en <strong>semáforo verde</strong>. Débito +45 días naturales desde compra → aplica al MED. Tarjetas extranjeras → misma tarjeta, si no pasa → MED.</span></div>
-      </div>
-    </div>
-
-    <!-- 9 · Devolución no procede – Solicitud cambio de estatus -->
-    <div class="bt-block" id="bt-9">
-      <div class="bt-head">
-        <span class="fp-num">9</span>
-        <div>
-          <h2 class="bt-title">Devolución no procede — Solicitud cambio de estatus</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">Salesforce</span><span class="bt-plat">Formulario Cambio de Estatus</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Avance (L-V)</span><span class="bt-time-val warn">3 días</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val">N/A</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Llenar el formulario <strong>Incidencias Trazabilidad</strong> y esperar la notificación de que la petición ha sido atendida.</li>
-          <li>Realizar el proceso correspondiente según la solicitud. <strong>Notificar cada vez que subas un cambio de estatus.</strong></li>
-          <li>Validar estatus permisibles en el <strong>Glosario</strong>.</li>
-          <li>Solicitarlo con <strong>supervisión</strong> una vez registrado en el formulario.</li>
-        </ul>
-        <div class="bt-note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg><span><strong>Nota:</strong> OTP hasta 3 veces; si no funciona → preguntas de validación. Si no se puede ejecutar el cambio → asignar caso al CR para solicitarlo.</span></div>
-      </div>
-    </div>
-
-    <!-- 10 · Devolución no procede por estatus -->
-    <div class="bt-block" id="bt-10">
-      <div class="bt-head">
-        <span class="fp-num">10</span>
-        <div>
-          <h2 class="bt-title">Devolución no procede por estatus</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">Salesforce</span><span class="bt-plat info">bodega destino</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">3 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Realizar la escalación con el <strong>CR correspondiente</strong>.</li>
-          <li>Solicitar el cambio con el siguiente mensaje: <span class="bt-quote">"Buen día CR solicitamos de su apoyo para que una vez arribe la mercancía se realice el cambio de estatus correspondiente para (Incidencia)"</span></li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 11 · Devolución Motos sí procede -->
-    <div class="bt-block" id="bt-11">
-      <div class="bt-head">
-        <span class="fp-num">11</span>
-        <div>
-          <h2 class="bt-title">Devolución Motos sí procede</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">SAP ECC</span><span class="bt-plat">Salesforce</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val ok">Según método de pago</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Tiempos por método de pago <span style="color:var(--warn);font-size:.68rem;font-weight:700;text-transform:none;letter-spacing:0">(fechas estimadas)</span></span>
-        <div class="bt-dev-grid">
-          <div class="bt-dev-item"><div class="bt-dev-item-name">Tarjeta Liverpool DILISA / LPC</div><div class="bt-dev-item-time">24 horas</div></div>
-          <div class="bt-dev-item"><div class="bt-dev-item-name">Crédito/débito externas 3DS</div><div class="bt-dev-item-time">72 hrs hábiles</div><div class="bt-dev-item-note">Débito → intenta a tarjeta; si no pasa → MED. Crédito → mismo método de pago.</div></div>
-          <div class="bt-dev-item"><div class="bt-dev-item-name">PayPal</div><div class="bt-dev-item-time">7 días hábiles</div></div>
-          <div class="bt-dev-item"><div class="bt-dev-item-name">OpenPay (SPEI / tiendas de conveniencia)</div><div class="bt-dev-item-time">3 días hábiles (con MED)</div><div class="bt-dev-item-note">Sin MED: acudir a Crédito/C&amp;C en 5–10 días hábiles (partida).</div></div>
-        </div>
-        <ul class="bt-obs-list" style="margin-top:.6rem">
-          <li>Si la OV está en <strong>semáforo verde</strong> → dejar comentario en PAO y subir a SAP ECC.</li>
-          <li>A excepción de que se haya <strong>facturado y/o activada</strong> — confirmar con el CR Destino.</li>
-        </ul>
-        <div class="bt-note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg><span><strong>Nota:</strong> Débito +45 días naturales → aplica al MED. 3DS débito → intenta a tarjeta; si no pasa → MED. Tarjetas extranjeras → misma tarjeta; si no pasa → MED.</span></div>
-      </div>
-    </div>
-
-    <!-- 12 · Devolución Motos no procede -->
-    <div class="bt-block" id="bt-12">
-      <div class="bt-head">
-        <span class="fp-num">12</span>
-        <div>
-          <h2 class="bt-title">Devolución Motos no procede</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">Salesforce</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val alert">No aplica</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Si la moto ya está <strong>activada y facturada</strong>, la devolución <strong>no procede</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 13 · Resurtido BT -->
-    <div class="bt-block" id="bt-13">
-      <div class="bt-head">
-        <span class="fp-num">13</span>
-        <div>
-          <h2 class="bt-title">Resurtido BT</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">Salesforce</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">1 año</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Avance (L-V)</span><span class="bt-time-val warn">5 días</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val info">Según inventario</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Tiempos según inventario</span>
-        <ol class="step-list" style="margin:.4rem 0 .7rem">
-          <li><span class="step-n">1</span>Con inventario disponible: <strong>10 a 12 días hábiles</strong> (PAO).</li>
-          <li><span class="step-n">2</span>Considera la <strong>periodicidad de entrega</strong> de cada zona.</li>
-          <li><span class="step-n">3</span>Revisa con el <strong>código postal</strong> del cliente.</li>
-          <li><span class="step-n">4</span>Revisa el <strong>estatus del SKU</strong>. Sin disponibilidad → ofrecer la recolección.</li>
-        </ol>
-        <ul class="bt-obs-list">
-          <li>Mercancía de <strong>importación</strong>: el cliente tiene <strong>6 meses</strong> para reportar un DEFECTO.</li>
-          <li><strong>Cunas:</strong> el cliente tiene <strong>24 h posteriores al armado</strong> para solicitar un resurtido BT.</li>
-          <li>Validar el inventario en PAO.</li>
-          <li>Si está fuera de los tiempos de <strong>7 días SEPRO de POSTVENTA</strong> → solicitar autorización a <strong>Supervisión</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 14 · Cambio de domicilio sí procede -->
-    <div class="bt-block" id="bt-14">
-      <div class="bt-head">
-        <span class="fp-num">14</span>
-        <div>
-          <h2 class="bt-title">Cambio de domicilio sí procede</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">Salesforce</span><span class="bt-plat">OTP</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val ok">Inmediata</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Hacer <strong>validación OTP</strong> (se puede enviar hasta 3 veces).</li>
-          <li>En caso de no ser exitoso o que no deje enviar → realizar <strong>validación manual</strong>.</li>
-        </ul>
-        <div class="bt-note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg><span><strong>Nota:</strong> No aplica cambio de domicilio si cambia el CR de entrega.</span></div>
-      </div>
-    </div>
-
-    <!-- 15 · Error de catalogación -->
-    <div class="bt-block" id="bt-15">
-      <div class="bt-head">
-        <span class="fp-num">15</span>
-        <div>
-          <h2 class="bt-title">Error de catalogación</h2>
-          <div class="bt-plats"><span class="bt-plat">PAO</span><span class="bt-plat">liverpool.com.mx</span><span class="bt-plat">Salesforce</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Avance (L-V)</span><span class="bt-time-val warn">30 días</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Escalar en Salesforce: <strong>Trazabilidad / Fecha de entrega / Sin fecha / Comercial CCL</strong>.</li>
-          <li>En comentarios especificar la incidencia del artículo (diferente color, tamaño, modelo, etc.).</li>
-        </ul>
-      </div>
-    </div>
-
+    <div id="traz-bigticket" class="traz-sec"></div>
   </section>
 
-  <!-- ══ SOFT LINE · LOGÍSTICA Y MENSAJERÍA INTERNA ══ -->
+  <!-- ══ SOFT LINE · logística y mensajería interna ══ -->
   <section id="sec-softline" class="view-section">
     <div class="sec-head">
       <span class="sec-eyebrow"><span class="dot"></span>Logística y mensajería interna</span>
       <h1 class="sec-title">Procesos <em>Soft Line (SF)</em></h1>
-      <p class="sec-sub">Los 10 procesos de logística y mensajería interna SoftLine — tiempos, plataformas y observaciones clave. Usa el buscador o los chips para ir directo al proceso.</p>
+      <p class="sec-sub">Procesos de logística y mensajería interna SoftLine — tiempos, plataformas y observaciones. Filtra por plataforma o busca dentro de la sección; abre una tarjeta para ver el detalle completo.</p>
     </div>
-
-    <nav class="fp-nav" aria-label="Procesos Soft Line">
-      <button class="fp-nav-chip" onclick="jumpToSl('sl-1')">1 · Fecha en tiempo</button>
-      <button class="fp-nav-chip" onclick="jumpToSl('sl-2')">2 · Fecha vencida</button>
-      <button class="fp-nav-chip" onclick="jumpToSl('sl-3')">3 · Más datos</button>
-      <button class="fp-nav-chip" onclick="jumpToSl('sl-4')">4 · Resurtido</button>
-      <button class="fp-nav-chip" onclick="jumpToSl('sl-5')">5 · Entrega no reconocida</button>
-      <button class="fp-nav-chip" onclick="jumpToSl('sl-6')">6 · Cancelación mensajería</button>
-      <button class="fp-nav-chip" onclick="jumpToSl('sl-7')">7 · Cancelación logística</button>
-      <button class="fp-nav-chip" onclick="jumpToSl('sl-8')">8 · Devolución sí procede</button>
-      <button class="fp-nav-chip" onclick="jumpToSl('sl-9')">9 · Recogidos</button>
-      <button class="fp-nav-chip" onclick="jumpToSl('sl-10')">10 · Cambio de domicilio</button>
-    </nav>
-
-    <!-- 1 · Fecha en tiempo -->
-    <div class="bt-block sl-block" id="sl-1">
-      <div class="bt-head">
-        <span class="fp-num sl-num">1</span>
-        <div>
-          <h2 class="bt-title">Fecha en tiempo</h2>
-          <div class="bt-plats"><span class="bt-plat sl-plat">PAO</span><span class="bt-plat sl-plat">SOMS</span><span class="bt-plat sl-plat">Salesforce</span><span class="bt-plat sl-plat">4PL</span><span class="bt-plat sl-plat">SIMPLIROUTE</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val ok">Inmediata (fecha SOMS)</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Revisar la pantalla de <strong>SOMS 6.7.15</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 2 · Fecha vencida -->
-    <div class="bt-block sl-block" id="sl-2">
-      <div class="bt-head">
-        <span class="fp-num sl-num">2</span>
-        <div>
-          <h2 class="bt-title">Fecha vencida</h2>
-          <div class="bt-plats"><span class="bt-plat sl-plat">PAO</span><span class="bt-plat sl-plat">SOMS</span><span class="bt-plat sl-plat">Salesforce</span><span class="bt-plat sl-plat">4PL</span><span class="bt-plat sl-plat">SIMPLIROUTE</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Revisar la pantalla de <strong>SOMS 6.7.15</strong>.</li>
-          <li>El tiempo incluye la escalación y el tiempo de entrega.</li>
-          <li>Si el estatus <strong>NMEN, VMEN</strong>, etc. no cuenta con movimiento mayor a <strong>10 días</strong> → escalar con <strong>Supervisión</strong> para solicitar el <strong>forzado del estatus</strong> para devolución.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 3 · Más datos -->
-    <div class="bt-block sl-block" id="sl-3">
-      <div class="bt-head">
-        <span class="fp-num sl-num">3</span>
-        <div>
-          <h2 class="bt-title">Más datos</h2>
-          <div class="bt-plats"><span class="bt-plat sl-plat">PAO</span><span class="bt-plat sl-plat">SOMS</span><span class="bt-plat sl-plat">Salesforce</span><span class="bt-plat sl-plat">4PL</span><span class="bt-plat sl-plat">Correo</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Dependiendo dónde se encuentre el producto:</li>
-        </ul>
-        <div class="bt-dev-grid" style="margin:.55rem 0 .35rem">
-          <div class="bt-dev-item"><div class="bt-dev-item-name">📦 Paqueterías internas</div><div class="bt-dev-item-note">Enviar correo a la tienda que surte.</div></div>
-          <div class="bt-dev-item"><div class="bt-dev-item-name">🚚 Paqueterías externas</div><div class="bt-dev-item-note">Salesforce con equipo resolutor de <strong>MENSAJERÍAS</strong> / Folio a CR que entrega.</div></div>
-        </div>
-        <div class="bt-note sl-note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg><span><strong>Nota:</strong> También aplica para pedidos con estatus <strong>NENT</strong> causa <strong>DOE</strong>.</span></div>
-      </div>
-    </div>
-
-    <!-- 4 · Resurtido equivocada/incompleto/dañada -->
-    <div class="bt-block sl-block" id="sl-4">
-      <div class="bt-head">
-        <span class="fp-num sl-num">4</span>
-        <div>
-          <h2 class="bt-title">Resurtido equivocada / incompleto / dañada</h2>
-          <div class="bt-plats"><span class="bt-plat sl-plat">PAO</span><span class="bt-plat sl-plat">SOMS</span><span class="bt-plat sl-plat">Salesforce ENR</span><span class="bt-plat sl-plat">SIMPLIROUTE</span><span class="bt-plat sl-plat">4PL</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">1 año</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Resurtido</span><span class="bt-time-val ok">5 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li><strong>Con inventario</strong> → solicitar resurtido con el grupo resolutor <strong>RESURTIDOS</strong>.</li>
-          <li><strong>Sin inventario</strong> → registrar la devolución en <strong>SAP ECC</strong> con la leyenda correspondiente:</li>
-        </ul>
-        <div class="bt-sku-grid" style="margin:.5rem 0 .5rem">
-          <div class="bt-sku"><div class="bt-sku-name">Servicio SL/dañada</div></div>
-          <div class="bt-sku"><div class="bt-sku-name">Servicio SL/incompleta</div></div>
-          <div class="bt-sku"><div class="bt-sku-name">Servicio SL/equivocada</div></div>
-        </div>
-        <ul class="bt-obs-list">
-          <li>Ya <strong>no se pone el número celular</strong> en la leyenda.</li>
-          <li>Consultar la tabla actualizada para validar si procede por <strong>Servicio SL o Satisfacción SL</strong>.</li>
-          <li>Para devolución → brindar los tiempos del <strong>proceso No. 8</strong>.</li>
-        </ul>
-        <div class="bt-note sl-note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg><span><strong>Nota:</strong> Si el cliente no quiere el reembolso o desea conservar la mercancía, también es válido.</span></div>
-      </div>
-    </div>
-
-    <!-- 5 · Entrega no reconocida / Caja Vacía -->
-    <div class="bt-block sl-block" id="sl-5">
-      <div class="bt-head">
-        <span class="fp-num sl-num">5</span>
-        <div>
-          <h2 class="bt-title">Entrega no reconocida / Caja Vacía</h2>
-          <div class="bt-plats"><span class="bt-plat sl-plat">PAO</span><span class="bt-plat sl-plat">SOMS</span><span class="bt-plat sl-plat">Salesforce ENR</span><span class="bt-plat sl-plat">SIMPLIROUTE</span><span class="bt-plat sl-plat">4PL</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">30 días</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Con inventario disponible</span>
-        <ul class="bt-obs-list">
-          <li>Solicitar resurtido al equipo resolutor <strong>MENSAJERÍAS</strong> (si viaja con paqueterías locales) / <strong>RESURTIDOS</strong> (si viaja con CR).</li>
-          <li><strong>No aplica</strong> en mercancía de más de <strong>$3,000</strong>.</li>
-        </ul>
-        <span class="bt-obs-lbl" style="margin-top:.65rem">Sin inventario (incidencias menos de $3,000)</span>
-        <ul class="bt-obs-list">
-          <li>Registrar en <strong>SAP ECC</strong> con la leyenda: <span class="bt-quote">"Reconocida"</span></li>
-          <li>Escalar caso con equipo resolutor <strong>MENSAJERÍAS</strong> (paqueterías locales) / <strong>RESURTIDOS</strong> (CR).</li>
-        </ul>
-        <div class="bt-note sl-note" style="margin-top:.55rem"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg><span><strong>Tip:</strong> Recuerda revisar la <strong>lista negra</strong>. Aplica hasta un año con previa autorización.</span></div>
-      </div>
-    </div>
-
-    <!-- 6 · Cancelación mensajería interna -->
-    <div class="bt-block sl-block" id="sl-6">
-      <div class="bt-head">
-        <span class="fp-num sl-num">6</span>
-        <div>
-          <h2 class="bt-title">Cancelación mensajería interna</h2>
-          <div class="bt-plats"><span class="bt-plat sl-plat">PAO</span><span class="bt-plat sl-plat">SOMS</span><span class="bt-plat sl-plat">Correo</span><span class="bt-plat sl-plat">4PL</span><span class="bt-plat sl-plat">Salesforce</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li><strong>No aplica</strong> en estatus <strong>CONF</strong> — Con guía de mensajería.</li>
-        </ul>
-        <div class="bt-note sl-note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg><span><strong>Nota:</strong> Validación OTP (hasta 3 veces). Si no es exitoso o no deje enviar → validación manual.</span></div>
-      </div>
-    </div>
-
-    <!-- 7 · Cancelación logística interna -->
-    <div class="bt-block sl-block" id="sl-7">
-      <div class="bt-head">
-        <span class="fp-num sl-num">7</span>
-        <div>
-          <h2 class="bt-title">Cancelación logística interna</h2>
-          <div class="bt-plats"><span class="bt-plat sl-plat">PAO</span><span class="bt-plat sl-plat">SOMS</span><span class="bt-plat sl-plat">CSC</span><span class="bt-plat sl-plat">Salesforce</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val info">Depende del estatus</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val ok">Inmediato</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li><strong>No aplica</strong> en estatus <strong>CONF</strong> que surte la locación <strong>125 / VCTE</strong>.</li>
-        </ul>
-        <div class="bt-note sl-note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg><span><strong>Nota:</strong> Validación OTP (hasta 3 veces). Si no es exitoso o no deje enviar → validación manual.</span></div>
-      </div>
-    </div>
-
-    <!-- 8 · Devolución sí procede -->
-    <div class="bt-block sl-block" id="sl-8">
-      <div class="bt-head">
-        <span class="fp-num sl-num">8</span>
-        <div>
-          <h2 class="bt-title">Devolución sí procede</h2>
-          <div class="bt-plats"><span class="bt-plat sl-plat">PAO</span><span class="bt-plat sl-plat">SOMS</span><span class="bt-plat sl-plat">SAP ECC</span><span class="bt-plat sl-plat">Salesforce</span><span class="bt-plat sl-plat">CTE</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val ok">Según método de pago</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Tiempos por método de pago <span style="color:#E8822A;font-size:.68rem;font-weight:700;text-transform:none;letter-spacing:0">(fechas estimadas)</span></span>
-        <div class="bt-dev-grid">
-          <div class="bt-dev-item"><div class="bt-dev-item-name">Tarjeta Liverpool DILISA / LPC</div><div class="bt-dev-item-time">24 horas</div></div>
-          <div class="bt-dev-item"><div class="bt-dev-item-name">Crédito/débito externas 3DS (nacionales y extranjeras)</div><div class="bt-dev-item-time">72 hrs hábiles</div><div class="bt-dev-item-note">Débito → intenta a tarjeta; si no pasa → MED. Crédito → mismo método de pago.</div></div>
-          <div class="bt-dev-item"><div class="bt-dev-item-name">PayPal</div><div class="bt-dev-item-time">48 horas</div></div>
-          <div class="bt-dev-item"><div class="bt-dev-item-name">Pagos referenciados (conveniencia / transferencias)</div><div class="bt-dev-item-time">MED — 24 horas</div><div class="bt-dev-item-note">Sin MED: acudir a Crédito/C&amp;C de la tienda en 5–7 días hábiles (partida).</div></div>
-        </div>
-        <span class="bt-obs-lbl" style="margin-top:.65rem">Validaciones por método</span>
-        <ul class="bt-obs-list">
-          <li><strong>OpenPay:</strong> Revisar partida en SAP ECC.</li>
-          <li><strong>Tarjetas internas/externas:</strong> Revisar SAP ECC y CTE.</li>
-          <li><strong>PayPal:</strong> —</li>
-          <li><strong>MED:</strong> Revisar en SAP ECC que cuente con monedero y coincida con el del cliente en FMS.</li>
-        </ul>
-        <div class="bt-note sl-note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg><span><strong>Notas:</strong> OTP hasta 3 veces; si no exitoso → validación manual. Tienes la opción de subir al formulario de cancelaciones compras del día; caso contrario, solicitar la devolución al día siguiente. Débito +45 días naturales desde compra → aplica al MED. Tarjetas extranjeras → misma tarjeta; si no pasa → MED.</span></div>
-      </div>
-    </div>
-
-    <!-- 9 · Recogidos por satisfacción / mercancía dañada -->
-    <div class="bt-block sl-block" id="sl-9">
-      <div class="bt-head">
-        <span class="fp-num sl-num">9</span>
-        <div>
-          <h2 class="bt-title">Recogidos por satisfacción / mercancía dañada</h2>
-          <div class="bt-plats"><span class="bt-plat sl-plat">PAO</span><span class="bt-plat sl-plat">SOMS</span><span class="bt-plat sl-plat">Salesforce</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">1 año</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val info">Fecha calendario PAO</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>La solicitud de recogido se escala por <strong>Salesforce a PostVenta</strong>, quien llevará el seguimiento. Consultar la tabla actualizada para validar si procede por <strong>Servicio SL o Satisfacción SL</strong>.</li>
-          <li>El recogido lo genera el <strong>asesor de 1er nivel / cabeceras</strong> en SOMS; al cliente se le brinda la fecha que arroja el sistema a partir del primer contacto.</li>
-          <li><strong>2do contacto:</strong> sumar 72 h. a la fecha de llamada y seguir escalando en el mismo caso.</li>
-          <li><strong>3er contacto</strong> o si el recogido tiene <strong>15 días de vencimiento</strong> y la periodicidad es quincenal o mensual → solicitar devolución en formulario <strong>Incidencias Trazabilidad</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 10 · Cambio de domicilio -->
-    <div class="bt-block sl-block" id="sl-10">
-      <div class="bt-head">
-        <span class="fp-num sl-num">10</span>
-        <div>
-          <h2 class="bt-title">Cambio de domicilio</h2>
-          <div class="bt-plats"><span class="bt-plat sl-plat">PAO</span><span class="bt-plat sl-plat">SOMS</span><span class="bt-plat sl-plat">Salesforce</span><span class="bt-plat sl-plat">OTP</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val alert">INCO</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val">Según estatus</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Hacer <strong>validación OTP</strong> (se puede enviar hasta 3 veces).</li>
-          <li>En caso de no ser exitoso o no deje enviar → realizar <strong>validación manual</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
+    <div id="traz-softline" class="traz-sec"></div>
   </section>
 
+  <!-- ══ SL MENSAJERÍAS · paqueterías externas ══ -->
   <section id="sec-slmensajerias" class="view-section">
     <div class="sec-head">
       <span class="sec-eyebrow"><span class="dot"></span>Mensajerías externas SoftLine</span>
       <h1 class="sec-title">Procesos <em>SL Mensajerías (SF)</em></h1>
-      <p class="sec-sub">Los 9 procesos de mensajería externa SoftLine — tiempos, plataformas y observaciones clave. Usa el buscador o los chips para ir directo al proceso.</p>
+      <p class="sec-sub">Procesos de mensajería externa SoftLine — tiempos, plataformas y observaciones. Filtra por plataforma o busca dentro de la sección; abre una tarjeta para ver el detalle completo.</p>
     </div>
-
-    <nav class="fp-nav" aria-label="Procesos SL Mensajerías">
-      <button class="fp-nav-chip" onclick="jumpToSlm('slm-1')">1 · Fecha en tiempo</button>
-      <button class="fp-nav-chip" onclick="jumpToSlm('slm-2')">2 · Fecha vencida</button>
-      <button class="fp-nav-chip" onclick="jumpToSlm('slm-3')">3 · Más datos</button>
-      <button class="fp-nav-chip" onclick="jumpToSlm('slm-4')">4 · Guía retornada</button>
-      <button class="fp-nav-chip" onclick="jumpToSlm('slm-5')">5 · Resurtido</button>
-      <button class="fp-nav-chip" onclick="jumpToSlm('slm-6')">6 · Entrega no reconocida</button>
-      <button class="fp-nav-chip" onclick="jumpToSlm('slm-7')">7 · Retorno cancelación</button>
-      <button class="fp-nav-chip" onclick="jumpToSlm('slm-8')">8 · Devolución</button>
-      <button class="fp-nav-chip" onclick="jumpToSlm('slm-9')">9 · Recogidos</button>
-    </nav>
-
-    <!-- 1 · Fecha en tiempo -->
-    <div class="bt-block slm-block" id="slm-1">
-      <div class="bt-head">
-        <span class="fp-num slm-num">1</span>
-        <div>
-          <h2 class="bt-title">Fecha en tiempo</h2>
-          <div class="bt-plats"><span class="bt-plat slm-plat">PAO</span><span class="bt-plat slm-plat">SOMS</span><span class="bt-plat slm-plat">4PL</span><span class="bt-plat slm-plat">Página mensajería</span><span class="bt-plat slm-plat">SF</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val ok">Inmediata (SOMS)</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Revisar la pantalla de <strong>SOMS 6.7.15</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 2 · Fecha vencida -->
-    <div class="bt-block slm-block" id="slm-2">
-      <div class="bt-head">
-        <span class="fp-num slm-num">2</span>
-        <div>
-          <h2 class="bt-title">Fecha vencida</h2>
-          <div class="bt-plats"><span class="bt-plat slm-plat">PAO</span><span class="bt-plat slm-plat">SOMS</span><span class="bt-plat slm-plat">4PL</span><span class="bt-plat slm-plat">Tracking</span><span class="bt-plat slm-plat">SF</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Revisar la pantalla de <strong>SOMS 6.7.15</strong>.</li>
-          <li>El tiempo incluye la <strong>escalación</strong> y el <strong>tiempo de entrega</strong>.</li>
-          <li>Si el estatus <strong>NMEN, VMEN</strong>, etc. no tiene movimiento mayor a <strong>10 días</strong> → escalar con <strong>Supervisión</strong> para solicitar el <strong>forzado del estatus</strong> para devolución.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 3 · Más datos -->
-    <div class="bt-block slm-block" id="slm-3">
-      <div class="bt-head">
-        <span class="fp-num slm-num">3</span>
-        <div>
-          <h2 class="bt-title">Más datos</h2>
-          <div class="bt-plats"><span class="bt-plat slm-plat">PAO</span><span class="bt-plat slm-plat">SOMS</span><span class="bt-plat slm-plat">4PL</span><span class="bt-plat slm-plat">Tracking</span><span class="bt-plat slm-plat">SF</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Validar que la guía <strong>no haya retornado</strong>.</li>
-          <li>Escalar a <strong>SF</strong> como fecha vencida con datos adicionales al <strong>grupo resolutor mensajerías</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 4 · Guía retornada -->
-    <div class="bt-block slm-block" id="slm-4">
-      <div class="bt-head">
-        <span class="fp-num slm-num">4</span>
-        <div>
-          <h2 class="bt-title">Guía retornada</h2>
-          <div class="bt-plats"><span class="bt-plat slm-plat">PAO</span><span class="bt-plat slm-plat">SOMS</span><span class="bt-plat slm-plat">4PL</span><span class="bt-plat slm-plat">Tracking</span><span class="bt-plat slm-plat">SF</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Revisar en dónde retornó la guía.</li>
-          <li>Enviar <strong>correo a la locación</strong> correspondiente o abrir un <strong>caso CR</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 5 · Resurtido equivocada / incompleto / dañada -->
-    <div class="bt-block slm-block" id="slm-5">
-      <div class="bt-head">
-        <span class="fp-num slm-num">5</span>
-        <div>
-          <h2 class="bt-title">Resurtido equivocada / incompleto / dañada</h2>
-          <div class="bt-plats"><span class="bt-plat slm-plat">PAO</span><span class="bt-plat slm-plat">SOMS</span><span class="bt-plat slm-plat">SF ENR</span><span class="bt-plat slm-plat">SIMPLIROUTE</span><span class="bt-plat slm-plat">4PL</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">1 año</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">5 días / proceso 8 dev</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Aplicar en <strong>SAP ECC</strong> las leyendas: <span class="bt-quote">SL/dañada</span>, <span class="bt-quote">SL/incompleta</span> o <span class="bt-quote">SL/equivocada</span> según corresponda.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 6 · Entrega no reconocida / Caja Vacía -->
-    <div class="bt-block slm-block" id="slm-6">
-      <div class="bt-head">
-        <span class="fp-num slm-num">6</span>
-        <div>
-          <h2 class="bt-title">Entrega no reconocida / Caja Vacía</h2>
-          <div class="bt-plats"><span class="bt-plat slm-plat">PAO</span><span class="bt-plat slm-plat">SOMS</span><span class="bt-plat slm-plat">SF ENR</span><span class="bt-plat slm-plat">SIMPLIROUTE</span><span class="bt-plat slm-plat">4PL</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">30 días</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Si el monto es <strong>+$3,000</strong> → escalar a <strong>PostVenta SF</strong>.</li>
-          <li>Si el monto es <strong>&lt;$3,000</strong> sin inventario → registrar como <span class="bt-quote">Reconocida</span> en SAP ECC.</li>
-          <li>Agregar a la <strong>lista negra</strong> si aplica.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 7 · Retorno para cancelación -->
-    <div class="bt-block slm-block" id="slm-7">
-      <div class="bt-head">
-        <span class="fp-num slm-num">7</span>
-        <div>
-          <h2 class="bt-title">Retorno para cancelación</h2>
-          <div class="bt-plats"><span class="bt-plat slm-plat">PAO</span><span class="bt-plat slm-plat">SOMS</span><span class="bt-plat slm-plat">SF</span><span class="bt-plat slm-plat">Tracking</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Validar que la <strong>mensajería tenga la mercancía</strong>.</li>
-          <li><strong>No aplica</strong> si es última milla.</li>
-          <li>Solicitar <strong>NMEN/VMEN forzado</strong> cuando corresponda.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 8 · Devolución -->
-    <div class="bt-block slm-block" id="slm-8">
-      <div class="bt-head">
-        <span class="fp-num slm-num">8</span>
-        <div>
-          <h2 class="bt-title">Devolución</h2>
-          <div class="bt-plats"><span class="bt-plat slm-plat">PAO</span><span class="bt-plat slm-plat">SOMS</span><span class="bt-plat slm-plat">SAP ECC</span><span class="bt-plat slm-plat">SF</span><span class="bt-plat slm-plat">CTE</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">DILISA / LPC</span><span class="bt-time-val ok">24h</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">3DS</span><span class="bt-time-val ok">72h</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">PayPal</span><span class="bt-time-val ok">48h</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">MED</span><span class="bt-time-val ok">24h</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Tiempos por método de pago <span style="color:var(--info);font-size:.68rem;font-weight:700;text-transform:none;letter-spacing:0">(fechas estimadas)</span></span>
-        <div class="bt-dev-grid">
-          <div class="bt-dev-item"><div class="bt-dev-item-name">Tarjeta Liverpool DILISA / LPC</div><div class="bt-dev-item-time">24 horas</div></div>
-          <div class="bt-dev-item"><div class="bt-dev-item-name">Crédito/débito externas 3DS (nacionales y extranjeras)</div><div class="bt-dev-item-time">72 hrs hábiles</div><div class="bt-dev-item-note">Débito → intenta a tarjeta; si no pasa → MED. Crédito → mismo método de pago.</div></div>
-          <div class="bt-dev-item"><div class="bt-dev-item-name">PayPal</div><div class="bt-dev-item-time">48 horas</div></div>
-          <div class="bt-dev-item"><div class="bt-dev-item-name">Pagos referenciados (conveniencia / transferencias)</div><div class="bt-dev-item-time">MED — 24 horas</div><div class="bt-dev-item-note">Sin MED: acudir a Crédito/C&amp;C de la tienda en 5–7 días hábiles (partida).</div></div>
-        </div>
-        <span class="bt-obs-lbl" style="margin-top:.65rem">Validaciones por método</span>
-        <ul class="bt-obs-list">
-          <li><strong>OpenPay:</strong> Revisar partida en SAP ECC.</li>
-          <li><strong>Tarjetas internas/externas:</strong> Revisar SAP ECC y CTE.</li>
-          <li><strong>PayPal:</strong> —</li>
-          <li><strong>MED:</strong> Revisar en SAP ECC que cuente con monedero y coincida con el del cliente en FMS.</li>
-        </ul>
-        <div class="bt-note slm-note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg><span><strong>Notas:</strong> Validación OTP (hasta 3 veces); si no es exitoso → validación manual. Tienes la opción de subir al formulario <strong>Incidencias Trazabilidad</strong>; caso contrario, solicitar la devolución al día siguiente. Débito +45 días naturales desde compra → aplica al MED. En 3DS débito → intenta a la tarjeta; si no pasa → MED; crédito → mismo método. Tarjetas extranjeras → misma tarjeta; si no pasa → MED.</span></div>
-      </div>
-    </div>
-
-    <!-- 9 · Recogidos por satisfacción / mercancía dañada -->
-    <div class="bt-block slm-block" id="slm-9">
-      <div class="bt-head">
-        <span class="fp-num slm-num">9</span>
-        <div>
-          <h2 class="bt-title">Recogidos por satisfacción / mercancía dañada</h2>
-          <div class="bt-plats"><span class="bt-plat slm-plat">SOMS</span><span class="bt-plat slm-plat">SF</span><span class="bt-plat slm-plat">PAO</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">1 año</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val info">Fecha calendario PAO</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Escalar a <strong>PostVenta</strong>.</li>
-          <li>2do intento: esperar <strong>+72h</strong>.</li>
-          <li>3er intento o transcurridos <strong>15 días</strong> → escalar a <strong>Incidencias Trazabilidad</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
+    <div id="traz-slmensajerias" class="traz-sec"></div>
   </section>
 
+  <!-- ══ MARKETPLACE ══ -->
   <section id="sec-mkp" class="view-section">
     <div class="sec-head">
       <span class="sec-eyebrow"><span class="dot"></span>Trazabilidad e incidencias MKP</span>
       <h1 class="sec-title">Procesos <em>MarketPlace (MKP)</em></h1>
-      <p class="sec-sub">Los 16 procesos de MarketPlace — tiempos, plataformas y observaciones clave. Usa el buscador o los chips para ir directo al proceso.</p>
+      <p class="sec-sub">Procesos de MarketPlace — tiempos, plataformas y observaciones. Filtra por plataforma o busca dentro de la sección; abre una tarjeta para ver el detalle completo.</p>
     </div>
-
-    <nav class="fp-nav" aria-label="Procesos MarketPlace">
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-1')">1 · Fecha en tiempo</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-2')">2 · Fecha vencida BT</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-3')">3 · Guía creada s/mov.</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-4')">4 · Guía tránsito c/mov.</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-5')">5 · Guía tránsito s/mov.</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-6')">6 · Guía retornada</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-7')">7 · Pedido inexistente</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-8')">8 · Entrega no reconocida</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-9')">9 · Cancelación</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-10')">10 · Devolución</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-11')">11 · Dev. Rechazadas</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-12')">12 · Recogidos / Satisfacción</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-13')">13 · Caja vacía</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-14')">14 · Incompleto / Equivocado SL</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-15')">15 · Pedido incompleto BT</button>
-      <button class="fp-nav-chip" onclick="jumpToMkp('mkp-16')">16 · Joyería fina</button>
-    </nav>
-
-    <!-- 1 · Fecha en tiempo -->
-    <div class="bt-block mkp-block" id="mkp-1">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">1</span>
-        <div>
-          <h2 class="bt-title">Fecha en tiempo</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">Salesforce</span><span class="bt-plat mkp-plat">Entrada única</span><span class="bt-plat mkp-plat">Tracking mensajería</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val ok">F. límite envío + 7 días</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li><strong>SL:</strong> fecha tracking Mensajería/SOMS. <strong>BT:</strong> fecha SOMS.</li>
-          <li>Revisar en <strong>Entrada única</strong> para validar la <strong>fecha límite de envío</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 2 · Fecha vencida BT -->
-    <div class="bt-block mkp-block" id="mkp-2">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">2</span>
-        <div>
-          <h2 class="bt-title">Fecha vencida BT</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">Salesforce</span><span class="bt-plat mkp-plat">Entrada única</span><span class="bt-plat mkp-plat">Tracking mensajería</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Revisar las pantallas <strong>6.7.11</strong> y <strong>6.7.15</strong> para validar ubicación y trazo logístico de la mercancía.</li>
-          <li>Si la mercancía está en <strong>PLAN</strong> → escalar en MDA categoría <span class="bt-quote">40</span>.</li>
-          <li>Si está en <strong>CR</strong> → escalar por medio de <strong>Salesforce</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 3 · Guía creada s/movimiento -->
-    <div class="bt-block mkp-block" id="mkp-3">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">3</span>
-        <div>
-          <h2 class="bt-title">Guía creada s/movimiento</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">Entrada única</span><span class="bt-plat mkp-plat">Tracking mensajería</span><span class="bt-plat mkp-plat">MDA Opc 6</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">Fecha E.U. vencida → MDA +7 días</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Aplica para <strong>SL</strong> cuando la mercancía aún no se ha depositado a la mensajería.</li>
-          <li>En <strong>BT</strong> cuando aún no se ha enviado a Plan → consultar citas disponibles en el <strong>manual de MKP</strong>.</li>
-          <li>Aplica cuando la mercancía ya tiene fecha vencida en Entrada única. Escalar como <span class="bt-quote">guía creada sin movimiento</span> en MDA.</li>
-          <li>Si la mercancía está en <strong>PLAN</strong> → escalar en MDA categoría <span class="bt-quote">49</span>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 4 · Guía tránsito c/movimiento -->
-    <div class="bt-block mkp-block" id="mkp-4">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">4</span>
-        <div>
-          <h2 class="bt-title">Guía tránsito c/movimiento</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">Entrada única</span><span class="bt-plat mkp-plat">Tracking mensajería</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">Movimiento últimos 5 días</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val ok">5 días desde contacto</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Si el cliente requiere rastrear el pedido → se le puede dar la <strong>guía de rastreo</strong>.</li>
-          <li>Consultar las <strong>observaciones o incidencias</strong> para realizar la escalación si es necesario.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 5 · Guía tránsito s/movimiento -->
-    <div class="bt-block mkp-block" id="mkp-5">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">5</span>
-        <div>
-          <h2 class="bt-title">Guía tránsito s/movimiento</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">Entrada única</span><span class="bt-plat mkp-plat">Tracking mensajería</span><span class="bt-plat mkp-plat">MDA Opc 6</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">5 días s/movimiento</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">5 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Escalar por <strong>MDA</strong> si la guía tiene <strong>5 días sin movimiento</strong>.</li>
-          <li>Si existe incidencia con la mensajería (domicilio incompleto o datos adicionales) → escalar al momento como <span class="bt-quote">Guía en tránsito sin movimiento — más datos</span>.</li>
-          <li>Validar si no se cuenta con alguna incidencia en la <strong>Guía de Incidencias MKP</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 6 · Guía retornada -->
-    <div class="bt-block mkp-block" id="mkp-6">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">6</span>
-        <div>
-          <h2 class="bt-title">Guía retornada</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">Entrada única</span><span class="bt-plat mkp-plat">Tracking mensajería</span><span class="bt-plat mkp-plat">MDA Opc 6</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>En el tracking puede aparecer como: <span class="bt-quote">guía retornada</span>, <span class="bt-quote">guía retornada a origen</span> o <span class="bt-quote">guía retornada a remitente</span>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 7 · Pedido inexistente Entrada Única -->
-    <div class="bt-block mkp-block" id="mkp-7">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">7</span>
-        <div>
-          <h2 class="bt-title">Pedido inexistente Entrada Única</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">Entrada única</span><span class="bt-plat mkp-plat">Tracking mensajería</span><span class="bt-plat mkp-plat">MDA Opc 6</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">7 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>La <strong>remisión</strong> tiene que tener los datos cargados para subir la incidencia en MDA.</li>
-          <li>Registrar si el cliente desea la <strong>entrega</strong> o la <strong>devolución</strong> para que el equipo de MKP accione.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 8 · Entrega no reconocida -->
-    <div class="bt-block mkp-block" id="mkp-8">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">8</span>
-        <div>
-          <h2 class="bt-title">Entrega no reconocida</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">Entrada única</span><span class="bt-plat mkp-plat">Tracking mensajería</span><span class="bt-plat mkp-plat">MDA Opc 6</span><span class="bt-plat mkp-plat">SAP ECC</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">30 días</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">DILISA / LPC</span><span class="bt-time-val ok">24h</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">3DS</span><span class="bt-time-val ok">72h hábiles</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">PayPal</span><span class="bt-time-val ok">48h</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Ref./MED</span><span class="bt-time-val ok">24h</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li><strong>Dentro de las 24h:</strong> subir al formulario <strong>Incidencias Trazabilidad</strong> e informar al cliente que se le contactará en las siguientes <strong>72h</strong>.</li>
-          <li><strong>Posterior a las 24h:</strong> registrar en SAP ECC con la leyenda <span class="bt-quote">Reconocida</span> y escalar en MDA categoría 6.</li>
-          <li><strong>No aplica</strong> en mercancía de alto valor, electrónica, cómputo, joyería fina, audio y video — brindar un lapso de <strong>15 días</strong>, subir MDA categoría 6.</li>
-          <li>Aplica hasta un año con <strong>previa autorización</strong>.</li>
-          <li>En tarjetas de débito: si excede <strong>45 días naturales</strong> desde la compra → aplicar al <strong>MED</strong>.</li>
-          <li>En 3DS débito: intento a la tarjeta; si no pasa → MED. En crédito: mismo método de pago.</li>
-          <li>Tarjetas extranjeras: intento a la misma tarjeta; si no pasa → MED.</li>
-          <li class="bt-note mkp-note"><strong>TIP:</strong> Revisar la lista negra.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 9 · Cancelación -->
-    <div class="bt-block mkp-block" id="mkp-9">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">9</span>
-        <div>
-          <h2 class="bt-title">Cancelación</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">CSC</span><span class="bt-plat mkp-plat">Entrada única</span><span class="bt-plat mkp-plat">MDA Opc 6</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">Depende de estatus</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días / depende estatus</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Si la respuesta en MDA es <span class="bt-quote">Validar ZVADVIS de 5-7 días</span> → esperar ese lapso; si pasa sin registro en SAP ECC → solicitar la devolución.</li>
-          <li>Si existe <strong>rellenado</strong> por falta de respuesta del equipo de MKP → acercarse con el <strong>equipo administrativo</strong>.</li>
-          <li>Realizar <strong>validación OTP</strong> (se puede enviar hasta 3 veces); si no es exitoso → hacer <strong>validación manual</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 10 · Devolución -->
-    <div class="bt-block mkp-block" id="mkp-10">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">10</span>
-        <div>
-          <h2 class="bt-title">Devolución</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">CSC</span><span class="bt-plat mkp-plat">SAP ECC</span><span class="bt-plat mkp-plat">Entrada única</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">7 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Si está marcado el reembolso en Entrada única y el estatus en SOMS es <strong>LIPR, NMEN, VMEN</strong> → subir MDA opc 6 solicitando cambio de estatus a <span class="bt-quote">CANC</span> para subir a SAP ECC.</li>
-          <li>Si en SOMS está <strong>CANC</strong> y en Entrada única no está marcado el reembolso → subir MDA opc 6 solicitando que el <strong>seller marque el reembolso</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 11 · Devoluciones Rechazadas -->
-    <div class="bt-block mkp-block" id="mkp-11">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">11</span>
-        <div>
-          <h2 class="bt-title">Devoluciones Rechazadas</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">SAP ECC</span><span class="bt-plat mkp-plat">MDA Opc 6</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">5 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Aplica para los casos en que el <strong>PoS no permita la devolución</strong>.</li>
-          <li>Es necesario registrar el <strong>error textual</strong> exacto que muestra el sistema.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 12 · Recogidos / Devoluciones / por satisfacción -->
-    <div class="bt-block mkp-block" id="mkp-12">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">12</span>
-        <div>
-          <h2 class="bt-title">Recogidos / Devoluciones por satisfacción</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">Salesforce</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">1 año</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val info">Fecha calendario SOMS</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Para <strong>SL</strong>: primera opción → ofrecer al cliente acudir a tienda. Si no puede/quiere → ofrecer recolección (*consulta la tabla actualizada SL/Satisfacción SL).</li>
-          <li>Para <strong>BT</strong>: generar el recogido si es necesario.</li>
-          <li>El recogido lo genera el asesor de <strong>1er nivel/cabeceras</strong> en SOMS; al cliente se da la fecha que arroja el sistema.</li>
-          <li>2do contacto → sumar <strong>72h</strong> a la fecha de la llamada y seguir escalando.</li>
-          <li>3er contacto o recogido con <strong>15 días de vencimiento</strong> y zona quincenal/mensual → solicitar devolución en <strong>formulario Incidencias Trazabilidad</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 13 · Caja vacía -->
-    <div class="bt-block mkp-block" id="mkp-13">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">13</span>
-        <div>
-          <h2 class="bt-title">Caja vacía</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">Entrada única</span><span class="bt-plat mkp-plat">Tracking mensajería</span><span class="bt-plat mkp-plat">MDA Opc 6</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">15 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Solicitar <strong>evidencias fotográficas</strong>: guía (datos legibles) y cajas (interior y exterior), conforme a la plantilla de evidencia en la incidencia de MDA.</li>
-          <li>Sondear al cliente si las <strong>cintas o etiquetas</strong> se encontraban despegadas.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 14 · Pedido incompleto / maltratado / equivocado SL -->
-    <div class="bt-block mkp-block" id="mkp-14">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">14</span>
-        <div>
-          <h2 class="bt-title">Pedido incompleto / maltratado / equivocado SL</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">Salesforce ENR</span><span class="bt-plat mkp-plat">Entrada única</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">1 año</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">DILISA / LPC</span><span class="bt-time-val ok">24h</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">3DS</span><span class="bt-time-val ok">72h hábiles</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">PayPal</span><span class="bt-time-val ok">7 días hábiles</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Ref./SPEI</span><span class="bt-time-val warn">5-10 días</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Registrar la devolución en SAP ECC con la leyenda <span class="bt-quote">SERVICIO SL dañada/incompleta/equivocada</span>.</li>
-          <li><strong>No aplica</strong> en mercancía de alto valor, electrónica, cómputo, joyería fina, audio y video.</li>
-          <li>Aplica hasta un año con <strong>previa autorización</strong>.</li>
-          <li>Si el monto es <strong>mayor a $3,000</strong> → realizar la recolección y posterior reembolso.</li>
-          <li>En pedido incompleto: revisar que no haya <strong>guías múltiples</strong>; abrir MDA categoría 6 para validar con el <strong>SELLER</strong> si puede reenviar la mercancía faltante (plazo: <strong>10 días</strong>).</li>
-          <li>En tarjetas de débito: si excede <strong>45 días naturales</strong> → MED. En 3DS crédito: mismo método. Tarjetas extranjeras: intento; si falla → MED.</li>
-          <li class="bt-note mkp-note"><strong>TIP:</strong> Revisar la lista negra.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 15 · Pedido incompleto BT -->
-    <div class="bt-block mkp-block" id="mkp-15">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">15</span>
-        <div>
-          <h2 class="bt-title">Pedido incompleto BT</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">SOMS</span><span class="bt-plat mkp-plat">Entrada única</span><span class="bt-plat mkp-plat">Tracking mensajería</span><span class="bt-plat mkp-plat">Simpli</span><span class="bt-plat mkp-plat">MDA Opc 6</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Solicitar al cliente <strong>no usar la mercancía</strong> que sí le llegó.</li>
-          <li>Mencionar en el folio de MDA si el cliente desea la <strong>mercancía o el reembolso</strong>.</li>
-          <li>En mercancía de <strong>alto valor</strong> → llevar a cabo la investigación.</li>
-          <li>En BT por logística interna → validar con <strong>CR</strong> (Salesforce) y <strong>PLAN</strong> (MDA) — ambos reportarse a la par.</li>
-          <li>Revisar que no haya <strong>guías múltiples</strong>; abrir MDA categoría 6 para validar con el SELLER si puede reenviar (plazo: <strong>10 días</strong>).</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 16 · Joyería fina (Amore Mío) -->
-    <div class="bt-block mkp-block" id="mkp-16">
-      <div class="bt-head">
-        <span class="fp-num mkp-num">16</span>
-        <div>
-          <h2 class="bt-title">Joyería fina — Amore Mío</h2>
-          <div class="bt-plats"><span class="bt-plat mkp-plat">Entrada única</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">12 días naturales</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val info">Tienda física</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Modificación y personalización de joyería <strong>solo aplica para la marca Amore Mío</strong>.</li>
-          <li>El cliente acude a <strong>tienda física</strong> a solicitar el servicio — no se puede gestionar de forma remota.</li>
-        </ul>
-      </div>
-    </div>
-
+    <div id="traz-mkp" class="traz-sec"></div>
   </section>
 
+  <!-- ══ TIENDA FÍSICA ══ -->
   <section id="sec-tienda" class="view-section">
     <div class="sec-head">
       <span class="sec-eyebrow"><span class="dot"></span>Homologación de procesos 2026</span>
       <h1 class="sec-title">Procesos <em>Tienda Física</em></h1>
-      <p class="sec-sub">Los 10 procesos de Tienda Física — tiempos, plataformas y observaciones clave. Usa el buscador o los chips para ir directo al proceso.</p>
+      <p class="sec-sub">Procesos de Tienda Física — tiempos, plataformas y observaciones. Filtra por plataforma o busca dentro de la sección; abre una tarjeta para ver el detalle completo.</p>
     </div>
-
-    <nav class="fp-nav" aria-label="Procesos Tienda Física">
-      <button class="fp-nav-chip" onclick="jumpToTda('tda-1')">1 · Recogidos BT</button>
-      <button class="fp-nav-chip" onclick="jumpToTda('tda-2')">2 · Recogidos SL</button>
-      <button class="fp-nav-chip" onclick="jumpToTda('tda-3')">3 · Resurtido BT</button>
-      <button class="fp-nav-chip" onclick="jumpToTda('tda-4')">4 · Resurtido SL</button>
-      <button class="fp-nav-chip" onclick="jumpToTda('tda-5')">5 · ENR / Caja vacía</button>
-      <button class="fp-nav-chip" onclick="jumpToTda('tda-6')">6 · Cancelaciones BT</button>
-      <button class="fp-nav-chip" onclick="jumpToTda('tda-7')">7 · Cancelaciones SL</button>
-      <button class="fp-nav-chip" onclick="jumpToTda('tda-8')">8 · Cambio domicilio</button>
-      <button class="fp-nav-chip" onclick="jumpToTda('tda-9')">9 · Sustituto APV/POS</button>
-      <button class="fp-nav-chip" onclick="jumpToTda('tda-10')">10 · Devoluciones APV/POS</button>
-    </nav>
-
-    <!-- 1 · Recogidos por satisfacción / mercancía dañada BT -->
-    <div class="bt-block tda-block" id="tda-1">
-      <div class="bt-head">
-        <span class="fp-num tda-num">1</span>
-        <div>
-          <h2 class="bt-title">Recogidos por satisfacción / mercancía dañada BT</h2>
-          <div class="bt-plats"><span class="bt-plat tda-plat">PAO</span><span class="bt-plat tda-plat">Salesforce</span><span class="bt-plat tda-plat">Bodega destino</span><span class="bt-plat tda-plat">PostVenta</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">1 año</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val info">Fecha calendario PAO</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>El recogido lo genera el asesor de <strong>1er nivel en PAO</strong>; se asigna la fecha más cercana y se le brinda al cliente. El caso se escala con el equipo resolutor de <strong>PostVenta</strong>.</li>
-          <li>2do contacto → sumar <strong>72h</strong> a la fecha de la llamada y seguir escalando.</li>
-          <li>3er contacto o recogido con <strong>15 días de vencimiento</strong> (zona quincenal/mensual) → solicitar devolución en <strong>formulario Incidencias Trazabilidad</strong>.</li>
-          <li>Si está fuera de los tiempos de <strong>7 días (SEPRO)</strong> o <strong>30 días (satisfacción)</strong> → solicitar autorización a través del <strong>formulario Incidencias Trazabilidad</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 2 · Recogidos por satisfacción / mercancía dañada SL -->
-    <div class="bt-block tda-block" id="tda-2">
-      <div class="bt-head">
-        <span class="fp-num tda-num">2</span>
-        <div>
-          <h2 class="bt-title">Recogidos por satisfacción / mercancía dañada SL</h2>
-          <div class="bt-plats"><span class="bt-plat tda-plat">PAO</span><span class="bt-plat tda-plat">SOMS</span><span class="bt-plat tda-plat">Salesforce</span><span class="bt-plat tda-plat">Bodega destino</span><span class="bt-plat tda-plat">PostVenta</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">1 año</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val info">Fecha calendario PAO</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>La solicitud de recogido se escala por <strong>Salesforce a PostVenta</strong>, quien llevará el seguimiento. *Consulta la tabla actualizada para validar si procede por <em>Servicio SL</em> o <em>Satisfacción SL</em>.</li>
-          <li>El recogido lo genera el asesor de <strong>1er nivel/cabeceras en SOMS</strong>; al cliente se le brinda la fecha que arroja el sistema.</li>
-          <li>2do contacto → sumar <strong>72h</strong> a la fecha de la llamada y seguir escalando.</li>
-          <li>3er contacto o recogido con <strong>15 días de vencimiento</strong> (zona quincenal/mensual) → solicitar devolución en <strong>formulario Incidencias Trazabilidad</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 3 · Resurtido BT -->
-    <div class="bt-block tda-block" id="tda-3">
-      <div class="bt-head">
-        <span class="fp-num tda-num">3</span>
-        <div>
-          <h2 class="bt-title">Resurtido BT</h2>
-          <div class="bt-plats"><span class="bt-plat tda-plat">Salesforce</span><span class="bt-plat tda-plat">PAO</span><span class="bt-plat tda-plat">PostVenta</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">1 año</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">Depende del inventario</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Revisar condición de inventario en PAO; si <strong>no hay disponibilidad</strong> → ofrecer la recolección.</li>
-          <li>Si es mercancía de <strong>importación</strong>, el cliente tiene <strong>6 meses</strong> para reportar un defecto.</li>
-          <li>En <strong>cunas</strong>, el cliente tiene <strong>24h posteriores al armado</strong> para solicitar el resurtido BT. Se asigna al equipo resolutor de <strong>PostVenta</strong>.</li>
-          <li>Si está fuera de los tiempos (<strong>7 días SEPRO / 30 días satisfacción</strong>) → solicitar autorización a <strong>Supervisión</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 4 · Resurtido SL equivocada / incompleto / dañada -->
-    <div class="bt-block tda-block" id="tda-4">
-      <div class="bt-head">
-        <span class="fp-num tda-num">4</span>
-        <div>
-          <h2 class="bt-title">Resurtido SL equivocada / incompleto / dañada</h2>
-          <div class="bt-plats"><span class="bt-plat tda-plat">SOMS</span><span class="bt-plat tda-plat">Salesforce ENR</span><span class="bt-plat tda-plat">SIMPLIROUTE</span><span class="bt-plat tda-plat">4PL</span><span class="bt-plat tda-plat">MDA</span><span class="bt-plat tda-plat">PAO</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">1 año</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Solo aplica para pedidos <strong>APV o PoS con domicilio particular</strong>.</li>
-          <li>Si hay inventario → solicitar resurtido a través del <strong>formulario Incidencias Trazabilidad</strong>.</li>
-          <li>Si <strong>no hay inventario</strong> → registrar a la par: <span class="bt-quote">formulario Incidencias Trazabilidad (Autorización)</span> + <span class="bt-quote">formulario de cancelaciones de tienda</span>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 5 · Entrega no reconocida / Caja Vacía -->
-    <div class="bt-block tda-block" id="tda-5">
-      <div class="bt-head">
-        <span class="fp-num tda-num">5</span>
-        <div>
-          <h2 class="bt-title">Entrega no reconocida / Caja Vacía</h2>
-          <div class="bt-plats"><span class="bt-plat tda-plat">SOMS</span><span class="bt-plat tda-plat">Salesforce ENR</span><span class="bt-plat tda-plat">SIMPLIROUTE</span><span class="bt-plat tda-plat">4PL</span><span class="bt-plat tda-plat">PAO</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">1 año</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Solo aplica para pedidos <strong>APV o PoS con domicilio particular</strong>.</li>
-          <li>Si hay inventario → solicitar resurtido a través del <strong>formulario Incidencias Trazabilidad</strong>.</li>
-          <li>Si <strong>no hay inventario</strong> → solicitar devolución en <strong>MDA OPC 8</strong> con previa autorización de Supervisión. <em>No aplica en mercancía de alto valor, electrónica, cómputo, joyería fina, audio y video</em> — se asigna caso al equipo resolutor para investigación.</li>
-          <li>Si es <strong>C&amp;C</strong> → no aplica, canalizar a <strong>TDA</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 6 · Cancelaciones BT -->
-    <div class="bt-block tda-block" id="tda-6">
-      <div class="bt-head">
-        <span class="fp-num tda-num">6</span>
-        <div>
-          <h2 class="bt-title">Cancelaciones BT</h2>
-          <div class="bt-plats"><span class="bt-plat tda-plat">Salesforce</span><span class="bt-plat tda-plat">MDA</span><span class="bt-plat tda-plat">PAO</span><span class="bt-plat tda-plat">Formulario cambio estatus</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">7 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Depende si el estatus es <strong>permisible para pausar la línea</strong> y solicitar el reembolso en el <strong>formulario Incidencias Trazabilidad</strong>.</li>
-          <li>Si no procede → solicitar el cambio al equipo correspondiente: <strong>CR / Supervisión</strong>.</li>
-          <li><strong>Inbound:</strong> Validar con <strong>OTP</strong>; si no se vincula en Salesforce → realizar <strong>validación tradicional</strong> (SKU y motivo).</li>
-          <li><strong>WhatsApp:</strong> Utilizar la plantilla <span class="bt-quote">Datos para cancelación</span>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 7 · Cancelaciones SL -->
-    <div class="bt-block tda-block" id="tda-7">
-      <div class="bt-head">
-        <span class="fp-num tda-num">7</span>
-        <div>
-          <h2 class="bt-title">Cancelaciones SL</h2>
-          <div class="bt-plats"><span class="bt-plat tda-plat">Salesforce</span><span class="bt-plat tda-plat">SOMS</span><span class="bt-plat tda-plat">Formulario Incidencias Trazabilidad</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">7 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Si procede → subir la solicitud en el <strong>formulario de Incidencias Trazabilidad</strong>. <em>Nota: la cancelación se debe pedir en los grupos.</em></li>
-          <li><strong>No aplica</strong> en estatus CONF que surte la locación <strong>125 / VCTE / Viaja con mensajería</strong>.</li>
-          <li>Si <em>viaja con mensajería</em> → asignar al equipo resolutor con la leyenda <span class="bt-quote">VENCIDA SL</span> y subirlo al formulario Incidencias Trazabilidad.</li>
-          <li><strong>Inbound:</strong> Validar con <strong>OTP</strong>; si no se vincula → validación tradicional (SKU y motivo).</li>
-          <li><strong>WhatsApp:</strong> Utilizar plantilla <span class="bt-quote">Datos para cancelación</span>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 8 · Cambios de domicilio -->
-    <div class="bt-block tda-block" id="tda-8">
-      <div class="bt-head">
-        <span class="fp-num tda-num">8</span>
-        <div>
-          <h2 class="bt-title">Cambios de domicilio</h2>
-          <div class="bt-plats"><span class="bt-plat tda-plat">Salesforce</span><span class="bt-plat tda-plat">PAO</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val info">Depende del estatus</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li><strong>Inbound:</strong> Validar con <strong>OTP</strong>; si no se vincula → validación tradicional con: <em>domicilio actual, domicilio nuevo y SKU</em>.</li>
-          <li>Datos requeridos: <strong>CP · Colonia · Calle · Número interior o exterior</strong>.</li>
-          <li><strong>WhatsApp:</strong> Utilizar plantilla <span class="bt-quote">Datos</span>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 9 · Sustituto APV / POS -->
-    <div class="bt-block tda-block" id="tda-9">
-      <div class="bt-head">
-        <span class="fp-num tda-num">9</span>
-        <div>
-          <h2 class="bt-title">Sustituto APV / POS</h2>
-          <div class="bt-plats"><span class="bt-plat tda-plat">N/A</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val">N/A</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li><strong>No procede</strong> — se canaliza directamente a la <strong>sucursal</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 10 · Devoluciones APV / POS -->
-    <div class="bt-block tda-block" id="tda-10">
-      <div class="bt-head">
-        <span class="fp-num tda-num">10</span>
-        <div>
-          <h2 class="bt-title">Devoluciones APV / POS</h2>
-          <div class="bt-plats"><span class="bt-plat tda-plat">SOMS</span><span class="bt-plat tda-plat">PAO</span><span class="bt-plat tda-plat">Formulario Incidencias 2026</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">7 días hábiles</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Si la mercancía está en estatus <strong>CANC</strong> → registrar la solicitud de devolución en el formulario de incidencias 2026, categoría <span class="bt-quote">Cancelaciones De Tienda</span>.</li>
-          <li>Si el pedido SL <strong>no está cancelado</strong> pero tiene estatus permisible para la cancelación → solicitar apoyo para realizar el proceso y subir al formulario, categoría <span class="bt-quote">Cancelaciones De Tienda</span>.</li>
-          <li>Cuando la OV esté en <strong>semáforo verde</strong> → solicitar pausar el trazo logístico y subir al formulario, categoría <span class="bt-quote">Cancelaciones De Tienda</span>.</li>
-        </ul>
-      </div>
-    </div>
-
+    <div id="traz-tienda" class="traz-sec"></div>
   </section>
 
   <!-- ══ GENERALES ══ -->
@@ -3469,195 +2080,9 @@ table.ds-matrix{width:100%;border-collapse:separate;border-spacing:0;min-width:5
     <div class="sec-head">
       <span class="sec-eyebrow"><span class="dot"></span>Homologación de procesos 2026</span>
       <h1 class="sec-title">Procesos <em>Generales</em></h1>
-      <p class="sec-sub">Los 9 procesos generales — Mesa de Regalos, Métodos de Pago, Devoluciones no reflejadas, Digitales y Sterling — con tiempos, plataformas y observaciones clave. Usa el buscador o los chips para ir directo al proceso.</p>
+      <p class="sec-sub">Mesa de Regalos, Métodos de Pago, Devoluciones no reflejadas, Digitales y Sterling — tiempos, plataformas y observaciones. Filtra por plataforma o busca dentro de la sección; abre una tarjeta para ver el detalle completo.</p>
     </div>
-
-    <nav class="fp-nav" aria-label="Procesos Generales">
-      <button class="fp-nav-chip" onclick="jumpToGen('gen-1')">1 · MDR Dedicatoria</button>
-      <button class="fp-nav-chip" onclick="jumpToGen('gen-2')">2 · MDR Cancelación</button>
-      <button class="fp-nav-chip" onclick="jumpToGen('gen-3')">3 · MDR Asociar compra</button>
-      <button class="fp-nav-chip" onclick="jumpToGen('gen-4')">4 · M. pago (Reprocesos)</button>
-      <button class="fp-nav-chip" onclick="jumpToGen('gen-5')">5 · M. pago (s/registro)</button>
-      <button class="fp-nav-chip" onclick="jumpToGen('gen-6')">6 · M. pago (atípico)</button>
-      <button class="fp-nav-chip" onclick="jumpToGen('gen-7')">7 · Dev. no reflejadas</button>
-      <button class="fp-nav-chip" onclick="jumpToGen('gen-8')">8 · Digitales</button>
-      <button class="fp-nav-chip" onclick="jumpToGen('gen-9')">9 · Sterling</button>
-    </nav>
-
-    <!-- 1 · Mesa de Regalos Dedicatoria -->
-    <div class="bt-block gen-block" id="gen-1">
-      <div class="bt-head">
-        <span class="fp-num gen-num">1</span>
-        <div>
-          <h2 class="bt-title">Mesa de Regalos — Dedicatoria</h2>
-          <div class="bt-plats"><span class="bt-plat gen-plat">SOMS</span><span class="bt-plat gen-plat">MDR</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A (evento abierto)</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val ok">Inmediata</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Cuida la <strong>redacción y ortografía</strong> del mensaje.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 2 · Mesa de Regalos (Cancelación de compra de festejado) -->
-    <div class="bt-block gen-block" id="gen-2">
-      <div class="bt-head">
-        <span class="fp-num gen-num">2</span>
-        <div>
-          <h2 class="bt-title">Mesa de Regalos — Cancelación de compra de festejado</h2>
-          <div class="bt-plats"><span class="bt-plat gen-plat">SOMS</span><span class="bt-plat gen-plat">MDR</span><span class="bt-plat gen-plat">SAP ECC</span><span class="bt-plat gen-plat">Salesforce</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A (evento abierto)</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">5-7 días</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Los datos de <strong>FMS, SOMS y MDR</strong> deben coincidir para poder enviar el <strong>OTP</strong> y cancelar.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 3 · Mesa de Regalos (asociar compra) -->
-    <div class="bt-block gen-block" id="gen-3">
-      <div class="bt-head">
-        <span class="fp-num gen-num">3</span>
-        <div>
-          <h2 class="bt-title">Mesa de Regalos — Asociar compra</h2>
-          <div class="bt-plats"><span class="bt-plat gen-plat">SOMS</span><span class="bt-plat gen-plat">MDR</span><span class="bt-plat gen-plat">Formulario de vinculación para evento</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A (evento abierto)</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">5-7 días</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones — recuerda que:</span>
-        <ul class="bt-obs-list">
-          <li>Solo compras de la <strong>0009 (VenTel)</strong> y <strong>0039 (Internet)</strong>.</li>
-          <li>El domicilio de entrega debe ser el <strong>mismo de la mesa de regalos</strong>.</li>
-          <li><strong>No aplica</strong> para mercancía <strong>MKP</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 4 · Métodos de pago (registrado en Reprocesos) -->
-    <div class="bt-block gen-block" id="gen-4">
-      <div class="bt-head">
-        <span class="fp-num gen-num">4</span>
-        <div>
-          <h2 class="bt-title">Métodos de pago — registrado en Reprocesos</h2>
-          <div class="bt-plats"><span class="bt-plat gen-plat">FMS</span><span class="bt-plat gen-plat">Drive de Reprocesos</span><span class="bt-plat gen-plat">SAP ECC</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10-12 días</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li><strong>OpenPay</strong>: si la partida está liberada se puede ofrecer — primero el <strong>producto</strong>; si no hay inventario, <strong>sustituto</strong>; y como última instancia ofrecer la <strong>devolución</strong> a través de la partida.</li>
-        </ul>
-        <div class="bt-note gen-note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg><span><strong>Nota:</strong> Si es a través de una <strong>partida</strong>, el tiempo es de <strong>3 a 5 días</strong>.</span></div>
-      </div>
-    </div>
-
-    <!-- 5 · Métodos de pago (sin registro en Reprocesos) -->
-    <div class="bt-block gen-block" id="gen-5">
-      <div class="bt-head">
-        <span class="fp-num gen-num">5</span>
-        <div>
-          <h2 class="bt-title">Métodos de pago — sin registro en Reprocesos</h2>
-          <div class="bt-plats"><span class="bt-plat gen-plat">FMS</span><span class="bt-plat gen-plat">Correo Postventa</span><span class="bt-plat gen-plat">MDA Opc 28 Métodos de pago</span><span class="bt-plat gen-plat">Drive de Reprocesos</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10-12 días</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Posterior a <strong>72h (naturales)</strong> es necesario solicitar al cliente el <strong>comprobante con la referencia de pago</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 6 · Métodos de pago (Caso atípico) -->
-    <div class="bt-block gen-block" id="gen-6">
-      <div class="bt-head">
-        <span class="fp-num gen-num">6</span>
-        <div>
-          <h2 class="bt-title">Métodos de pago — Caso atípico</h2>
-          <div class="bt-plats"><span class="bt-plat gen-plat">FMS</span><span class="bt-plat gen-plat">Correo Postventa Omnicanal</span><span class="bt-plat gen-plat">Correo a Depósito aclaraciones</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10-12 días</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 7 · Devoluciones no reflejadas -->
-    <div class="bt-block gen-block" id="gen-7">
-      <div class="bt-head">
-        <span class="fp-num gen-num">7</span>
-        <div>
-          <h2 class="bt-title">Devoluciones no reflejadas</h2>
-          <div class="bt-plats"><span class="bt-plat gen-plat">FMS</span><span class="bt-plat gen-plat">Correo Postventa evidencia</span><span class="bt-plat gen-plat">Correo a Depósito aclaraciones</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">5 días</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 8 · Digitales -->
-    <div class="bt-block gen-block" id="gen-8">
-      <div class="bt-head">
-        <span class="fp-num gen-num">8</span>
-        <div>
-          <h2 class="bt-title">Digitales</h2>
-          <div class="bt-plats"><span class="bt-plat gen-plat">FMS</span><span class="bt-plat gen-plat">Salesforce</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">5-7 días</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 9 · Sterling -->
-    <div class="bt-block gen-block" id="gen-9">
-      <div class="bt-head">
-        <span class="fp-num gen-num">9</span>
-        <div>
-          <h2 class="bt-title">Sterling</h2>
-          <div class="bt-plats"><span class="bt-plat gen-plat">SOMS</span><span class="bt-plat gen-plat">Salesforce</span></div>
-        </div>
-        <div class="bt-times">
-          <div class="bt-time-chip"><span class="bt-time-lbl">Reporte</span><span class="bt-time-val">N/A</span></div>
-          <div class="bt-time-chip"><span class="bt-time-lbl">Solución</span><span class="bt-time-val warn">10 días</span></div>
-        </div>
-      </div>
-      <div class="bt-obs">
-        <span class="bt-obs-lbl">Observaciones</span>
-        <ul class="bt-obs-list">
-          <li>Después del <strong>5.º día</strong> sin cambio a <strong>CONF</strong>; validar que <strong>no se trate de una preventa</strong>.</li>
-        </ul>
-      </div>
-    </div>
-
+    <div id="traz-generales" class="traz-sec"></div>
   </section>
 
   <!-- ══ DEVOLUCIONES SAP · Glosario de leyendas + matrices SL ══ -->
@@ -4263,98 +2688,18 @@ const FP_INDEX = [
   { name:'Prevención de Fraudes', sub:'Validación Cybersource, SAF, FMS y SVL', target:'fp-fraudes', kw:'fraude fraudes cybersource saf svl fms validacion listas negativas rechazo banco prevencion' }
 ];
 
-/* Índice estático de Big Ticket para el buscador */
-const BT_INDEX = [
-  { name:'Fecha en tiempo', sub:'BigTicket · Inmediata (fecha PAO) · PAO/Salesforce', target:'bt-1', kw:'fecha tiempo pao salesforce inmediata big ticket bt proceso entrega calendario' },
-  { name:'Fecha vencida', sub:'BigTicket · 5 días hábiles · caso CR bodega destino', target:'bt-2', kw:'fecha vencida cr bodega destino pedido camino semaforo rojo cambios estatus plan mda categoria 49 bt 48 horas referencias telefonos entregado' },
-  { name:'Asignar fecha PAO', sub:'BigTicket · Inmediata · revisar SAP ECC y comentarios', target:'bt-3', kw:'asignar fecha pao calendario disponibles pausada cancelacion sap ecc comentarios bt guardar cambios' },
-  { name:'Armado', sub:'BigTicket · MDA OMS · fecha disponible · CR destino con folio', target:'bt-4', kw:'armado mda oms calendario fecha disponible cr destino folio bt dd mm aa' },
-  { name:'OV Sin disponibilidad', sub:'BigTicket · fecha de surtido PAO · estatus SKU', target:'bt-5', kw:'ov sin disponibilidad surtido sku activo normal escaso inactivo proveedor sustituto cancelacion periodicidad codigo postal bt' },
-  { name:'Recogidos por satisfacción / mercancía dañada', sub:'BigTicket · 1 año · PostVenta · Incidencias Trazabilidad', target:'bt-6', kw:'recogidos satisfaccion mercancia danada postventa sepro trazabilidad incidencias quincenal mensual devolucion bt 72 horas 15 dias vencimiento' },
-  { name:'Entrega no reconocida', sub:'BigTicket · 15 días · Simpliroute evidencia de entrega', target:'bt-7', kw:'entrega no reconocida simpliroute evidencia fallida cruzada cr bt' },
-  { name:'Devolución sí procede', sub:'BigTicket · DILISA 24h · 3DS 72h · PayPal 7 días · OpenPay 3 días', target:'bt-8', kw:'devolucion procede tarjeta liverpool dilisa lpc credito debito 3ds paypal openpay spei med monedero otp cte sap ecc bt reembolso semaforo verde 45 dias' },
-  { name:'Devolución no procede — Solicitud cambio de estatus', sub:'BigTicket · formulario Incidencias Trazabilidad · Glosario', target:'bt-9', kw:'devolucion no procede solicitud cambio estatus formulario incidencias trazabilidad glosario supervision otp bt notificar' },
-  { name:'Devolución no procede por estatus', sub:'BigTicket · 3 días · escalación CR bodega destino', target:'bt-10', kw:'devolucion no procede estatus escalacion cr bodega destino mercancia arribe bt' },
-  { name:'Devolución Motos sí procede', sub:'BigTicket · semáforo verde · PAO y SAP ECC · moto', target:'bt-11', kw:'devolucion motos procede semaforo verde pao sap ecc facturada activada cr destino dilisa lpc paypal openpay med debito 3ds bt moto' },
-  { name:'Devolución Motos no procede', sub:'BigTicket · moto ya activada y facturada', target:'bt-12', kw:'devolucion motos no procede activada facturada pao salesforce bt moto' },
-  { name:'Resurtido BT', sub:'BigTicket · 1 año · inventario 10-12 días hábiles PAO', target:'bt-13', kw:'resurtido bt inventario disponibilidad periodicidad codigo postal sku importacion defecto cunas armado sepro supervision recoleccion resurtir' },
-  { name:'Cambio de domicilio sí procede', sub:'BigTicket · validación OTP · PAO/Salesforce', target:'bt-14', kw:'cambio domicilio procede otp validacion manual cr entrega pao salesforce bt' },
-  { name:'Error de catalogación', sub:'BigTicket · 10 días · Salesforce Trazabilidad CCL · artículo', target:'bt-15', kw:'error catalogacion salesforce trazabilidad fecha entrega sin fecha comercial ccl articulo color tamanio modelo bt' },
-];
-
-/* Índice estático de Soft Line para el buscador */
-const SF_INDEX = [
-  { name:'Fecha en tiempo — Soft Line', sub:'SoftLine · Inmediata (fecha SOMS) · SOMS 6.7.15', target:'sl-1', kw:'fecha tiempo soms salesforce 4pl simpliroute inmediata softline sf logistica mensajeria interna pantalla 6.7.15' },
-  { name:'Fecha vencida — Soft Line', sub:'SoftLine · 10 días · NMEN VMEN forzado estatus devolución', target:'sl-2', kw:'fecha vencida soms nmen vmen movimiento forzado estatus devolucion supervision sf softline logistica mensajeria 10 dias' },
-  { name:'Más datos — Soft Line', sub:'SoftLine · 10 días · paqueterías internas/externas · NENT DOE', target:'sl-3', kw:'mas datos soms paqueterias internas externas correo mensajerias folio cr nent doe softline sf logistica' },
-  { name:'Resurtido equivocada / incompleto / dañada — SL', sub:'SoftLine · 1 año · SAP ECC · Servicio SL/dañada/incompleta/equivocada', target:'sl-4', kw:'resurtido equivocada incompleto danada sap ecc servicio sl leyenda resurtidos grupo resolutor satisfaccion celular softline sf' },
-  { name:'Entrega no reconocida / Caja Vacía — SL', sub:'SoftLine · 30 días reporte · 10 días solución · lista negra', target:'sl-5', kw:'entrega no reconocida caja vacia inventario mensajerias resurtidos 3000 pesos lista negra reconocida sap ecc softline sf' },
-  { name:'Cancelación mensajería interna — SL', sub:'SoftLine · 10 días · No aplica estatus CONF', target:'sl-6', kw:'cancelacion mensajeria interna conf guia otp validacion manual softline sf 4pl correo' },
-  { name:'Cancelación logística interna — SL', sub:'SoftLine · Inmediato · No aplica CONF locación 125 VCTE', target:'sl-7', kw:'cancelacion logistica interna conf locacion 125 vcte otp csc salesforce softline sf inmediato' },
-  { name:'Devolución sí procede — Soft Line', sub:'SoftLine · DILISA 24h · 3DS 72h · PayPal 48h · MED 24h', target:'sl-8', kw:'devolucion procede tarjeta liverpool dilisa lpc credito debito 3ds paypal 48 med monedero otp sap ecc cte softline sf referencias pagos referenciados conveniencia transferencias reembolso' },
-  { name:'Recogidos por satisfacción / mercancía dañada — SL', sub:'SoftLine · 1 año · PostVenta SOMS · Incidencias Trazabilidad', target:'sl-9', kw:'recogidos satisfaccion mercancia danada postventa soms cabeceras 72 horas vencimiento incidencias trazabilidad quincenal mensual softline sf' },
-  { name:'Cambio de domicilio — Soft Line', sub:'SoftLine · INCO · OTP validación · PAO/SOMS', target:'sl-10', kw:'cambio domicilio inco otp validacion manual pao soms salesforce softline sf' },
-];
-
-/* Índice estático de SL Mensajerías para el buscador */
-const SFM_INDEX = [
-  { name:'Fecha en tiempo — SL Mensajerías', sub:'SL Mensajerías · Inmediata (SOMS) · SOMS 6.7.15', target:'slm-1', kw:'fecha tiempo soms 4pl pagina mensajeria softline sf mensajerias inmediata pantalla 6.7.15' },
-  { name:'Fecha vencida — SL Mensajerías', sub:'SL Mensajerías · 10 días · NMEN VMEN forzado tracking', target:'slm-2', kw:'fecha vencida soms nmen vmen movimiento forzado devolucion 10 dias softline sf mensajerias tracking 4pl' },
-  { name:'Más datos — SL Mensajerías', sub:'SL Mensajerías · 10 días · guía no retornada · grupo resolutor', target:'slm-3', kw:'mas datos guia no retornada escalar datos adicionales grupo resolutor mensajerias softline sf 10 dias tracking' },
-  { name:'Guía retornada — SL Mensajerías', sub:'SL Mensajerías · 10 días · correo locación · caso CR', target:'slm-4', kw:'guia retornada locacion correo caso cr mensajerias softline sf 10 dias retorno' },
-  { name:'Resurtido equivocada / incompleto / dañada — SL Mens.', sub:'SL Mensajerías · 1 año · SAP ECC · SIMPLIROUTE · 4PL', target:'slm-5', kw:'resurtido equivocada incompleto danada sap ecc leyenda sl simpliroute 4pl enr mensajerias softline sf 1 año' },
-  { name:'Entrega no reconocida / Caja Vacía — SL Mens.', sub:'SL Mensajerías · 30 días reporte · 10 días solución · lista negra', target:'slm-6', kw:'entrega no reconocida caja vacia inventario 3000 pesos lista negra reconocida sap ecc mensajerias postventa softline sf' },
-  { name:'Retorno para cancelación — SL Mensajerías', sub:'SL Mensajerías · 10 días · NMEN VMEN forzado · no última milla', target:'slm-7', kw:'retorno cancelacion mensajeria tiene mercancia ultima milla nmen vmen forzado tracking softline sf 10 dias' },
-  { name:'Devolución — SL Mensajerías', sub:'SL Mensajerías · DILISA 24h · 3DS 72h · PayPal 48h · MED 24h', target:'slm-8', kw:'devolucion dilisa lpc tarjeta credito debito 3ds paypal 48 med monedero otp sap ecc cte formulario incidencias trazabilidad 45 dias debito mensajerias softline sf' },
-  { name:'Recogidos satisfacción / mercancía dañada — SL Mens.', sub:'SL Mensajerías · 1 año · PostVenta · Incidencias Trazabilidad', target:'slm-9', kw:'recogidos satisfaccion mercancia danada postventa soms cabeceras 72 horas incidencias trazabilidad quincenal mensual 15 dias softline sf mensajerias' },
-];
-
-/* Índice estático de MarketPlace para el buscador */
-const MKP_INDEX = [
-  { name:'Fecha en tiempo — MKP', sub:'MarketPlace · Entrada única + 7 días · SOMS/Salesforce/Tracking', target:'mkp-1', kw:'fecha tiempo entrada unica envio limite soms salesforce tracking mensajeria marketplace mkp sl bt' },
-  { name:'Fecha vencida BT — MKP', sub:'MarketPlace · 10 días · SOMS/Salesforce/Entrada única · MDA cat.40/CR', target:'mkp-2', kw:'fecha vencida bt big ticket plan mda categoria 40 cr salesforce pantalla 6.7.11 6.7.15 trazo logistico marketplace mkp' },
-  { name:'Guía creada s/movimiento — MKP', sub:'MarketPlace · MDA +7 días · Entrada única vencida · cat.49', target:'mkp-3', kw:'guia creada sin movimiento entrada unica vencida mda 7 dias deposito mensajeria plan categoria 49 manual mkp marketplace' },
-  { name:'Guía tránsito c/movimiento — MKP', sub:'MarketPlace · 5 días · SOMS/Entrada única/Tracking', target:'mkp-4', kw:'guia transito con movimiento 5 dias soms entrada unica tracking rastrear guia incidencias escalacion marketplace mkp' },
-  { name:'Guía tránsito s/movimiento — MKP', sub:'MarketPlace · 5 días s/movimiento · MDA Opc 6 Soporte', target:'mkp-5', kw:'guia transito sin movimiento 5 dias mda opc 6 soporte mkp domicilio incompleto datos adicionales incidencias trazabilidad marketplace' },
-  { name:'Guía retornada — MKP', sub:'MarketPlace · 10 días · retornada origen remitente · MDA Opc 6', target:'mkp-6', kw:'guia retornada origen remitente tracking mda opc 6 soporte marketplace mkp' },
-  { name:'Pedido inexistente Entrada Única — MKP', sub:'MarketPlace · 7 días · remisión MDA · entrega o devolución', target:'mkp-7', kw:'pedido inexistente entrada unica remision datos cargados mda entrega devolucion seller marketplace mkp' },
-  { name:'Entrega no reconocida — MKP', sub:'MarketPlace · 30 días reporte · DILISA 24h · 3DS 72h · PayPal 48h', target:'mkp-8', kw:'entrega no reconocida enr formulario incidencias trazabilidad reconocida sap ecc lista negra alto valor electronica computo joyeria audio video 45 dias med dilisa lpc 3ds paypal marketplace mkp' },
-  { name:'Cancelación — MKP', sub:'MarketPlace · 10 días · SOMS/CSC/Entrada Única · OTP · ZVADVIS', target:'mkp-9', kw:'cancelacion zvadvis 5 7 dias sap ecc devolucion rellanado otp validacion manual csc soms entrada unica marketplace mkp' },
-  { name:'Devolución — MKP', sub:'MarketPlace · 7 días · SOMS/CSC/SAP ECC/Entrada única · CANC/LIPR', target:'mkp-10', kw:'devolucion reembolso entrada unica lipr nmen vmen canc mda opc 6 seller sap ecc soms csc marketplace mkp' },
-  { name:'Devoluciones Rechazadas — MKP', sub:'MarketPlace · 5 días · PoS no permite devolución · error textual', target:'mkp-11', kw:'devoluciones rechazadas pos punto de venta error textual sap ecc mda opc 6 marketplace mkp' },
-  { name:'Recogidos / Devoluciones por satisfacción — MKP', sub:'MarketPlace · 1 año · calendario SOMS · Incidencias Trazabilidad', target:'mkp-12', kw:'recogidos devoluciones satisfaccion tienda recoleccion soms salesforce cabeceras 72 horas 15 dias vencimiento incidencias trazabilidad quincenal mensual marketplace mkp sl bt' },
-  { name:'Caja vacía — MKP', sub:'MarketPlace · 15 días · evidencia fotográfica · cintas etiquetas', target:'mkp-13', kw:'caja vacia evidencia fotografica cintas etiquetas datos legibles interior exterior sondear cliente mda opc 6 soporte marketplace mkp' },
-  { name:'Pedido incompleto / maltratado / equivocado SL — MKP', sub:'MarketPlace · 1 año · SAP ECC SERVICIO SL · lista negra · recolección', target:'mkp-14', kw:'pedido incompleto maltratado equivocado sl servicio leyenda danada equivocada 3000 recoleccion reembolso guias multiples lista negra 45 dias med 3ds paypal dilisa lpc marketplace mkp' },
-  { name:'Pedido incompleto BT — MKP', sub:'MarketPlace · 10 días · Simpli/CR/PLAN · alto valor investigación', target:'mkp-15', kw:'pedido incompleto bt big ticket mercancia no usar cr salesforce plan mda simpli alto valor investigacion guias multiples 10 dias marketplace mkp' },
-  { name:'Joyería fina Amore Mío — MKP', sub:'MarketPlace · 12 días · Entrada única · solo tienda física', target:'mkp-16', kw:'joyeria fina amore mio modificacion personalizacion tienda fisica entrada unica 12 dias marketplace mkp' },
-];
-
-/* Índice estático de Tienda Física para el buscador */
-const TDA_INDEX = [
-  { name:'Recogidos por satisfacción / mercancía dañada BT — Tienda', sub:'Tienda · 1 año · Fecha calendario PAO · PAO/Salesforce/PostVenta', target:'tda-1', kw:'recogidos satisfaccion mercancia danada bt big ticket pao salesforce postventa bodega destino 72 horas 15 dias vencimiento incidencias trazabilidad sepro tienda fisica' },
-  { name:'Recogidos por satisfacción / mercancía dañada SL — Tienda', sub:'Tienda · 1 año · Fecha calendario PAO · PAO/SOMS/Salesforce/PostVenta', target:'tda-2', kw:'recogidos satisfaccion mercancia danada sl softline pao soms salesforce postventa bodega destino 72 horas 15 dias vencimiento incidencias trazabilidad tienda fisica' },
-  { name:'Resurtido BT — Tienda', sub:'Tienda · 1 año · inventario PAO · Salesforce/PostVenta · importación/cunas', target:'tda-3', kw:'resurtido bt big ticket inventario pao salesforce postventa importacion defecto cunas 24h armado sepro satisfaccion supervisión tienda fisica' },
-  { name:'Resurtido SL equivocada / incompleto / dañada — Tienda', sub:'Tienda · 1 año · 10 días · formulario Incidencias Trazabilidad · APV/PoS', target:'tda-4', kw:'resurtido sl softline equivocada incompleto danada formulario incidencias trazabilidad apv pos domicilio particular inventario cancelaciones tienda soms salesforce enr simpliroute 4pl mda pao' },
-  { name:'Entrega no reconocida / Caja Vacía — Tienda', sub:'Tienda · 1 año · 10 días · APV/PoS domicilio · MDA OPC 8 autorización', target:'tda-5', kw:'entrega no reconocida caja vacia inventario apv pos domicilio particular mda opc 8 autorizacion supervisión alto valor electronica computo joyeria audio video cc candc tienda fisica' },
-  { name:'Cancelaciones BT — Tienda', sub:'Tienda · N/A · 7 días · Salesforce/MDA/PAO · OTP · formulario cambio estatus', target:'tda-6', kw:'cancelaciones bt big ticket estatus permisible pausar linea reembolso formulario incidencias trazabilidad cr supervision otp validacion tradicional sku motivo whatsapp plantilla tienda fisica' },
-  { name:'Cancelaciones SL — Tienda', sub:'Tienda · N/A · 7 días · Salesforce/SOMS · CONF/VCTE/mensajería', target:'tda-7', kw:'cancelaciones sl softline formulario incidencias trazabilidad grupos conf locacion 125 vcte viaja mensajeria vencida sl otp validacion tradicional whatsapp plantilla tienda fisica' },
-  { name:'Cambios de domicilio — Tienda', sub:'Tienda · N/A · depende estatus · Salesforce/PAO · OTP/CP/Colonia', target:'tda-8', kw:'cambio domicilio salesforce pao otp validacion tradicional cp colonia calle numero interior exterior whatsapp plantilla datos tienda fisica' },
-  { name:'Sustituto APV / POS — Tienda', sub:'Tienda · N/A · no procede · canalizar sucursal', target:'tda-9', kw:'sustituto apv pos no procede canaliza sucursal tienda fisica' },
-  { name:'Devoluciones APV / POS — Tienda', sub:'Tienda · N/A · 7 días · SOMS/PAO · formulario Cancelaciones De Tienda 2026', target:'tda-10', kw:'devoluciones apv pos canc cancelado estatus permisible semaforo verde pausar trazo logistico formulario incidencias 2026 cancelaciones de tienda soms pao tienda fisica' },
-];
-
-/* Índice estático de Generales para el buscador */
-const GEN_INDEX = [
-  { name:'Mesa de Regalos — Dedicatoria', sub:'Generales · N/A (evento abierto) · Inmediata · SOMS/MDR', target:'gen-1', kw:'mesa de regalos mdr dedicatoria mensaje redaccion ortografia soms evento abierto inmediata generales' },
-  { name:'Mesa de Regalos — Cancelación de compra de festejado', sub:'Generales · 5-7 días · SOMS/MDR/SAP ECC/Salesforce · OTP', target:'gen-2', kw:'mesa de regalos mdr cancelacion compra festejado fms soms sap ecc salesforce otp coincidir datos generales evento abierto' },
-  { name:'Mesa de Regalos — Asociar compra', sub:'Generales · 5-7 días · SOMS/MDR/Formulario de vinculación · 0009/0039', target:'gen-3', kw:'mesa de regalos mdr asociar compra vincular vinculacion evento 0009 ventel 0039 internet domicilio entrega mkp soms generales' },
-  { name:'Métodos de pago — registrado en Reprocesos', sub:'Generales · 10-12 días · FMS/Drive Reprocesos/SAP ECC · OpenPay', target:'gen-4', kw:'metodos de pago registrado reprocesos fms drive sap ecc openpay partida liberada producto sustituto devolucion 3 a 5 dias generales' },
-  { name:'Métodos de pago — sin registro en Reprocesos', sub:'Generales · 10-12 días · FMS/Correo Postventa/MDA Opc 28', target:'gen-5', kw:'metodos de pago sin registro reprocesos fms correo postventa mda opc 28 drive comprobante referencia 72 horas naturales generales' },
-  { name:'Métodos de pago — Caso atípico', sub:'Generales · 10-12 días · FMS/Correo Postventa Omnicanal/Depósito', target:'gen-6', kw:'metodos de pago caso atipico fms correo postventa omnicanal deposito aclaraciones generales' },
-  { name:'Devoluciones no reflejadas', sub:'Generales · 5 días · FMS/Correo Postventa evidencia/Depósito', target:'gen-7', kw:'devoluciones no reflejadas fms correo postventa evidencia deposito aclaraciones generales' },
-  { name:'Digitales', sub:'Generales · 5-7 días · FMS/Salesforce', target:'gen-8', kw:'digitales fms salesforce generales' },
-  { name:'Sterling', sub:'Generales · 10 días · SOMS/Salesforce · CONF/preventa', target:'gen-9', kw:'sterling soms salesforce conf preventa 5 dia cambio generales' },
-];
+/* Índices de Trazabilidad para el buscador global.
+   Ya no se escriben a mano: los reconstruye trazReconstruirIndices() con lo que
+   llega de la hoja de Homologación, de modo que TODO el contenido de un proceso
+   (nombre, tiempos, plataformas y observaciones) sea buscable desde el buscador
+   general. Se declaran con `let` y vacíos porque el buscador puede consultarlos
+   antes de que responda Apps Script. */
+let BT_INDEX  = [];   // Big Ticket
+let SF_INDEX  = [];   // Soft Line (logística y mensajería interna)
+let SFM_INDEX = [];   // SL Mensajerías
+let MKP_INDEX = [];   // MarketPlace
+let TDA_INDEX = [];   // Tienda Física
+let GEN_INDEX = [];   // Generales
 
 /* Índice estático de Devoluciones SAP (glosario de leyendas + matrices) para el buscador */
 const DEVSAP_INDEX = [
@@ -4625,6 +2970,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // SWR: pinta al instante con el último dato guardado localmente…
   const cached = lsGet('ventel-data-v1', null);
   if (cached && cached.data) { lastUpdated = cached.t || null; onToolsData(cached.data, true); }
+
+  // …lo mismo para Trazabilidad: esqueletos, luego la última copia buena de la
+  // hoja de Homologación, y la revalidación va dentro de requestData().
+  trazSkeletons();
+  const trazCache = trazLeerLocal();
+  if (trazCache) onTrazData(trazCache, true);
+
   renderSyncStatus();
   if (syncTimer) clearInterval(syncTimer);
   syncTimer = setInterval(renderSyncStatus, 30000); // mantiene el "hace X" al día
@@ -4646,9 +2998,16 @@ function requestData(manual){
       .withSuccessHandler(renderPromoStrip)
       .withFailureHandler(() => renderPromoStrip(null))
       .fetchPromoCounts();
+    // Trazabilidad va en su propia llamada: si la hoja de Homologación falla,
+    // el resto del Portal (herramientas, formatos, plantillas) no se cae con ella.
+    google.script.run
+      .withSuccessHandler(d => onTrazData(d, false))
+      .withFailureHandler(onTrazError)
+      .fetchTrazabilidadData();
   } else {
     setTimeout(() => {
       onToolsData(mockData(), false);
+      onTrazData(trazMock(), false);
       renderPromoStrip({ status:'ok', activas:12, porTerminar:3 });
       finishRefresh(true, manual);
     }, manual ? 700 : 380);
@@ -4807,17 +3166,9 @@ function jumpToFp(blockId){
   }, 120);
 }
 
-/* Salto a un bloque de Big Ticket desde el nav interno */
-function jumpToBt(blockId){
-  const el = document.getElementById(blockId);
-  if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior:'smooth' });
-}
-
-/* Salto a un bloque de Soft Line desde el nav interno */
-function jumpToSl(blockId){
-  const el = document.getElementById(blockId);
-  if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior:'smooth' });
-}
+/* Los saltos a un proceso de Trazabilidad (antes jumpToBt/Sl/Slm/Mkp/Tda/Gen,
+   uno por sección y todos idénticos) los hace ahora trazJump(), que además
+   despliega la tarjeta a la que salta. */
 
 /* ──────── DATOS (Apps Script · stale-while-revalidate) ──────── */
 function onToolsData(data, fromCache){
@@ -5991,6 +4342,9 @@ function revealTarget(scrollEl){
     const tg = scrollEl.querySelector('.tc-toggle');
     if (tg){ scrollEl.classList.add('expanded'); const lbl = tg.querySelector('span'); if (lbl) lbl.textContent = 'Ocultar acceso'; }
   }
+  // Un proceso de Trazabilidad llega plegado: llegar a él y ver sólo el título
+  // obligaría a un clic más justo cuando el asesor ya tiene al cliente al teléfono.
+  if (scrollEl.classList && scrollEl.classList.contains('traz-card')) trazToggle(scrollEl.id, true);
   const OFFSET = 140; // deja espacio para topbar + nav de procesos fijos
   const doScroll = () => {
     const y = scrollEl.getBoundingClientRect().top + window.scrollY - OFFSET;
@@ -6261,10 +4615,6 @@ function initSlReveals(){
   });
   ScrollTrigger.refresh();
 }
-function jumpToSlm(blockId){ const el = document.getElementById(blockId); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior:'smooth' }); }
-function jumpToMkp(blockId){ const el = document.getElementById(blockId); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior:'smooth' }); }
-function jumpToTda(blockId){ const el = document.getElementById(blockId); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior:'smooth' }); }
-function jumpToGen(blockId){ const el = document.getElementById(blockId); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior:'smooth' }); }
 function jumpToDevsap(blockId){ const el = document.getElementById(blockId); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior:'smooth' }); }
 function initGenReveals(){
   if (genRevealsReady){ if (window.ScrollTrigger) ScrollTrigger.refresh(); return; }
@@ -6331,6 +4681,812 @@ function initBtReveals(){
     if (chips.length) gsap.fromTo(chips, { opacity:0, scale:.94 }, { opacity:1, scale:1, duration:.26, stagger:.03, ease:'back.out(1.2)', scrollTrigger:{ trigger:block, start:'top 82%' }, clearProps:'transform' });
   });
   ScrollTrigger.refresh();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TRAZABILIDAD · seis secciones servidas desde la hoja de Homologación 2026
+
+   Antes este contenido eran ~1.800 líneas de HTML escritas a mano. Ahora
+   Trazabilidad.gs lee la hoja y devuelve el texto EN CRUDO; todo el trabajo de
+   presentarlo bien ocurre aquí:
+
+     · trazParseObs()      parte las observaciones en viñetas, pasos numerados,
+                           notas y consejos, reconociendo los marcadores que ya
+                           usa la hoja ("⦁", "1.", "Nota:", "Tip:").
+     · trazInline()        escapa, destaca las frases entrecomilladas y pone en
+                           negrita plataformas, estatus y plazos, que es lo que
+                           el asesor busca con la vista mientras habla.
+     · trazDesglosePagos() detecta las listas de "método de pago → plazo" que
+                           vienen dentro de la celda de tiempo de solución y las
+                           saca a una rejilla, en vez de dejar un párrafo enorme.
+
+   Las tarjetas siguen siendo .bt-block con las variantes de color de cada
+   sección, así que el lenguaje visual no cambia: lo que cambia es que vienen
+   plegadas, se pueden filtrar y su contenido es el de la hoja.
+
+   Estrategia de datos (stale-while-revalidate, tres capas):
+     1. CacheService en el servidor (15 min)  → Trazabilidad.gs
+     2. Última copia buena en localStorage    → se pinta al instante al abrir
+     3. Llamada a Apps Script                 → repinta cuando llega
+   Si la hoja falla se conserva lo pintado y se avisa con la antigüedad del dato.
+══════════════════════════════════════════════════════════════════════════ */
+
+/* Clases de color por sección (definidas en el CSS). Big Ticket usa las clases
+   base, por eso lleva cadenas vacías. */
+const TRAZ_CFG = [
+  { id:'bigticket',     prefijo:'bt',  block:'',          num:'',        plat:'',         note:'' },
+  { id:'softline',      prefijo:'sl',  block:'sl-block',  num:'sl-num',  plat:'sl-plat',  note:'sl-note' },
+  { id:'slmensajerias', prefijo:'slm', block:'slm-block', num:'slm-num', plat:'slm-plat', note:'slm-note' },
+  { id:'mkp',           prefijo:'mkp', block:'mkp-block', num:'mkp-num', plat:'mkp-plat', note:'mkp-note' },
+  { id:'tienda',        prefijo:'tda', block:'tda-block', num:'tda-num', plat:'tda-plat', note:'tda-note' },
+  { id:'generales',     prefijo:'gen', block:'gen-block', num:'gen-num', plat:'gen-plat', note:'gen-note' }
+];
+
+/* Sinónimos que NO están en la hoja pero que el asesor sí teclea ("bt", "sf",
+   "marketplace"). Se suman a las palabras clave de cada proceso. */
+const TRAZ_SINONIMOS = {
+  bigticket:     'bt big ticket bigticket trazabilidad proceso muebles linea blanca',
+  softline:      'sf sl softline soft line logistica interna mensajeria interna trazabilidad proceso',
+  slmensajerias: 'sf slm sl softline soft line mensajerias externas paqueteria guia trazabilidad proceso',
+  mkp:           'mkp marketplace market place seller vendedor trazabilidad proceso',
+  tienda:        'tda tienda fisica sucursal apv pos trazabilidad proceso',
+  generales:     'gen generales general otros trazabilidad proceso'
+};
+
+/* Iconos en línea: así este bloque no depende del catálogo ICONS. */
+const TRAZ_IC = {
+  buscar:   '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>',
+  chevron:  '<svg class="ic traz-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
+  expandir: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16"/><path d="m7 10 5 5 5-5"/></svg>',
+  nota:     '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg>',
+  tip:      '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:15px;height:15px;flex-shrink:0;margin-top:2px"><path d="M9.5 18h5M10.5 21h3"/><path d="M12 3a6 6 0 0 0-3.4 10.9c.4.3.6.7.6 1.1h5.6c0-.4.2-.8.6-1.1A6 6 0 0 0 12 3Z"/></svg>',
+  reloj:    '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.2 2"/></svg>',
+  alerta:   '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 22 20H2Z"/><path d="M12 10v4M12 17v.4"/></svg>',
+  recargar: '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/></svg>'
+};
+
+/* ── Estado ── */
+let trazData       = null;   // último payload pintado
+let trazFresco     = false;  // true en cuanto responde Apps Script (no el caché)
+let trazFirma      = '';     // evita repintar (y cerrar tarjetas abiertas) si nada cambió
+let trazGuardadoEn = null;   // timestamp de la copia local, para el aviso "datos de hace X"
+let trazAviso      = null;   // {tipo:'warn'|'alert', texto}
+const trazTimers   = {};     // debounce del buscador, por sección
+
+/* ── Copia local (última copia buena) ────────────────────────────────────────
+   Con versión y caducidad: si cambia la forma del dato se sube TRAZ_LS_VER y la
+   copia vieja se descarta sola, en vez de romper el render. */
+const TRAZ_LS_CLAVE = 'ventel-traz-v1';
+const TRAZ_LS_VER   = 1;
+const TRAZ_LS_TTL   = 7 * 24 * 3600 * 1000;   // 7 días: es un respaldo, no una caché de frescura
+
+function trazGuardarLocal(data){
+  lsSet(TRAZ_LS_CLAVE, { v: TRAZ_LS_VER, t: Date.now(), data: data });
+}
+function trazLeerLocal(){
+  const c = lsGet(TRAZ_LS_CLAVE, null);
+  if (!c || c.v !== TRAZ_LS_VER || !c.data || !Array.isArray(c.data.secciones)) return null;
+  if (!c.t || (Date.now() - c.t) > TRAZ_LS_TTL){
+    try { localStorage.removeItem(TRAZ_LS_CLAVE); } catch(e){}
+    return null;
+  }
+  trazGuardadoEn = c.t;
+  return c.data;
+}
+
+/* ── Entrada de datos ── */
+function onTrazData(data, fromCache){
+  if (!data || data.status === 'error' || !Array.isArray(data.secciones)){
+    if (!fromCache) onTrazError(data && data.error);
+    return;
+  }
+  if (fromCache && trazFresco) return;          // los frescos ya están pintados
+
+  if (!fromCache){
+    trazFresco = true;
+    trazAviso = null;
+    trazGuardadoEn = Date.now();
+    trazGuardarLocal(data);
+  }
+
+  const firma = JSON.stringify(data.secciones);
+  const igual = (firma === trazFirma);
+  trazData = data;
+  trazFirma = firma;
+
+  // Si el contenido es idéntico no se repinta: cerraría las tarjetas que el
+  // asesor acaba de abrir y perdería su búsqueda dentro de la sección.
+  if (igual){ trazPintarAvisos(); return; }
+
+  TRAZ_CFG.forEach(trazRenderSeccion);
+  trazReconstruirIndices();
+  trazResetReveals();
+}
+
+function onTrazError(err){
+  const detalle = (err && err.message) ? err.message : (err || '');
+  if (trazData){
+    trazAviso = { tipo:'warn', texto:'No se pudo consultar la hoja de Homologación. Estás viendo la copia guardada' +
+                  (trazGuardadoEn ? ' (' + relTime(trazGuardadoEn) + ')' : '') + '.' };
+    trazPintarAvisos();
+    return;
+  }
+  trazAviso = { tipo:'alert', texto:'No se pudieron cargar los procesos de trazabilidad. ' +
+                (detalle ? String(detalle).slice(0, 180) : 'Revisa tu conexión e inténtalo de nuevo.') };
+  TRAZ_CFG.forEach(function(cfg){
+    const host = document.getElementById('traz-' + cfg.id);
+    if (host) host.innerHTML = trazAvisoHTML();
+  });
+}
+
+/* Reintento manual desde el aviso. */
+function trazReintentar(){
+  trazFresco = false;
+  trazAviso = null;
+  trazPintarAvisos();
+  if (typeof google !== 'undefined' && google.script && google.script.run){
+    google.script.run
+      .withSuccessHandler(function(d){ onTrazData(d, false); })
+      .withFailureHandler(onTrazError)
+      .fetchTrazabilidadData();
+  } else {
+    onTrazData(trazMock(), false);
+  }
+}
+
+/* Esqueletos mientras llega el primer dato: la sección nunca se ve vacía. */
+function trazSkeletons(){
+  const hueso = '<div class="traz-skel"><i style="width:38%"></i><i style="width:74%"></i><i style="width:56%"></i></div>';
+  TRAZ_CFG.forEach(function(cfg){
+    const host = document.getElementById('traz-' + cfg.id);
+    if (host && !host.innerHTML.trim()) host.innerHTML = hueso + hueso + hueso;
+  });
+}
+
+/* Tras repintar, las animaciones de scroll apuntan a nodos que ya no existen. */
+function trazResetReveals(){
+  btRevealsReady = slRevealsReady = slmRevealsReady = mkpRevealsReady = tdaRevealsReady = genRevealsReady = false;
+  const activa = document.querySelector('.view-section.active');
+  const id = activa ? activa.id.replace('sec-', '') : '';
+  if (id === 'bigticket') initBtReveals();
+  else if (id === 'softline') initSlReveals();
+  else if (id === 'slmensajerias') initSlmReveals();
+  else if (id === 'mkp') initMkpReveals();
+  else if (id === 'tienda') initTdaReveals();
+  else if (id === 'generales') initGenReveals();
+  else if (window.ScrollTrigger) ScrollTrigger.refresh();
+}
+
+/* ── Render de una sección ── */
+function trazRenderSeccion(cfg){
+  const host = document.getElementById('traz-' + cfg.id);
+  if (!host) return;
+  const sec = (trazData && trazData.secciones || []).find(function(s){ return s.id === cfg.id; });
+  const procesos = (sec && sec.procesos) || [];
+
+  if (!procesos.length){
+    host.innerHTML = trazAvisoHTML() +
+      '<div class="traz-empty show"><strong>Sin procesos publicados</strong>' +
+      'Esta sección no tiene filas en la hoja de Homologación, o su pestaña cambió de nombre. ' +
+      'Un administrador puede ejecutar <code>trazDiagnostico()</code> desde el editor para ver qué encontró.</div>';
+    return;
+  }
+
+  host.dataset.trazPlat = '';
+  host.innerHTML = trazSeccionHTML(cfg, sec);
+}
+
+function trazSeccionHTML(cfg, sec){
+  const procesos = sec.procesos;
+  const plats = trazPlataformasDe(procesos);
+
+  const chips = procesos.map(function(p){
+    return '<button type="button" class="fp-nav-chip" data-traz-jump="' + esc(p.id) + '"' +
+           ' onclick="trazJump(\'' + esc(p.id) + '\')">' +
+           esc(p.num) + ' · ' + esc(trazCorto(p.nombre, 24)) + '</button>';
+  }).join('');
+
+  const filtros = plats.length > 1 ? (
+    '<div class="traz-filters" role="group" aria-label="Filtrar por plataforma">' +
+      '<span class="traz-flabel">Plataforma</span>' +
+      '<button type="button" class="traz-fchip" aria-pressed="true" data-traz-plat=""' +
+        ' onclick="trazPlat(\'' + cfg.id + '\',\'\')">Todas</button>' +
+      plats.map(function(pl){
+        return '<button type="button" class="traz-fchip" aria-pressed="false" data-traz-plat="' + esc(pl.key) + '"' +
+               ' onclick="trazPlat(\'' + cfg.id + '\',\'' + esc(pl.key) + '\')">' + esc(pl.txt) + '</button>';
+      }).join('') +
+    '</div>'
+  ) : '';
+
+  return trazAvisoHTML() +
+    '<div class="traz-bar">' +
+      '<div class="traz-bar-row">' +
+        '<div class="traz-find">' + TRAZ_IC.buscar +
+          '<input type="search" aria-label="Buscar dentro de ' + esc(sec.label) + '"' +
+          ' placeholder="Buscar proceso, plataforma, estatus…" autocomplete="off" spellcheck="false"' +
+          ' oninput="trazBuscar(\'' + cfg.id + '\')">' +
+        '</div>' +
+        '<span class="traz-count" id="traz-count-' + cfg.id + '" role="status">' +
+          procesos.length + (procesos.length === 1 ? ' proceso' : ' procesos') + '</span>' +
+        '<button type="button" class="traz-btn" data-traz-all="closed" onclick="trazTodo(\'' + cfg.id + '\')">' +
+          TRAZ_IC.expandir + '<span>Expandir todo</span></button>' +
+      '</div>' + filtros +
+    '</div>' +
+    '<nav class="fp-nav traz-nav" aria-label="Ir a un proceso de ' + esc(sec.label) + '">' + chips + '</nav>' +
+    '<div id="traz-lista-' + cfg.id + '">' +
+      procesos.map(function(p){ return trazCardHTML(cfg, sec, p); }).join('') +
+    '</div>' +
+    '<div class="traz-empty" id="traz-empty-' + cfg.id + '">' +
+      '<strong>Sin coincidencias</strong>Ningún proceso de ' + esc(sec.label) +
+      ' coincide con la búsqueda. Prueba con otra palabra o quita el filtro de plataforma.</div>';
+}
+
+/* Aviso de "copia guardada" / error. Se repite arriba de cada sección para que
+   se vea esté donde esté el asesor. */
+function trazAvisoHTML(){
+  if (!trazAviso) return '';
+  return '<div class="traz-state ' + trazAviso.tipo + '" role="status">' +
+    (trazAviso.tipo === 'warn' ? TRAZ_IC.reloj : TRAZ_IC.alerta) +
+    '<span>' + esc(trazAviso.texto) + '</span>' +
+    '<button type="button" class="traz-btn" onclick="trazReintentar()">' +
+      TRAZ_IC.recargar + '<span>Reintentar</span></button>' +
+    '</div>';
+}
+function trazPintarAvisos(){
+  TRAZ_CFG.forEach(function(cfg){
+    const host = document.getElementById('traz-' + cfg.id);
+    if (!host) return;
+    const viejo = host.firstElementChild;
+    if (viejo && viejo.classList.contains('traz-state')) viejo.remove();
+    if (trazAviso) host.insertAdjacentHTML('afterbegin', trazAvisoHTML());
+  });
+}
+
+/* ── Tarjeta de un proceso ── */
+function trazCardHTML(cfg, sec, p){
+  const plats  = trazPartesPlat(p.plataformas);
+  const cuerpo = trazCuerpoHTML(cfg, p);
+
+  const platHTML = plats.length ? '<div class="bt-plats">' + plats.map(function(t){
+      return '<span class="bt-plat' + (cfg.plat ? ' ' + cfg.plat : '') + '">' + esc(t.base) + '</span>' +
+             (t.nota ? '<span class="bt-plat info">' + esc(t.nota) + '</span>' : '');
+    }).join('') + '</div>' : '';
+
+  // Texto plano del proceso completo: es lo que filtra el buscador de la sección.
+  // norm() deja sólo [a-z0-9 ], así que es seguro dentro de un atributo.
+  const busq   = norm([p.num, p.nombre, p.plataformas, p.reporte, p.avance, p.solucion, p.observaciones].join(' '));
+  const claves = plats.map(function(t){ return norm(t.base).trim(); }).filter(Boolean).join('|');
+
+  return '<article class="bt-block traz-card' + (cfg.block ? ' ' + cfg.block : '') + '" id="' + esc(p.id) + '"' +
+      ' data-traz-plats="' + esc(claves) + '" data-traz-text="' + esc(busq) + '">' +
+    '<button type="button" class="traz-toggle" aria-expanded="false"' +
+      (cuerpo ? ' aria-controls="' + esc(p.id) + '-panel" onclick="trazToggle(\'' + esc(p.id) + '\')"' : ' disabled') + '>' +
+      '<div class="bt-head">' +
+        '<span class="fp-num' + (cfg.num ? ' ' + cfg.num : '') + '">' + esc(p.num) + '</span>' +
+        '<div class="traz-titlewrap">' +
+          '<h2 class="bt-title">' + esc(p.nombre) + '</h2>' + platHTML +
+        '</div>' +
+        trazTiemposHTML(p, sec.tieneAvance) +
+      '</div>' +
+      (cuerpo ? TRAZ_IC.chevron : '') +
+    '</button>' +
+    (cuerpo ? '<div class="traz-panel" id="' + esc(p.id) + '-panel" hidden>' +
+              '<div class="traz-panel-in">' + cuerpo + '</div></div>' : '') +
+  '</article>';
+}
+
+function trazTiemposHTML(p, conAvance){
+  let html = trazChipHTML('Reporte', p.reporte);
+  if (conAvance) html += trazChipHTML('Avance (L-V)', p.avance);
+  html += trazChipHTML('Solución', p.solucion);
+  return '<div class="bt-times">' + html + '</div>';
+}
+
+/* Un plazo largo (la lista de reembolsos por método de pago ocupa media pantalla)
+   no cabe en un chip: aquí se anuncia y el detalle se despliega en el cuerpo. */
+function trazChipHTML(lbl, val){
+  const v = trazLimpio(val);
+  const texto = !v ? 'N/A' : (trazEsLargo(v) ? 'Ver detalle' : v);
+  return '<div class="bt-time-chip"><span class="bt-time-lbl">' + esc(lbl) + '</span>' +
+         '<span class="bt-time-val ' + trazTono(v) + '">' + esc(texto) + '</span></div>';
+}
+
+/** "", "-", "N/A" y variantes cuentan como celda sin dato. */
+function trazLimpio(v){
+  const s = String(v == null ? '' : v).trim();
+  if (!s || s === '-' || s === '—' || /^n\s*\/?\s*a$/i.test(s)) return '';
+  return s;
+}
+function trazEsLargo(v){
+  const s = trazLimpio(v);
+  return !!s && (s.indexOf('\n') > -1 || s.length > 44);
+}
+
+/* Color del plazo. El color no es el único portador de información: el texto
+   sigue diciendo el plazo exacto; esto sólo ayuda a barrer con la vista. */
+function trazTono(v){
+  const t = norm(v);
+  if (!t) return '';
+  if (t.indexOf('inmediat') > -1) return 'ok';
+  if (/\bano\b|\banos\b|\bmeses\b/.test(t)) return 'info';
+  const dias = t.match(/(\d+)\s*(?:a\s*(\d+)\s*)?dias?/);
+  if (dias) return (parseInt(dias[2] || dias[1], 10) >= 10) ? 'alert' : 'warn';
+  if (t.indexOf('hrs') > -1 || t.indexOf('horas') > -1) return 'warn';
+  if (t.indexOf('fecha') > -1 || t.indexOf('calendario') > -1) return 'info';
+  return '';
+}
+
+/* ── Cuerpo desplegable ─────────────────────────────────────────────────────
+   Primero los plazos que no cupieron en su chip (con desglose de reembolsos si
+   lo es) y después las observaciones. */
+function trazCuerpoHTML(cfg, p){
+  const partes = [];
+
+  [['Tiempo p/reporte', p.reporte], ['Tiempo de avance', p.avance], ['Tiempo de solución', p.solucion]]
+    .forEach(function(par){
+      if (!trazEsLargo(par[1])) return;
+      const pagos = trazDesglosePagos(par[1]);
+      partes.push('<div class="bt-obs"><span class="bt-obs-lbl">' + esc(par[0]) + '</span>' +
+        (pagos ? trazPagosHTML(cfg, pagos) : trazBloquesHTML(cfg, trazParseObs(par[1]))) + '</div>');
+    });
+
+  if (trazLimpio(p.observaciones)){
+    partes.push('<div class="bt-obs"><span class="bt-obs-lbl">Observaciones</span>' +
+      trazBloquesHTML(cfg, trazParseObs(p.observaciones)) + '</div>');
+  }
+  return partes.join('');
+}
+
+/* ── Interpretación de las observaciones ────────────────────────────────────
+   Devuelve bloques: listas de viñetas, pasos numerados, notas y consejos. Se
+   apoya en los marcadores que la hoja YA usa; no inventa estructura. */
+function trazParseObs(txt){
+  const lineas = String(txt == null ? '' : txt).split('\n')
+    .map(function(l){ return l.trim(); }).filter(Boolean);
+  const bloques = [];
+  let lista = null, pasos = null;
+  let ref = null;   // apunta al último texto escrito, para poder continuarlo
+
+  const refArr = function(arr, i){
+    return { leer: function(){ return arr[i]; },
+             escribir: function(t){ arr[i] += ' ' + t; } };
+  };
+  const refObj = function(o, k){
+    return { leer: function(){ return o[k]; },
+             escribir: function(t){ o[k] += ' ' + t; } };
+  };
+
+  lineas.forEach(function(l){
+    let m;
+
+    // "Nota:" / "Notas:" / "Importante:" → aviso destacado
+    if ((m = l.match(/^(notas?|importante)\s*[:.\-]\s*(.+)$/i))){
+      lista = pasos = null;
+      const b = { t:'nota', lbl:'Nota', txt:m[2] };
+      bloques.push(b); ref = refObj(b, 'txt');
+      return;
+    }
+    // "Tip:" / "Consejo:" → consejo
+    if ((m = l.match(/^(tip|consejo|recuerda)\s*[:.\-]\s*(.+)$/i))){
+      lista = pasos = null;
+      const b = { t:'tip', lbl:'Tip', txt:m[2] };
+      bloques.push(b); ref = refObj(b, 'txt');
+      return;
+    }
+    // "1." / "2)" → paso de un procedimiento
+    if ((m = l.match(/^(\d{1,2})\s*[.)]\s+(.+)$/))){
+      if (!pasos){ lista = null; pasos = { t:'pasos', items:[] }; bloques.push(pasos); }
+      pasos.items.push({ n:m[1], txt:m[2] });
+      ref = refObj(pasos.items[pasos.items.length - 1], 'txt');
+      return;
+    }
+    pasos = null;
+
+    // Viñetas de la hoja. El guion queda fuera a propósito: hay textos que
+    // empiezan con "-" queriendo decir un rango, no una viñeta.
+    const vin = l.match(/^[⦁•‣▪◦※*·]+\s*(.*)$/);
+    const texto = vin ? vin[1].trim() : l;
+    if (!texto) return;
+
+    // En la hoja hay frases partidas a la mitad por un salto de línea
+    // ("…que cuente con monedero y coincida" / "con el del cliente en FMS").
+    // Sin esto saldrían como dos viñetas y la segunda no se entendería sola.
+    if (!vin && ref && trazEsContinuacion(ref.leer(), texto)){ ref.escribir(texto); return; }
+
+    if (!lista){ lista = { t:'lista', items:[] }; bloques.push(lista); }
+    lista.items.push(texto);
+    ref = refArr(lista.items, lista.items.length - 1);
+  });
+
+  return bloques;
+}
+
+/** ¿Esta línea continúa la anterior en vez de empezar una idea nueva? */
+function trazEsContinuacion(prev, actual){
+  if (!prev || !actual) return false;
+  if (/[.:;!?]\s*$/.test(prev)) return false;              // la anterior ya cerró la frase
+  return /^[a-zñáéíóúü(,)]/.test(actual);                  // ésta arranca en minúscula
+}
+
+function trazBloquesHTML(cfg, bloques){
+  return bloques.map(function(b){
+    if (b.t === 'lista'){
+      return '<ul class="bt-obs-list">' + b.items.map(function(i){
+        return '<li>' + trazInline(i) + '</li>';
+      }).join('') + '</ul>';
+    }
+    if (b.t === 'pasos'){
+      return '<ol class="step-list traz-steps">' + b.items.map(function(i){
+        return '<li><span class="step-n">' + esc(i.n) + '</span>' + trazInline(i.txt) + '</li>';
+      }).join('') + '</ol>';
+    }
+    return '<div class="bt-note' + (cfg.note ? ' ' + cfg.note : '') + '">' +
+      (b.t === 'tip' ? TRAZ_IC.tip : TRAZ_IC.nota) +
+      '<span><strong>' + esc(b.lbl) + ':</strong> ' + trazInline(b.txt) + '</span></div>';
+  }).join('');
+}
+
+/* ── Resaltado dentro de una línea ──────────────────────────────────────────
+   Plataformas, estatus de SOMS/PAO y plazos. Se resaltan pocas cosas a
+   propósito: si todo va en negrita, nada destaca. */
+const TRAZ_TERMINOS = [
+  'SAP ECC', 'Entrada Única', 'Entrada Unica', 'Incidencias Trazabilidad', 'lista negra',
+  'PostVenta', 'Postventa', 'Salesforce', 'Sales force', 'SIMPLIROUTE', 'Simpliroute',
+  'PayPal', 'OpenPay', 'Openpay', 'DILISA', 'SEPRO', 'SOMS', 'PLAN', 'SPEI',
+  'NMEN', 'VMEN', 'VCTE', 'LIPR', 'NENT', 'CANC', 'CONF', 'ZVADVIS',
+  '3DS', '4PL', 'APV', 'CSC', 'CTE', 'DOE', 'ENR', 'FMS', 'LPC', 'MDA', 'MDR',
+  'MED', 'OTP', 'PAO', 'PoS', 'SKU', 'MKP', 'SAP'
+];
+/* Términos (frontera de palabra) + importes + cantidades de tiempo. Una sola
+   pasada, así que no puede anidarse un <strong> dentro de otro. */
+const TRAZ_RE_CLAVE = new RegExp(
+  '(?:\\b(?:' + TRAZ_TERMINOS.map(escRe).join('|') + ')\\b' +
+  '|\\$\\s?\\d[\\d,.]*' +
+  '|\\b\\d+(?:[.,]\\d+)?\\s*(?:a\\s*\\d+\\s*)?(?:hrs?\\b|h\\b|horas?\\b|d[ií]as?(?:\\s+(?:h[áa]biles|naturales))?\\b|a[ñn]os?\\b|meses\\b|min\\b))',
+  'gi');
+
+function trazInline(txt){
+  let s = esc(String(txt == null ? '' : txt));
+
+  // Frases entrecomilladas → cita destacada. Sólo si las comillas están
+  // pareadas: si no, se dejaría un <span> abierto a mitad del texto.
+  const comillas = (s.match(/&quot;/g) || []).length;
+  if (comillas >= 2 && comillas % 2 === 0){
+    s = s.replace(/&quot;([\s\S]{2,400}?)&quot;/g, '<span class="bt-quote">$1</span>');
+  }
+  // El resaltado va después: ninguno de los términos aparece dentro del
+  // marcado que se acaba de insertar, así que no puede romperlo.
+  return s.replace(TRAZ_RE_CLAVE, '<strong>$&</strong>');
+}
+
+/* ── Desglose de reembolsos ─────────────────────────────────────────────────
+   Varias celdas de "tiempo de solución" son en realidad una lista de
+   "método de pago → plazo". Se detecta y se pinta como rejilla; lo que no
+   encaja (aclaraciones, "*LAS FECHAS SON ESTIMADAS") baja como nota. */
+function trazDesglosePagos(v){
+  const lineas = String(v == null ? '' : v).split('\n')
+    .map(function(l){ return l.replace(/^[⦁•‣▪◦※*·]+\s*/, '').trim(); })
+    .filter(Boolean);
+
+  const items = [], notas = [];
+  lineas.forEach(function(l){
+    // Las líneas muy largas son aclaraciones, no entradas de la lista.
+    const m = (l.length <= 170) ? l.match(/^(.{3,90}?)\s+en\s+(\d[^.]{1,70}?)\s*[.*\s]*$/i) : null;
+    if (m) items.push({ nombre: m[1].replace(/[\s.,;:]+$/, ''), tiempo: m[2].trim() });
+    else notas.push(l);
+  });
+  return items.length >= 2 ? { items: items, notas: notas } : null;
+}
+
+function trazPagosHTML(cfg, d){
+  return '<div class="bt-dev-grid">' + d.items.map(function(i){
+      return '<div class="bt-dev-item">' +
+        '<div class="bt-dev-item-name">' + esc(i.nombre) + '</div>' +
+        '<div class="bt-dev-item-time">' + esc(i.tiempo) + '</div></div>';
+    }).join('') + '</div>' +
+    (d.notas.length ? '<ul class="bt-obs-list">' + d.notas.map(function(n){
+      return '<li>' + trazInline(n) + '</li>';
+    }).join('') + '</ul>' : '');
+}
+
+/* ── Plataformas ── */
+function trazPartesPlat(str){
+  return String(str == null ? '' : str).split(/[\/\n]+/)
+    .map(function(s){ return s.trim(); })
+    .filter(Boolean)
+    .map(function(s){
+      // "Salesforce (bodega destino)" → chip principal + chip de matiz
+      const m = s.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
+      return (m && m[1].trim()) ? { base:m[1].trim(), nota:m[2].trim() } : { base:s, nota:'' };
+    })
+    .filter(function(t){ return t.base.length <= 46; });
+}
+
+/* Chips de filtro: las plataformas más repetidas de la sección. */
+function trazPlataformasDe(procesos){
+  const cuenta = {};
+  procesos.forEach(function(p){
+    const vistos = {};
+    trazPartesPlat(p.plataformas).forEach(function(t){
+      const k = norm(t.base).trim();
+      if (!k || k.length > 22 || vistos[k]) return;
+      vistos[k] = 1;
+      if (!cuenta[k]) cuenta[k] = { key:k, txt:t.base, n:0 };
+      cuenta[k].n++;
+    });
+  });
+  return Object.keys(cuenta).map(function(k){ return cuenta[k]; })
+    .sort(function(a, b){ return (b.n - a.n) || a.txt.localeCompare(b.txt); })
+    .slice(0, 8);
+}
+
+function trazCorto(s, n){
+  const t = String(s == null ? '' : s).trim();
+  return t.length > n ? t.slice(0, n - 1).trim() + '…' : t;
+}
+
+/* ── Interacción: plegar, saltar y filtrar ── */
+
+/** Abre o cierra una tarjeta. `forzar` (true/false) fija el estado en vez de alternar. */
+function trazToggle(id, forzar){
+  const card = document.getElementById(id);
+  if (!card || !card.classList.contains('traz-card')) return;
+  const btn = card.querySelector('.traz-toggle');
+  const panel = card.querySelector('.traz-panel');
+  if (!btn || !panel) return;
+
+  const abierto = card.classList.contains('is-open');
+  const abrir = (typeof forzar === 'boolean') ? forzar : !abierto;
+  if (abrir === abierto) return;
+
+  card.classList.toggle('is-open', abrir);
+  btn.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+
+  const anima = GS() && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const refrescar = function(){ if (window.ScrollTrigger) ScrollTrigger.refresh(); };
+
+  if (abrir){
+    panel.hidden = false;
+    if (!anima){ refrescar(); return; }
+    gsap.fromTo(panel, { height:0, opacity:0 },
+      { height:'auto', opacity:1, duration:.3, ease:'power2.out',
+        onComplete: function(){ gsap.set(panel, { clearProps:'height,opacity' }); refrescar(); } });
+  } else {
+    if (!anima){ panel.hidden = true; refrescar(); return; }
+    gsap.to(panel, { height:0, opacity:0, duration:.22, ease:'power2.in',
+      onComplete: function(){ panel.hidden = true; gsap.set(panel, { clearProps:'height,opacity' }); refrescar(); } });
+  }
+}
+
+/** Pliega una tarjeta al instante, sin animación (para las que se filtran fuera). */
+function trazCerrarSeco(card){
+  if (!card || !card.classList.contains('is-open')) return;
+  const btn = card.querySelector('.traz-toggle');
+  const panel = card.querySelector('.traz-panel');
+  card.classList.remove('is-open');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+  if (panel){
+    if (window.gsap) gsap.killTweensOf(panel);
+    panel.hidden = true;
+    panel.style.height = '';
+    panel.style.opacity = '';
+  }
+}
+
+/** Botón "Expandir todo" / "Plegar todo" de una sección. */
+function trazTodo(secId){
+  const host = document.getElementById('traz-' + secId);
+  if (!host) return;
+  const btn = host.querySelector('[data-traz-all]');
+  const abrir = !btn || btn.dataset.trazAll !== 'open';
+  host.querySelectorAll('.traz-card').forEach(function(c){
+    if (!c.hidden) trazToggle(c.id, abrir);
+  });
+  if (btn){
+    btn.dataset.trazAll = abrir ? 'open' : 'closed';
+    const lbl = btn.querySelector('span');
+    if (lbl) lbl.textContent = abrir ? 'Plegar todo' : 'Expandir todo';
+  }
+}
+
+/** Chip numerado: abre la tarjeta y la deja centrada bajo las barras fijas. */
+function trazJump(id){
+  const el = document.getElementById(id);
+  if (!el) return;
+  trazToggle(id, true);
+  const ir = function(){
+    window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - 130), behavior:'smooth' });
+  };
+  ir();
+  setTimeout(ir, 320);   // reajusta cuando termina la animación de apertura
+}
+
+/** Buscador dentro de la sección (con antirrebote: se teclea rápido). */
+function trazBuscar(secId){
+  clearTimeout(trazTimers[secId]);
+  trazTimers[secId] = setTimeout(function(){ trazFiltrar(secId); }, 140);
+}
+
+/** Filtro por plataforma. Cadena vacía = todas. */
+function trazPlat(secId, key){
+  const host = document.getElementById('traz-' + secId);
+  if (!host) return;
+  const actual = host.dataset.trazPlat || '';
+  const nueva = (actual === key) ? '' : key;      // volver a pulsar el chip activo lo quita
+  host.dataset.trazPlat = nueva;
+  host.querySelectorAll('.traz-fchip').forEach(function(c){
+    c.setAttribute('aria-pressed', (c.dataset.trazPlat || '') === nueva ? 'true' : 'false');
+  });
+  trazFiltrar(secId);
+}
+
+function trazFiltrar(secId){
+  const host = document.getElementById('traz-' + secId);
+  if (!host) return;
+  const input = host.querySelector('.traz-find input');
+  const q = norm(input ? input.value : '').trim();
+  const plat = host.dataset.trazPlat || '';
+  const palabras = q ? q.split(/\s+/).filter(Boolean) : [];
+
+  let visibles = 0, total = 0;
+  host.querySelectorAll('.traz-card').forEach(function(card){
+    total++;
+    const texto = card.dataset.trazText || '';
+    const plats = '|' + (card.dataset.trazPlats || '') + '|';
+    const okQ = palabras.every(function(w){ return texto.indexOf(w) > -1; });
+    const okP = !plat || plats.indexOf('|' + plat + '|') > -1;
+    const ok = okQ && okP;
+    card.hidden = !ok;
+    // Se pliega sin animar: animar la altura de algo que ya está en display:none
+    // no se ve y además obliga a GSAP a medir un elemento sin caja.
+    if (ok) visibles++; else trazCerrarSeco(card);
+  });
+
+  host.querySelectorAll('.fp-nav-chip[data-traz-jump]').forEach(function(chip){
+    const card = document.getElementById(chip.dataset.trazJump);
+    chip.hidden = !!(card && card.hidden);
+  });
+
+  const cuenta = document.getElementById('traz-count-' + secId);
+  if (cuenta) cuenta.textContent = (visibles === total)
+    ? total + (total === 1 ? ' proceso' : ' procesos')
+    : visibles + ' de ' + total + ' procesos';
+
+  const vacio = document.getElementById('traz-empty-' + secId);
+  if (vacio) vacio.classList.toggle('show', visibles === 0);
+  const nav = host.querySelector('.traz-nav');
+  if (nav) nav.hidden = (visibles === 0);
+  if (window.ScrollTrigger) ScrollTrigger.refresh();
+}
+
+/* ── Índices del buscador global ─────────────────────────────────────────────
+   Se reconstruyen con lo que llega de la hoja para que TODO el contenido de un
+   proceso (nombre, plazos, plataformas y observaciones) sea buscable desde el
+   buscador de arriba, no sólo unas palabras clave escritas a mano. */
+function trazReconstruirIndices(){
+  const porId = {};
+  ((trazData && trazData.secciones) || []).forEach(function(sec){
+    porId[sec.id] = (sec.procesos || []).map(function(p){
+      return {
+        name: p.nombre + ' — ' + sec.label,
+        sub: trazResumen(sec, p),
+        target: p.id,
+        kw: trazPalabrasClave(sec, p)
+      };
+    });
+  });
+  BT_INDEX  = porId.bigticket     || [];
+  SF_INDEX  = porId.softline      || [];
+  SFM_INDEX = porId.slmensajerias || [];
+  MKP_INDEX = porId.mkp           || [];
+  TDA_INDEX = porId.tienda        || [];
+  GEN_INDEX = porId.generales     || [];
+}
+
+/** Línea secundaria del resultado: sección, plazos y plataformas, en corto. */
+function trazResumen(sec, p){
+  const partes = [sec.label];
+  const rep = trazLimpio(p.reporte), sol = trazLimpio(p.solucion);
+  if (rep && !trazEsLargo(rep)) partes.push('Reporte ' + rep);
+  if (sol) partes.push(trazEsLargo(sol) ? 'Solución según método de pago' : sol);
+  const plats = trazPartesPlat(p.plataformas).map(function(t){ return t.base; }).slice(0, 3);
+  if (plats.length) partes.push(plats.join('/'));
+  return trazCorto(partes.join(' · '), 110);
+}
+
+/** Palabras únicas de todo el proceso + sinónimos de la sección. */
+function trazPalabrasClave(sec, p){
+  const crudo = norm([
+    p.nombre, p.plataformas, p.reporte, p.avance, p.solucion, p.observaciones,
+    TRAZ_SINONIMOS[sec.id] || '', sec.label
+  ].join(' '));
+  const vistas = {}, salida = [];
+  crudo.split(/\s+/).forEach(function(w){
+    if (w.length < 2 || vistas[w] || salida.length >= 240) return;
+    vistas[w] = 1;
+    salida.push(w);
+  });
+  return salida.join(' ');
+}
+
+/* ── Datos de ejemplo para la vista previa fuera de Apps Script ──────────────
+   Mismo formato que devuelve fetchTrazabilidadData(), con textos reales de la
+   hoja para que el formateo se pueda revisar sin desplegar. */
+function trazMock(){
+  const s = function(id, prefijo, label, etiqueta, tieneAvance, procesos){
+    return { id:id, prefijo:prefijo, label:label, etiqueta:etiqueta, hoja:label,
+             tieneAvance:tieneAvance,
+             procesos: procesos.map(function(p, i){
+               p.id = prefijo + '-' + (i + 1); p.num = String(i + 1);
+               p.avance = p.avance || ''; return p;
+             }) };
+  };
+  const pagos = '⦁ Tarjeta Liverpool DILISA y LPC en 24 hrs. *\n' +
+    '⦁ Tarjetas de crédito y débito externas 3DS (nacionales y extranjeras) en 72 hrs hábiles. *\n' +
+    '(3DS Pago con Tarjeta débito devolución se intenta aplicar al mismo método de pago, si no pasa se aplica al MED.)\n' +
+    '⦁ PayPal en 48 hrs. *\n' +
+    '⦁ Pagos referenciados (tiendas de conveniencia/transferencias) se aplica al MED y debe verse reflejado en 24 hrs.\n' +
+    '*LAS FECHAS SON ESTIMADAS';
+
+  return { status:'ok', error:null, generado:new Date().toISOString(), avisos:[], secciones:[
+    s('bigticket','bt','Big Ticket','BT', true, [
+      { nombre:'Fecha en tiempo', reporte:'N/A', avance:'N/A', solucion:'Inmediata (fecha PAO)',
+        plataformas:'PAO/Salesforce', observaciones:'' },
+      { nombre:'Fecha vencida', reporte:'N/A', avance:'3 días (escalación por Salesforce)', solucion:'5 días',
+        plataformas:'PAO/Salesforce (bodega destino)',
+        observaciones:'Se asigna caso a CR, es importante agregar referencias y teléfonos adicionales.\n' +
+          'Recuerda que si tiene mas de 48 horas en "Pedido en camino" sin cambio de estatus solicita a través del formulario de Cambios de estatus PAO.\n' +
+          'Si la mercancía se encuentra en locación de entrega y semáforo rojo se asigna caso a CR con el comentario: "Buen día CR solicitamos de su apoyo para programar una nueva fecha de entrega"\n' +
+          'Nota: Si la mercancía esta en PLAN escalar MDA categoría 49.' },
+      { nombre:'OV Sin disponibilidad', reporte:'N/A', avance:'N/A', solucion:'Fecha de surtido que asigna PAO',
+        plataformas:'PAO/Salesforce',
+        observaciones:'Revisar la fecha de surtido para notificar al cliente:\n' +
+          '1. Considera la periodicidad de entrega de cada zona\n' +
+          '2. Revisa con el código postal del cliente\n' +
+          '3. Revisa el estatus del SKU\n' +
+          '⦁ Activo - Normal (validar si hay pedido y una vez que tengas fecha tentativa de surtido brinda la fecha de entrega mínima).\n' +
+          '⦁ Activo - Escaso (revisar en PAO que el pedido cuente con una línea de transferencia activa).\n' +
+          'Nota: En caso de que el cliente no desee esperar la fechas puedes ofrecer un sustituto o la cancelación.' },
+      { nombre:'Devolución sí procede', reporte:'N/A', avance:'N/A', solucion:pagos,
+        plataformas:'PAO/SAP ECC/Salesforce/CTE',
+        observaciones:'De acuerdo al método de pago toma las siguientes consideraciones:\n' +
+          '⦁ Openpay: Revisar partida en SAP ECC.\n' +
+          '⦁ Tarjetas internas/externas: Revisar SAP ECC y CTE.\n' +
+          '⦁ MED: Revisar en SAP ECC que cuente con monedero y coincida con el del cliente en FMS.\n' +
+          'Nota: recuerda hacer validación OTP (se puede enviar hasta 3 veces).' }
+    ]),
+    s('softline','sl','Soft Line','SF', false, [
+      { nombre:'Fecha en tiempo', reporte:'N/A', solucion:'Inmediata (fecha SOMS)',
+        plataformas:'PAO/SOMS/Salesforce/4PL/SIMPLIROUTE', observaciones:'Revisar la pantalla de SOMS 6.7.15.' },
+      { nombre:'Fecha vencida', reporte:'N/A', solucion:'10 días',
+        plataformas:'PAO/SOMS/Salesforce/4PL/SIMPLIROUTE',
+        observaciones:'Revisar la pantalla de SOMS 6.7.15.\n' +
+          'El tiempo incluye la escalación y el tiempo de entrega. Si el estatus NMEN, VMEN, etc., no cuenta con movimiento mayor a 10 días, se escala con Supervisión para solicitar el forzado del estatus para devolución.' }
+    ]),
+    s('slmensajerias','slm','SL Mensajerías','SF', false, [
+      { nombre:'Guía retornada', reporte:'N/A', solucion:'10 días',
+        plataformas:'PAO/SOMS/4PL o Tracking de la mensajería/Salesforce',
+        observaciones:'Revisar a donde retorno la mercancía para determinar si:\n' +
+          'Se envía correo a locación (tienda que recibió la mercancía).\n' +
+          'Si llego al CR asignar caso en Salesforce.' }
+    ]),
+    s('mkp','mkp','MarketPlace','MKP', false, [
+      { nombre:'Guía tránsito s/movimiento', reporte:'5 días s/movimiento', solucion:'5 días',
+        plataformas:'SOMS/Entrada única/Tracking de la mensajería/MDA Opc 6 Soporte MKP',
+        observaciones:'Se escala por MDA si la guía tiene 5 días sin movimiento.\n' +
+          'Tip: Recuerda validar si no se cuenta con alguna incidencia en MKP en la Guía de Incidencias MKP.' }
+    ]),
+    s('tienda','tda','Tienda Física','TDA', false, [
+      { nombre:'Sustituto APV / POS', reporte:'N/A', solucion:'N/A', plataformas:'',
+        observaciones:'No procede, se canaliza a la sucursal.' }
+    ]),
+    s('generales','gen','Generales','GEN', false, [
+      { nombre:'Mesa de Regalos Dedicatoria', reporte:'N/A (evento abierto)', solucion:'Inmediata',
+        plataformas:'SOMS/MDR', observaciones:'Cuida la redacción y ortografía del mensaje.' },
+      { nombre:'Sterling', reporte:'N/A', solucion:'10 días', plataformas:'SOMS/Salesforce',
+        observaciones:'Después del 5 día sin cambio a CONF; Validar que no se trate de una preventa.' }
+    ])
+  ]};
 }
 function empty(label){ return `<div class="empty-card"><span class="big">${icon('search')}</span><h3>Sin resultados</h3><p>No se encontraron ${label} disponibles.</p></div>`; }
 

@@ -51,7 +51,12 @@
                         </div>
 
                         <div class="auth-row" data-reveal>
-                            <label for="password" class="v-label">Contraseña</label>
+                            <!-- El atajo vive JUNTO al campo que falla, no escondido al
+                                 final: cuando alguien no puede entrar, ya está mirando aquí. -->
+                            <div class="auth-row-head">
+                                <label for="password" class="v-label">Contraseña</label>
+                                <button type="button" class="auth-link" id="forgotPasswordLink">¿La olvidaste?</button>
+                            </div>
                             <div class="field">
                                 <span class="field-ic" data-icon="lock" aria-hidden="true"></span>
                                 <input id="password" name="password" type="password" required minlength="6"
@@ -108,7 +113,7 @@
     </div>
 
     <script>
-        window.__APP__ = { baseUrl: <?!= JSON.stringify(baseUrl) ?> };
+        window.__APP__ = { baseUrl: <?!= JSON.stringify(baseUrl) ?>, next: <?!= JSON.stringify(next) ?> };
     </script>
     <?!= include('app_core'); ?>
     <?!= include('app_icons'); ?>
@@ -126,6 +131,7 @@
         const passwordInput = document.getElementById('password');
         const passwordError = document.getElementById('passwordError');
         const createAccountLink = document.getElementById('createAccountLink');
+        const forgotPasswordLink = document.getElementById('forgotPasswordLink');
         const messageContainer = document.getElementById('message-container');
         const togglePassword = document.getElementById('togglePassword');
         const toggleIcon = document.getElementById('toggleIcon');
@@ -157,7 +163,10 @@
             loaderTween = null;
             AuthStage.success(loadingIcon, '¡Listo! Redirigiendo…', loadingText);
             setTimeout(() => {
-                if (!AppUrl.goHome()) {
+                // Si se llegó aquí desde una pantalla concreta (?next=cotizacion,
+                // que es como entra quien viene de la extensión con su bolsa), se
+                // vuelve a ella; si no, al panel del rol de siempre.
+                if (!AppUrl.goNextOrHome()) {
                     hideLoadingState();
                     showMessage('No se pudo determinar la URL de la aplicación. Recarga e intenta de nuevo.');
                 }
@@ -215,6 +224,13 @@
 
         createAccountLink.addEventListener('click', () => AppUrl.go('registro'));
 
+        // El correo ya escrito se lleva a la pantalla de recuperación por sessionStorage:
+        // el query string no sobrevive al iframe del sandbox de Apps Script.
+        forgotPasswordLink.addEventListener('click', () => {
+            try { sessionStorage.setItem('ventel-recuperar-email', emailInput.value.trim().toLowerCase()); } catch (e) {}
+            AppUrl.go('recuperar');
+        });
+
         // Este script va al final del <body>: el DOM ya está completo, así que se
         // arranca de inmediato en lugar de esperar a DOMContentLoaded. Un frame menos
         // de contenido sin coreografiar.
@@ -226,7 +242,7 @@
             // Sesión persistente: si ya hay sesión guardada no se vuelve a pedir el
             // login — directo al panel del rol. (Salir desde el shell limpia la
             // identidad y este atajo deja de aplicar.)
-            if (AppSession.isLoggedIn()) { AppUrl.goHome(); return; }
+            if (AppSession.isLoggedIn()) { AppUrl.goNextOrHome(); return; }
 
             // Precarga el último correo usado (persiste aunque se cierre sesión).
             if (AppSession.lastEmail && !emailInput.value) {

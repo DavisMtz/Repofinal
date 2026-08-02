@@ -56,11 +56,13 @@ function getScriptUrl() {
 const PAGES = {
   'login':               { file: 'inicioDeSesion',      title: 'Iniciar Sesión - Sistema Ventel' },
   'registro':            { file: 'registro',            title: 'Crear Cuenta - Sistema Ventel' },
+  'recuperar':           { file: 'recuperar',           title: 'Recuperar Contraseña - Sistema Ventel' },
   'dashboard':           { file: 'inicio',              title: 'Dashboard - Sistema Ventel' },
   'inicio_avanzado':     { file: 'inicio_avanzado',     title: 'Dashboard Avanzado - Sistema Ventel' },
   'cotizacion':          { file: 'cotizacion',          title: 'Cotización - Sistema Ventel' },
   'cotizado_preview':    { file: 'cotizado_preview',    title: 'Vista Previa de Cotización' },
   'consulta_cotizacion': { file: 'consulta_cotizacion', title: 'Consulta de Cotización' },
+  'revision_cotizacion': { file: 'revision_cotizacion', title: 'Revisión de Cotización - Sistema Ventel' },
   'correoventel':        { file: 'correoventel',        title: 'Enviar Correo - Sistema Ventel' },
   'correo_cliente':      { file: 'correo_cliente',      title: 'Correos a Clientes - Sistema Ventel' },
   'anuncios':            { file: 'anuncios',            title: 'Constructor de Anuncios - Sistema Ventel' }
@@ -124,6 +126,11 @@ function servirPagina_(e) {
   // Deep-link opcional: preselecciona una plantilla en "Correos a clientes"
   // (?page=correo_cliente&tpl=ticket). Lo usa el buscador del Portal.
   template.tpl = (e && e.parameter && e.parameter.tpl) || '';
+  // Pantalla a la que hay que volver después de iniciar sesión
+  // (?page=login&next=cotizacion). Viaja siempre como CLAVE de página, nunca como
+  // URL: el cliente solo acepta las de su lista blanca (AppUrl.PAGINAS_TRAS_LOGIN),
+  // así que este parámetro no puede sacar a nadie del sistema.
+  template.next = (e && e.parameter && e.parameter.next) || '';
 
   return template.evaluate()
     .setTitle(config.title)
@@ -155,58 +162,30 @@ function getUserEmail(correoPortal) {
 }
 
 /**
- * Registra un nuevo usuario en la hoja 'Registros'.
- * Verifica si el correo ya existe, valida la contraseña y la guarda con un hash.
+ * ALTA DE USUARIOS — la puerta única es Cuentas.gs.
+ *
+ * Antes esta función creaba la cuenta de golpe: bastaba teclear cualquier correo para
+ * quedar dado de alta, sin probar que fuera tuyo. Ahora el alta pasa por un código de
+ * 6 dígitos enviado a ese correo (solicitarCodigoRegistro → confirmarCodigoRegistro,
+ * en Cuentas.gs), que además es lo que da sentido a la recuperación de contraseña:
+ * si el correo no está verificado, mandarle un código para restablecerla no prueba nada.
+ *
+ * Se conserva el nombre por compatibilidad —una pantalla vieja en la caché del
+ * navegador podría seguir llamándola— pero ya no da de alta a nadie: sería un atajo
+ * para saltarse la verificación llamando a google.script.run desde la consola.
+ *
  * {string} name - El nombre del usuario.
  * {string} email - El correo electrónico del usuario.
  * {string} password - La contraseña en texto plano.
  */
 function registerUser(name, email, password) {
-  try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(REGISTROS_SHEET_NAME);
-    if (!sheet) throw new Error(`Hoja '${REGISTROS_SHEET_NAME}' no encontrada.`);
-
-    // El correo se guarda SIEMPRE normalizado (minúsculas, sin espacios): antes se
-    // guardaba tal cual se tecleaba y el login comparaba de forma exacta, así que
-    // quien se registraba con mayúsculas no podía volver a entrar escribiéndolo distinto.
-    const correo = secNormalizarCorreo_(email);
-    const nombre = String(name || '').trim();
-    if (!nombre) return { success: false, message: "El nombre es obligatorio." };
-    if (!secCorreoValido_(correo)) return { success: false, message: "El correo electrónico no tiene un formato válido." };
-    if (!password || String(password).length < 6) return { success: false, message: "La contraseña debe tener al menos 6 caracteres." };
-
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
-    const emailColumnIndex = headers.indexOf("Email");
-    if (emailColumnIndex === -1) throw new Error("Columna 'Email' no encontrada.");
-
-    const data = sheet.getDataRange().getValues();
-    const emailExists = data.slice(1).some(row => secNormalizarCorreo_(row[emailColumnIndex]) === correo);
-    if (emailExists) return { success: false, message: "El correo electrónico ya está registrado." };
-
-    // La fila se arma por NOMBRE de columna, no por posición: si algún día se
-    // reordenan o se agregan columnas en 'Registros', el registro sigue cuadrando.
-    const fila = new Array(headers.length).fill('');
-    const poner = (columna, valor) => {
-      const i = headers.indexOf(columna);
-      if (i > -1) fila[i] = valor;
-    };
-    poner(headers[0], new Date());              // primera columna: marca de tiempo
-    poner("Timestamp", new Date());
-    poner("Fecha", new Date());
-    poner("Nombre", nombre);
-    poner("Email", correo);
-    poner("PasswordHash", secHashContrasena_(password));
-    poner("Avanzado", 'No');                    // rol por omisión
-
-    sheet.appendRow(fila);
-    SEC_REGISTROS_CACHE = null; // el índice en memoria quedó viejo tras el alta
-
-    Logger.log("Usuario registrado: " + correo);
-    return { success: true, message: "Usuario registrado exitosamente." };
-  } catch (error) {
-    Logger.log("Error en registerUser: " + error.message);
-    return { success: false, message: "Error interno al registrar usuario: " + error.message };
-  }
+  Logger.log('registerUser (obsoleta) llamada para ' + secNormalizarCorreo_(email) +
+             '. El alta requiere verificación por código.');
+  return {
+    success: false,
+    obsoleta: true,
+    message: 'Ahora el registro se confirma con un código enviado a tu correo. Recarga la página para continuar.'
+  };
 }
 
 /**
@@ -390,6 +369,22 @@ function saveQuoteDataToSheets(quoteData, status, pdfLink = null) {
     throw new Error("La hoja 'Cotizaciones' no tiene los encabezados esperados (Folio, Timestamp, AsesorCorreo, ClienteNombre, TotalGeneral...). Revisa la primera fila.");
   }
 
+  // REVISIÓN: guardar una cotización la devuelve SIEMPRE al punto de partida del ciclo.
+  // Es lo que impide que alguien apruebe un folio, le cambie los precios y lo envíe con
+  // el sello de aprobado puesto: cualquier edición borra la revisión anterior y el
+  // documento vuelve a la cola. El estatus que llega en `status` ya es "En Revisión".
+  if (typeof revAsegurarColumnas_ === 'function' && typeof REV_COLS === 'object') {
+    const headersRev = revAsegurarColumnas_(cotizacionesSheet);
+    // revAsegurarColumnas_ pudo agregar columnas: la fila tiene que crecer con la hoja.
+    for (let c = cotHeaders.length; c < headersRev.length; c++) cotHeaders.push(headersRev[c]);
+    while (mainQuoteRowData.length < cotHeaders.length) mainQuoteRowData.push('');
+
+    Object.keys(REV_COLS).forEach(function (k) {
+      const idx = cotHeaders.indexOf(REV_COLS[k]);
+      if (idx > -1) mainQuoteRowData[idx] = '';
+    });
+  }
+
   // Auto-crear la columna "Formato" si no existe, igual que se hace con "ImagenUrl".
   let formatoColIdxCot = cotHeaders.indexOf("Formato");
   if (formatoColIdxCot === -1) {
@@ -409,7 +404,9 @@ function saveQuoteDataToSheets(quoteData, status, pdfLink = null) {
     cotizacionesSheet.appendRow(mainQuoteRowData);
     Logger.log(`Cotización principal guardada en hoja: ${quoteData.folio}`);
 
-    sendWebhookNotification(quoteData.folio);
+    // El estatus se pasa al aviso: si la política dejó pasar la cotización sin revisión,
+    // el mensaje del chat no puede decir "revísala" y enlazar a una cola donde no está.
+    sendWebhookNotification(quoteData.folio, quoteData, status);
   }
 
   const detHeaders = detalleSheet.getRange(1, 1, 1, detalleSheet.getLastColumn()).getValues()[0];
@@ -436,7 +433,19 @@ function saveQuoteDataToSheets(quoteData, status, pdfLink = null) {
       imgUrlColIdxDet = detHeadersUpdated.length - 1;
       Logger.log("Nueva columna 'ImagenUrl' agregada de forma auto-reparable en DetalleCotizaciones.");
     }
-    
+
+    // Enlace a la ficha del artículo en liverpool.com.mx. Lo aporta la extensión de Chrome
+    // y es lo que permite abrir el producto DENTRO de la pantalla de revisión, en vez de
+    // pedirle a quien revisa que lo busque a mano. Misma columna auto-reparable.
+    const NOMBRE_COL_LINK = (typeof REV_COL_LINK_ARTICULO === 'string') ? REV_COL_LINK_ARTICULO : 'LinkArticulo';
+    let linkArtColIdxDet = detHeadersUpdated.indexOf(NOMBRE_COL_LINK);
+    if (linkArtColIdxDet === -1) {
+      detalleSheet.getRange(1, detHeadersUpdated.length + 1).setValue(NOMBRE_COL_LINK);
+      detHeadersUpdated.push(NOMBRE_COL_LINK);
+      linkArtColIdxDet = detHeadersUpdated.length - 1;
+      Logger.log("Nueva columna '" + NOMBRE_COL_LINK + "' agregada de forma auto-reparable en DetalleCotizaciones.");
+    }
+
     const productDetailsRows = quoteData.products.map(p => {
       // Inicializar una fila con el ancho de las cabeceras actuales
       const row = new Array(detHeadersUpdated.length).fill('');
@@ -455,7 +464,10 @@ function saveQuoteDataToSheets(quoteData, status, pdfLink = null) {
       if (imgUrlColIdxDet > -1) {
         row[imgUrlColIdxDet] = p.imageUrl || '';
       }
-      
+      if (linkArtColIdxDet > -1) {
+        row[linkArtColIdxDet] = p.productUrl || '';
+      }
+
       return row;
     });
     
@@ -504,6 +516,10 @@ function saveQuoteAndGoToPreview(quoteDataFromClient) {
       quoteDataFromClient.format = enabledFormats.defaultId || DEFAULT_FORMAT_ID;
     }
 
+    // Lo que la política decidió. Se declara fuera del candado porque la respuesta al
+    // cliente se arma cuando el candado ya se soltó.
+    let decisionRevision = { revisar: true, motivo: '', origen: '', reglaId: '' };
+
     // El folio se genera y se guarda bajo un candado: sin él, dos asesores cotizando al
     // mismo tiempo leen el mismo "último folio" y ambos reciben el mismo número.
     const lock = LockService.getScriptLock();
@@ -521,7 +537,30 @@ function saveQuoteAndGoToPreview(quoteDataFromClient) {
       }
 
       quoteDataFromClient.timestamp = new Date();
-      saveQuoteDataToSheets(quoteDataFromClient, "Folio Generado");
+
+      // ¿Esta cotización tiene que pasar por la cola de revisión?
+      // Lo decide la política que supervisión configura en el panel avanzado
+      // (PoliticaRevision.gs): puede ir por monto, descuento, formato, asesor u horario.
+      // Si ese archivo no está desplegado todavía, se revisa TODO, que es el
+      // comportamiento de siempre: un despliegue parcial nunca puede degradar a
+      // "sale al cliente sin que nadie lo mire".
+      const decision = (typeof revpolDecidirAlGuardar_ === 'function')
+        ? revpolDecidirAlGuardar_(quoteDataFromClient)
+        : { revisar: true, motivo: 'Política de revisión no disponible.', origen: 'sin-modulo', reglaId: '' };
+      decisionRevision = decision;
+
+      const estatusPendiente = (typeof REV_ESTATUS_PENDIENTE === 'string') ? REV_ESTATUS_PENDIENTE : 'En Revisión';
+      const estatusAprobada  = (typeof REV_ESTATUS_APROBADA  === 'string') ? REV_ESTATUS_APROBADA  : 'Aprobada';
+      const estatusInicial = decision.revisar ? estatusPendiente : estatusAprobada;
+
+      saveQuoteDataToSheets(quoteDataFromClient, estatusInicial);
+
+      // El sello va DESPUÉS de guardar: saveQuoteDataToSheets limpia las columnas de
+      // revisión en cada escritura (para que editar un folio aprobado lo devuelva a la
+      // cola), así que escribirlo antes lo borraría.
+      if (!decision.revisar && typeof revpolSellarAprobacionAutomatica_ === 'function') {
+        revpolSellarAprobacionAutomatica_(quoteDataFromClient.folio, decision);
+      }
     } finally {
       lock.releaseLock();
     }
@@ -530,6 +569,10 @@ function saveQuoteAndGoToPreview(quoteDataFromClient) {
       success: true,
       folio: quoteDataFromClient.folio,
       format: quoteDataFromClient.format,
+      // La pantalla de cotización necesita saberlo para no prometerle al asesor una
+      // revisión que no va a ocurrir (o al revés).
+      requiereRevision: decisionRevision.revisar,
+      motivoRevision: decisionRevision.motivo,
       message: `Datos de cotización ${quoteDataFromClient.folio} preparados.`
     };
 
@@ -706,6 +749,48 @@ function leerDetalleCotizacion_(folio) {
     const cclLinkIdx = cotHeaders.indexOf("LinkSheetCCL");
     quoteDetails.cclSheetLink = (cclLinkIdx > -1) ? String(quoteRow[cclLinkIdx] || '') : '';
 
+    // Estado de la revisión (Revision.gs). Va en el detalle porque TODAS las pantallas
+    // que muestran una cotización necesitan saber si ya está autorizada: la consulta para
+    // decidir si enseña el botón "Revisar" y si desbloquea el envío, y la propia revisión
+    // para saber si se está reabriendo algo ya cerrado.
+    const colsRev = (typeof REV_COLS === 'object') ? REV_COLS : null;
+    if (colsRev) {
+      const leerRev = function (nombreCol) {
+        const idx = cotHeaders.indexOf(nombreCol);
+        return idx > -1 ? quoteRow[idx] : '';
+      };
+      const fechaRev = leerRev(colsRev.fecha);
+      const estadoRev = String(leerRev(colsRev.estado) || '');
+      quoteDetails.revision = {
+        estado: estadoRev,
+        por: String(leerRev(colsRev.por) || ''),
+        nombre: String(leerRev(colsRev.nombre) || ''),
+        fecha: (fechaRev instanceof Date) ? fechaRev.toISOString() : String(fechaRev || ''),
+        notas: String(leerRev(colsRev.notas) || ''),
+        // Las cotizaciones anteriores a la revisión no tienen RevisionEstado: para ellas
+        // vale el estatus de siempre, o se bloquearía trabajo ya entregado al cliente.
+        aprobada: estadoRev
+          ? (estadoRev === REV_ESTATUS_APROBADA)
+          : (quoteDetails.status === REV_ESTATUS_APROBADA || quoteDetails.status === REV_ESTATUS_ENVIADA)
+      };
+
+      // Espejo de lo que hace revPuedeEnviarse_ (la autoridad real, en el servidor): si la
+      // revisión está desactivada, la pantalla tiene que desbloquear el envío igual, o el
+      // asesor vería "en revisión" para siempre sobre un folio que el servidor sí dejaría salir.
+      // Un RECHAZO sigue bloqueando: apagar la política no borra un "no" que alguien escribió.
+      try {
+        if (typeof revpolLeer_ === 'function' && revpolLeer_().exigirRevision === false &&
+            estadoRev !== REV_ESTATUS_RECHAZADA) {
+          quoteDetails.revision.aprobada = true;
+          quoteDetails.revision.revisionDesactivada = true;
+        }
+      } catch (e) {
+        Logger.log('getQuoteDetails: no se pudo leer la política de revisión: ' + e.message);
+      }
+    } else {
+      quoteDetails.revision = { estado: '', por: '', nombre: '', fecha: '', notas: '', aprobada: true };
+    }
+
     if (quoteDetails.timestamp && quoteDetails.timestamp instanceof Date) {
         quoteDetails.timestamp = quoteDetails.timestamp.toISOString();
     } else if (quoteDetails.timestamp) { 
@@ -729,7 +814,10 @@ function leerDetalleCotizacion_(folio) {
           discountPublicPercent: parseFloat(productRow[detHeaders.indexOf("DescPublicoPorcentaje")]) || 0,
           additionalDiscountApplied: productRow[detHeaders.indexOf("AplicaDescAdicional")] || 'No',
           additionalDiscountPercent: parseFloat(productRow[detHeaders.indexOf("PorcentajeDescAdicional")]) || 0,
-          imageUrl: detHeaders.indexOf("ImagenUrl") > -1 ? (productRow[detHeaders.indexOf("ImagenUrl")] || '') : ''
+          imageUrl: detHeaders.indexOf("ImagenUrl") > -1 ? (productRow[detHeaders.indexOf("ImagenUrl")] || '') : '',
+          // Enlace a la ficha del artículo (columna que llena la extensión de Chrome).
+          // Se devuelve CRUDO; quien lo va a incrustar lo valida antes (revUrlArticuloSegura_).
+          productUrl: detHeaders.indexOf("LinkArticulo") > -1 ? (productRow[detHeaders.indexOf("LinkArticulo")] || '') : ''
         }));
     }
     
@@ -923,6 +1011,14 @@ function leerSupervision_() {
         vat: parseFloat(row[col["IVA"]]) || 0,
         total: parseFloat(row[col["TotalGeneral"]]) || 0,
         status: String(row[col["Estatus"]] || 'Pendiente'),
+        // El resultado DURADERO de la revisión (Revision.gs). Va aparte de "Estatus" porque
+        // este último se sobrescribe con "Enviada por Correo" al mandar la cotización, y sin
+        // esta columna el panel no podría distinguir un folio que nadie ha revisado de uno
+        // aprobado y ya entregado. La cola de pendientes se arma con este dato.
+        revisionEstado: (col["RevisionEstado"] !== undefined)
+          ? String(row[col["RevisionEstado"]] || '') : '',
+        revisionPor: (col["RevisadoNombre"] !== undefined)
+          ? String(row[col["RevisadoNombre"]] || '') : '',
         format: (col["Formato"] !== undefined && row[col["Formato"]]) ? String(row[col["Formato"]]) : DEFAULT_FORMAT_ID,
         observations: String(row[col["Observaciones"]] || '')
       };
@@ -937,10 +1033,18 @@ function leerSupervision_() {
 }
 
 /**
- * Envía una notificación a Google Chat a través de un Webhook.
+ * Avisa por Webhook (Google Chat) que hay una cotización esperando revisión.
+ *
+ * El mensaje lleva el ENLACE DIRECTO a la pantalla de revisión de ese folio: quien
+ * supervisa abre el chat, toca el enlace y ya está en el documento. Antes solo llegaba
+ * el número de folio y había que buscarlo a mano en el panel.
+ *
  * @param {string} folio - El folio de la cotización recién creada.
+ * @param {object=} quoteData - Datos de la cotización, para dar contexto en el mensaje.
+ * @param {string=} estatus - Estatus con el que nació. Si la política la dejó pasar sin
+ *        revisión, el aviso lo dice en vez de mandar a supervisión a una cola vacía.
  */
-function sendWebhookNotification(folio) {
+function sendWebhookNotification(folio, quoteData, estatus) {
   // La URL trae una llave de Google Chat: se lee de las propiedades del script si
   // está configurada (recomendado) y solo si no, de la constante del archivo.
   const url = secConfig_('WEBHOOK_URL', WEBHOOK_URL);
@@ -950,7 +1054,31 @@ function sendWebhookNotification(folio) {
   }
 
   try {
-    const message = `Se ha generado una nueva cotización con el folio *${folio}*. Es importante que se realice la revisión.`;
+    const q = quoteData || {};
+    const enlace = (typeof revUrlPantalla_ === 'function') ? revUrlPantalla_(folio) : '';
+
+    const detalles = [];
+    if (q.clientName)   detalles.push('Cliente: ' + q.clientName);
+    if (q.advisorName)  detalles.push('Asesor: ' + q.advisorName);
+    if (q.summaryTotal) detalles.push('Total: ' + formatCurrencyGS(q.summaryTotal));
+
+    const aprobadaSola = (typeof REV_ESTATUS_APROBADA === 'string')
+      ? (estatus === REV_ESTATUS_APROBADA)
+      : (estatus === 'Aprobada');
+
+    // Formato de texto de Google Chat: *negritas* y <url|texto> para el enlace.
+    // Una cotización que salió sin revisión SÍ se anuncia: que no necesite aprobación no
+    // significa que supervisión no deba enterarse de que existe.
+    const message = aprobadaSola
+      ? `*${folio}* · nueva cotización *aprobada automáticamente*` +
+        (detalles.length ? `\n${detalles.join(' · ')}` : '') +
+        `\nLa política de revisión permitió enviarla sin aprobación manual.` +
+        (enlace ? `\n<${enlace}|Ver la cotización>` : `\nÁbrela en el sistema con el folio ${folio}.`)
+      : `*${folio}* · nueva cotización *en revisión*` +
+        (detalles.length ? `\n${detalles.join(' · ')}` : '') +
+        `\nNo se puede enviar al cliente hasta que alguien la apruebe.` +
+        (enlace ? `\n<${enlace}|Revisar la cotización>` : `\nÁbrela en el sistema con el folio ${folio}.`);
+
     const payload = { 'text': message };
 
     const options = {

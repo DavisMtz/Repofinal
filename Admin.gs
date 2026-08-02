@@ -169,6 +169,24 @@ function revisionMaestra() {
     }
     return 'HASH_SALT y WEBHOOK_URL están en las propiedades del script';
   });
+  check('Seguridad', 'Códigos por correo (Cuentas.gs)', function () {
+    if (typeof solicitarCodigoRegistro !== 'function' || typeof restablecerContrasena !== 'function') {
+      throw new Error('Cuentas.gs no está en el proyecto: no hay alta verificada ni recuperación de contraseña.');
+    }
+    // Se prueba el ida y vuelta completo del almacén (escribir, leer, borrar) sin
+    // mandar ningún correo: lo que suele fallar es el acceso a las propiedades.
+    const clave = 'cta_diag_' + Date.now();
+    const props = PropertiesService.getScriptProperties();
+    props.setProperty(clave, JSON.stringify({ exp: Date.now() + 60000 }));
+    if (!props.getProperty(clave)) throw new Error('no se pueden guardar los códigos en las propiedades del script');
+    props.deleteProperty(clave);
+    const dominio = cuentasDominioPermitido_();
+    let vivos = 0;
+    const todas = props.getProperties();
+    Object.keys(todas).forEach(function (k) { if (k.indexOf(CUENTAS_PREFIJO) === 0) vivos++; });
+    return 'almacén OK · altas ' + (dominio ? 'solo @' + dominio : 'sin restricción de dominio') +
+      ' · códigos vigentes ahora: ' + vivos + ' · cuota de correo restante: ' + MailApp.getRemainingDailyQuota();
+  });
 
   // ── 8. INFRAESTRUCTURA ────────────────────────────────────────────────────
   check('Infra', 'CacheService', function () {
@@ -246,7 +264,11 @@ function verificarVersionDelCodigo() {
     { nombre: 'getVerifiedImageUrl', fn: typeof getVerifiedImageUrl === 'function' ? getVerifiedImageUrl : null,
       marca: 'fetchAll', pista: 'debe verificar las imágenes en paralelo' },
     { nombre: 'doGet', fn: typeof doGet === 'function' ? doGet : null,
-      marca: 'servirPagina_', pista: 'debe tener la página de error' }
+      marca: 'servirPagina_', pista: 'debe tener la página de error' },
+    { nombre: 'registerUser', fn: typeof registerUser === 'function' ? registerUser : null,
+      marca: 'obsoleta', pista: 'el alta directa ya no existe: debe exigir verificación por código' },
+    { nombre: 'confirmarCodigoRegistro', fn: typeof confirmarCodigoRegistro === 'function' ? confirmarCodigoRegistro : null,
+      marca: 'cuentasAltaUsuario_', pista: 'debe crear la cuenta solo tras confirmar el código' }
   ];
 
   const problemas = [];
